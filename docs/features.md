@@ -21,7 +21,9 @@ the user installed:
 
 - `containeria`: runtime `docker`, Kubernetes optional. Runs containers, images, volumes, networks, k3s.
 - `containeria-machines`: runtime `incus`. Runs Linux machines. Created and started only when the
-  user makes their first machine, because one Colima profile can only run one runtime.
+  user makes their first machine, because one Colima profile can only run one runtime. Colima
+  sets Incus up only when the `incus` client is on its `PATH`. Containeria looks next to Colima
+  first, then in Homebrew, so the release bundle ships `incus` beside `colima` and `limactl`.
 
 ## Legend
 
@@ -43,7 +45,7 @@ the user installed:
 | Rosetta for amd64 images | `rosetta: true` | Colima | VZ only, Apple Silicon. |
 | amd64 without Rosetta | `binfmt: true` (QEMU) | Colima | Slower. Used automatically on krunkit. |
 | Return unused memory to macOS | libkrun free page reporting | Limited | **Works only on krunkit.** On VZ, Lima attaches a memory balloon but never resizes it, so memory the VM has used stays with the VM until it restarts. See "Decisions" below. |
-| Fast file sharing with your Mac | `mountType: virtiofs` | Colima | Home folder mounted by default. |
+| Fast file sharing with your Mac | `mountType: virtiofs`, `mounts: [~]` | Colima | Home folder mounted writable at the same path, set explicitly in both profiles. |
 | File-watch events (hot reload) | `mountInotify: true` | Limited | Experimental in Colima. On by default in Containeria, with a setting to turn it off. |
 | SSH agent forwarding | `forwardAgent: true` | Colima | |
 | Docker daemon settings (mirrors, insecure registries) | `docker:` maps to daemon.json | Colima | |

@@ -154,6 +154,8 @@ struct ColimaFile {
     hostname: String,
     mount_type: String,
     mount_inotify: bool,
+    #[serde(default)]
+    mounts: Vec<Mount>,
     forward_agent: bool,
     port_forwarder: String,
     network: Network,
@@ -170,6 +172,13 @@ struct DaemonSettings {
     registry_mirrors: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     insecure_registries: Vec<String>,
+}
+
+/// A Mac folder shared into the VM at the same path, so bind mounts and Incus disks can use it.
+#[derive(Debug, Serialize, Deserialize)]
+struct Mount {
+    location: String,
+    writable: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -201,6 +210,7 @@ impl ColimaFile {
             hostname: profile.name().to_owned(),
             mount_type: "virtiofs".to_owned(),
             mount_inotify: config.file_watch_events,
+            mounts: vec![Mount { location: "~".to_owned(), writable: true }],
             forward_agent: config.forward_ssh_agent,
             port_forwarder: if config.udp_ports { "grpc" } else { "ssh" }.to_owned(),
             network: Network { address: config.container_ip_access },
@@ -272,6 +282,12 @@ mod tests {
         assert!(yaml.contains("registry-mirrors:"));
         assert!(yaml.contains("- https://mirror.gcr.io"));
         assert!(yaml.contains("insecure-registries:"));
+    }
+
+    #[test]
+    fn shares_the_mac_home_folder_writable() {
+        let yaml = EngineConfig::default().to_colima_yaml(Profile::Machines).unwrap();
+        assert!(yaml.contains("mounts:\n- location: '~'\n  writable: true"), "{yaml}");
     }
 
     #[test]

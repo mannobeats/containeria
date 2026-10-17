@@ -102,6 +102,21 @@ pub enum KubernetesAction {
 }
 
 /// The Colima CLI, run against Containeria's own Colima home.
+/// Where Homebrew installs on Apple silicon and on Intel. Apps opened from Finder get only the
+/// system `PATH`, which has neither.
+const HOMEBREW_BINS: [&str; 2] = ["/opt/homebrew/bin", "/usr/local/bin"];
+
+/// The folders Colima and the tools it runs (`limactl`, `incus`) are looked up in: next to Colima
+/// first, so a bundled copy finds its bundled tools, then Homebrew, then the inherited `PATH`.
+fn search_path(colima_dir: Option<&Path>) -> Vec<PathBuf> {
+    colima_dir
+        .map(Path::to_path_buf)
+        .into_iter()
+        .chain(HOMEBREW_BINS.map(PathBuf::from))
+        .chain(env::var_os("PATH").iter().flat_map(env::split_paths))
+        .collect()
+}
+
 #[derive(Debug, Clone)]
 pub struct Colima {
     bin: PathBuf,
@@ -109,16 +124,14 @@ pub struct Colima {
 }
 
 impl Colima {
-    /// Finds Colima: `$CONTAINERIA_COLIMA`, then the copy bundled with the app, then `$PATH`.
+    /// Finds Colima: `$CONTAINERIA_COLIMA`, then the copy bundled with the app, then Homebrew and
+    /// `$PATH`.
     ///
     /// # Errors
     /// Fails when no candidate exists.
     pub fn locate(home: Home, bundled: Option<&Path>) -> Result<Self> {
         let from_env = env::var_os("CONTAINERIA_COLIMA").map(PathBuf::from);
-        let from_path = env::var_os("PATH")
-            .into_iter()
-            .flat_map(|path| env::split_paths(&path).collect::<Vec<_>>())
-            .map(|dir| dir.join("colima"));
+        let from_path = search_path(None).into_iter().map(|dir| dir.join("colima"));
         from_env
             .into_iter()
             .chain(bundled.map(Path::to_path_buf))
@@ -214,7 +227,11 @@ impl Colima {
         if let Some(profile) = profile {
             command.args(["--profile", profile.name()]);
         }
-        command.env("COLIMA_HOME", self.home.colima()).stdin(Stdio::null()).kill_on_drop(true);
+        command
+            .env("COLIMA_HOME", self.home.colima())
+            .env("PATH", env::join_paths(search_path(self.bin.parent())).map_err(io::Error::other)?)
+            .stdin(Stdio::null())
+            .kill_on_drop(true);
         Ok(command)
     }
 
@@ -285,6 +302,14 @@ fn last_error<'a>(lines: impl DoubleEndedIterator<Item = &'a str>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn looks_next_to_colima_then_in_homebrew() {
+        let path = search_path(Some(Path::new("/Applications/Containeria.app/Contents/MacOS")));
+        assert_eq!(path[0], Path::new("/Applications/Containeria.app/Contents/MacOS"));
+        assert_eq!(path[1], Path::new("/opt/homebrew/bin"));
+        assert_eq!(path[2], Path::new("/usr/local/bin"));
+    }
 
     #[test]
     fn reads_a_colima_list_line() {

@@ -23,7 +23,7 @@ In active development. The approved design prototype lives in [`design/`](design
 ## Development
 
 Requirements: macOS 13+, Node 26, pnpm 11, Rust (pinned by `rust-toolchain.toml`), and for the
-engine `brew install colima`.
+engine `brew install colima incus` (Colima starts Incus for Linux machines only when its client is on `PATH`).
 
 ```sh
 pnpm install
