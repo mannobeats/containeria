@@ -7,7 +7,7 @@ import { useSaveConnection } from "./api";
 const DATABASE_FILE = /\.(sqlite3?|db3?)$/i;
 
 /** The first database file in a drop, if there is one. */
-export function databaseFile(paths: string[]): string | undefined {
+function databaseFile(paths: string[]): string | undefined {
   return paths.find((path) => DATABASE_FILE.test(path));
 }
 

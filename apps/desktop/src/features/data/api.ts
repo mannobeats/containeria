@@ -114,14 +114,6 @@ export function useTestConnection() {
   });
 }
 
-export function useDisconnect() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => commands.dataDisconnect(id),
-    onSuccess: (_, id) => client.removeQueries({ queryKey: dataKeys.session(id) }),
-  });
-}
-
 export function useCommit(id: string) {
   const client = useQueryClient();
   return useMutation({

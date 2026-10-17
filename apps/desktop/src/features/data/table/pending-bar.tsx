@@ -24,6 +24,9 @@ export function PendingBar({
   onDiscard,
   onCommit,
 }: PendingBarProps) {
+  if (count === 0) {
+    return null;
+  }
   return (
     <m.div
       role="status"

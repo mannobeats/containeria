@@ -69,7 +69,31 @@ function useFollowReference(connection: string) {
   };
 }
 
-function NoRows({ table, view, onClear }: { table: Table; view: GridView; onClear: () => void }) {
+/** Why there are no rows to show: the read failed, the filters match nothing, or the table is empty. */
+function NoRows({
+  table,
+  view,
+  page,
+  onClear,
+}: {
+  table: Table;
+  view: GridView;
+  page: UseQueryResult<RowPage>;
+  onClear: () => void;
+}) {
+  if (page.isError) {
+    return (
+      <EmptyState
+        art={<IconAlertCircle className="size-7 text-bad" aria-hidden />}
+        title="The rows couldn't be read"
+      >
+        {errorMessage(page.error)}
+      </EmptyState>
+    );
+  }
+  if (!page.data) {
+    return null;
+  }
   const filtered = view.filters.length > 0;
   return (
     <EmptyState
@@ -84,6 +108,13 @@ function NoRows({ table, view, onClear }: { table: Table; view: GridView; onClea
       actions={filtered ? <Button onClick={onClear}>Clear filters</Button> : null}
     />
   );
+}
+
+/** The inspector's previous and next row, from the active cell or the first row. */
+function stepRow(active: CellPosition | null, direction: 1 | -1, count: number): CellPosition {
+  return active
+    ? { ...active, row: Math.min(count - 1, Math.max(0, active.row + direction)) }
+    : { row: 0, column: 0 };
 }
 
 type GridAreaProps = {
@@ -104,12 +135,7 @@ function GridArea({ info, table, view, setView, page, edits }: GridAreaProps) {
   const columns = page.data?.columns ?? table.columns;
   const rows = gridRows(columns, page.data?.rows ?? [], edits.pending, offset);
   const editable = page.data?.readOnlyReason === null;
-  const step = (direction: 1 | -1) =>
-    setActive(
-      active
-        ? { ...active, row: Math.min(rows.length - 1, Math.max(0, active.row + direction)) }
-        : { row: 0, column: 0 },
-    );
+  const step = (direction: 1 | -1) => setActive(stepRow(active, direction, rows.length));
   return (
     <div
       className={clsx(
@@ -118,17 +144,6 @@ function GridArea({ info, table, view, setView, page, edits }: GridAreaProps) {
       )}
     >
       <div className="relative flex min-h-0 min-w-0 flex-col">
-        {page.isError ? (
-          <EmptyState
-            art={<IconAlertCircle className="size-7 text-bad" aria-hidden />}
-            title="The rows couldn't be read"
-          >
-            {errorMessage(page.error)}
-          </EmptyState>
-        ) : null}
-        {page.data && rows.length === 0 ? (
-          <NoRows table={table} view={view} onClear={() => setView({ filters: [], page: 0 })} />
-        ) : null}
         {rows.length > 0 ? (
           <DataGrid
             key={tableKey(table)}
@@ -145,7 +160,14 @@ function GridArea({ info, table, view, setView, page, edits }: GridAreaProps) {
             onEdit={editable ? edits.edit : undefined}
             onJump={follow}
           />
-        ) : null}
+        ) : (
+          <NoRows
+            table={table}
+            view={view}
+            page={page}
+            onClear={() => setView({ filters: [], page: 0 })}
+          />
+        )}
         <GridFooter
           page={page.data}
           view={view}
@@ -157,17 +179,15 @@ function GridArea({ info, table, view, setView, page, edits }: GridAreaProps) {
           }}
           onAddRow={editable ? edits.addRow : undefined}
         />
-        {edits.count > 0 ? (
-          <PendingBar
-            count={edits.count}
-            table={table.name}
-            summary={pendingSummary(edits.pending)}
-            committing={edits.committing}
-            onReview={edits.openReview}
-            onDiscard={edits.discard}
-            onCommit={edits.commit}
-          />
-        ) : null}
+        <PendingBar
+          count={edits.count}
+          table={table.name}
+          summary={pendingSummary(edits.pending)}
+          committing={edits.committing}
+          onReview={edits.openReview}
+          onDiscard={edits.discard}
+          onCommit={edits.commit}
+        />
       </div>
       {view.inspector ? (
         <RowInspector
