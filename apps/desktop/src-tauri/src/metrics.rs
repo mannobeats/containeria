@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -11,6 +11,7 @@ use tokio::sync::RwLock;
 
 use crate::engine::Engine;
 use crate::events::MetricsUpdated;
+use crate::tray;
 
 const GIB: u64 = 1024 * 1024 * 1024;
 
@@ -62,18 +63,57 @@ pub(crate) struct Metrics {
     pub(crate) ledger: Ledger,
 }
 
-/// Samples every running container's CPU and memory, for the list, the ledger and the menu bar.
+/// One point of the Activity charts: totals and the ledger at one moment.
+#[derive(Debug, Clone, PartialEq, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct MetricsPoint {
+    pub(crate) sampled_at_ms: f64,
+    /// Summed over containers, where 100 is one full core.
+    pub(crate) cpu_percent: f64,
+    #[specta(type = specta_typescript::Number)]
+    pub(crate) used_bytes: u64,
+    pub(crate) segments: Vec<LedgerSegment>,
+}
+
+impl From<&Metrics> for MetricsPoint {
+    fn from(metrics: &Metrics) -> Self {
+        Self {
+            sampled_at_ms: metrics.sampled_at_ms,
+            cpu_percent: metrics.containers.iter().filter_map(|usage| usage.cpu_percent).sum(),
+            used_bytes: metrics.ledger.used_bytes,
+            segments: metrics.ledger.segments.clone(),
+        }
+    }
+}
+
+/// Samples every running container's CPU and memory, for the list, the ledger and the menu bar,
+/// and keeps the last half hour for Activity.
 #[derive(Debug, Default)]
 pub(crate) struct Sampler {
     latest: RwLock<Option<Metrics>>,
+    history: RwLock<VecDeque<MetricsPoint>>,
 }
 
 impl Sampler {
     const EVERY: Duration = Duration::from_secs(2);
     const PARALLEL_READINGS: usize = 8;
+    /// Thirty minutes at one sample every two seconds.
+    const HISTORY: usize = 900;
 
     pub(crate) async fn latest(&self) -> Option<Metrics> {
         self.latest.read().await.clone()
+    }
+
+    pub(crate) async fn history(&self) -> Vec<MetricsPoint> {
+        self.history.read().await.iter().cloned().collect()
+    }
+
+    async fn record(&self, metrics: &Metrics) {
+        let mut history = self.history.write().await;
+        if history.len() == Self::HISTORY {
+            history.pop_front();
+        }
+        history.push_back(metrics.into());
     }
 
     pub(crate) async fn run(&self, engine: Arc<Engine>, app: AppHandle) {
@@ -84,8 +124,10 @@ impl Sampler {
                 Err(_) => None,
             };
             if let Some(metrics) = &metrics {
+                self.record(metrics).await;
                 let _ = MetricsUpdated(metrics.clone()).emit(&app);
             }
+            tray::show_memory(&app, metrics.as_ref().map(|metrics| metrics.ledger.used_bytes));
             *self.latest.write().await = metrics;
             tokio::time::sleep(Self::EVERY).await;
         }
@@ -129,7 +171,11 @@ async fn sample(
     }
     *previous = next;
 
-    let total_bytes = engine.config().map_or(0, |config| u64::from(config.memory_gib) * GIB);
+    let total_bytes = if engine.is_external() {
+        docker.info().await.map_or(0, |info| info.memory_bytes)
+    } else {
+        engine.config().map_or(0, |config| u64::from(config.memory_gib) * GIB)
+    };
     let ledger = ledger(&running, &usage, total_bytes);
     Some(Metrics { sampled_at_ms: now_ms(), containers: usage, ledger })
 }
@@ -216,6 +262,34 @@ mod tests {
         );
         assert_eq!(ledger.used_bytes, 920);
         assert_eq!(ledger.total_bytes, 1000);
+    }
+
+    #[test]
+    fn a_point_sums_cpu_and_keeps_the_ledger() {
+        let metrics = Metrics {
+            sampled_at_ms: 1.0,
+            containers: vec![
+                ContainerUsage { id: "a".into(), cpu_percent: Some(12.5), memory_bytes: 10 },
+                ContainerUsage { id: "b".into(), cpu_percent: None, memory_bytes: 20 },
+                ContainerUsage { id: "c".into(), cpu_percent: Some(2.5), memory_bytes: 30 },
+            ],
+            ledger: ledger(&[container("a", Some("shop"), None)], &[usage("a", 10)], 100),
+        };
+        let point = MetricsPoint::from(&metrics);
+        assert!((point.cpu_percent - 15.0).abs() < f64::EPSILON);
+        assert_eq!(point.used_bytes, 10);
+        assert_eq!(point.segments.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn keeps_only_the_last_half_hour() {
+        let sampler = Sampler::default();
+        let metrics =
+            Metrics { sampled_at_ms: 0.0, containers: Vec::new(), ledger: ledger(&[], &[], 0) };
+        for _ in 0..Sampler::HISTORY + 5 {
+            sampler.record(&metrics).await;
+        }
+        assert_eq!(sampler.history().await.len(), Sampler::HISTORY);
     }
 
     #[test]

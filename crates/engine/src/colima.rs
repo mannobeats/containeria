@@ -149,6 +149,15 @@ impl Colima {
         Ok(serde_json::from_str(&stdout)?)
     }
 
+    /// The Colima release, such as `0.10.3`.
+    ///
+    /// # Errors
+    /// Fails when Colima can't run.
+    pub async fn version(&self) -> Result<String> {
+        let stdout = self.output("version", Profile::Containers, ["version"]).await?;
+        Ok(parse_version(&stdout))
+    }
+
     /// Starts the profile from its `colima.yaml`, reporting progress lines as they arrive.
     ///
     /// # Errors
@@ -228,6 +237,12 @@ impl Colima {
     }
 }
 
+/// `colima version 0.10.3` on the first line, then build details.
+fn parse_version(stdout: &str) -> String {
+    let first = stdout.lines().next().unwrap_or_default();
+    first.rsplit(' ').next().unwrap_or(first).trim().to_owned()
+}
+
 fn last_error<'a>(lines: impl DoubleEndedIterator<Item = &'a str>) -> String {
     lines.rev().find_map(LogLine::parse).map_or_else(|| "no output".to_owned(), |line| line.message)
 }
@@ -260,6 +275,11 @@ mod tests {
         .unwrap();
         assert_eq!(info.mount_type, "virtiofs");
         assert!(info.docker_socket.ends_with("docker.sock"));
+    }
+
+    #[test]
+    fn reads_the_version_line() {
+        assert_eq!(parse_version("colima version 0.10.3\ngit commit: 00f6c29\n"), "0.10.3");
     }
 
     #[test]

@@ -9,7 +9,11 @@ export default defineConfig({
   clearScreen: false,
   server: { port: 1420, strictPort: true, watch: { ignored: ["**/src-tauri/**"] } },
   envPrefix: ["VITE_", "TAURI_ENV_"],
-  build: { target: "safari18", chunkSizeWarningLimit: 1500 },
+  build: {
+    target: "safari18",
+    chunkSizeWarningLimit: 1500,
+    rolldownOptions: { input: { main: "index.html", tray: "tray.html" } },
+  },
   test: {
     environment: "happy-dom",
     include: ["src/**/*.test.{ts,tsx}"],

@@ -70,6 +70,23 @@ const containerDetail = createRoute({
   ),
 });
 
+const settings = createRoute({
+  getParentRoute: () => root,
+  path: "settings",
+  beforeLoad: () => {
+    throw redirect({ to: "/settings/$section", params: { section: "general" } });
+  },
+});
+
+const welcome = createRoute({
+  getParentRoute: () => root,
+  path: "welcome",
+  staticData: { bare: true, title: "Welcome" },
+  component: lazyRouteComponent(() =>
+    import("@/features/welcome/welcome-page").then((module) => ({ default: module.WelcomePage })),
+  ),
+});
+
 const routeTree = root.addChildren([
   index,
   containers,
@@ -117,8 +134,9 @@ const routeTree = root.addChildren([
       })),
     false,
   ),
+  settings,
   page(
-    "settings",
+    "settings/$section",
     "Settings",
     () =>
       import("@/features/settings/settings-page").then((module) => ({
@@ -126,6 +144,7 @@ const routeTree = root.addChildren([
       })),
     false,
   ),
+  welcome,
 ]);
 
 export const router = createRouter({

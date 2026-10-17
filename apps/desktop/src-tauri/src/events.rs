@@ -14,3 +14,7 @@ pub(crate) struct DockerChanged(pub(crate) DockerEvent);
 /// A fresh CPU and memory sample, about every two seconds while the engine runs.
 #[derive(Debug, Clone, Serialize, specta::Type, tauri_specta::Event)]
 pub(crate) struct MetricsUpdated(pub(crate) Metrics);
+
+/// The native menu asks the main window to open a view, such as `/settings`.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+pub(crate) struct Navigate(pub(crate) String);
