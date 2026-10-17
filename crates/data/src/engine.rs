@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 /// A database engine Containeria can open.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "lowercase")]
 pub enum Engine {
     Postgres,
     MySql,
@@ -65,7 +65,7 @@ impl Engine {
 
 /// A hosted service on top of an engine, for its logo and its defaults.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "lowercase")]
 pub enum Provider {
     Neon,
     Supabase,

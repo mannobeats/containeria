@@ -72,6 +72,15 @@
   --s5: light-dark(oklch(0.63 0.14 335), oklch(0.72 0.13 335));
   --s6: light-dark(oklch(0.68 0.12 85), oklch(0.78 0.11 85));
 
+  /* SQL syntax: the only place with its own colours */
+  --sx-kw: light-dark(oklch(0.5 0.17 300), oklch(0.78 0.12 300));
+  --sx-str: light-dark(oklch(0.5 0.12 150), oklch(0.8 0.12 150));
+  --sx-num: light-dark(oklch(0.55 0.14 50), oklch(0.82 0.11 60));
+  --sx-fn: light-dark(oklch(0.5 0.14 250), oklch(0.78 0.11 250));
+  --sx-col: light-dark(oklch(0.38 0.02 255), oklch(0.88 0.02 255));
+  --sx-com: light-dark(oklch(0.6 0.01 255), oklch(0.58 0.01 255));
+  --sx-op: light-dark(oklch(0.5 0.01 255), oklch(0.7 0.01 255));
+
   /* depth */
   --ring: 0 0 0 0.5px light-dark(oklch(0 0 0 / 0.1), oklch(1 0 0 / 0.1));
   --shadow-1: var(--ring), 0 1px 2px light-dark(oklch(0 0 0 / 0.05), oklch(0 0 0 / 0.3));

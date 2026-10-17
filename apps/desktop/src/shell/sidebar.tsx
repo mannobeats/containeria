@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { toast } from "sonner";
 
 import { useContainers } from "@/features/containers/api";
+import { SidebarConnections } from "@/features/data/sidebar-connections";
 import { isServing, useEngineControl, useEngineStatus } from "@/features/engine/api";
 import { useMetrics } from "@/features/metrics/api";
 import { MemoryLedger } from "@/features/metrics/memory-ledger";
@@ -17,7 +18,7 @@ import { CxIcon, type CxIconName } from "@/ui/cx-icon";
 import { Kbd } from "@/ui/kbd";
 import { Menu, type MenuEntry } from "@/ui/menu";
 import { Tip } from "@/ui/tooltip";
-
+import { navItemClass } from "./nav-item-class";
 import type { Section } from "./sections";
 import { useUi } from "./ui-store";
 
@@ -31,11 +32,7 @@ type ItemProps = {
 
 function Item({ to, icon, label, count, exact = false }: ItemProps) {
   return (
-    <Link
-      to={to}
-      activeOptions={{ exact }}
-      className="group relative flex h-7 w-full items-center gap-2 rounded-sm px-2 text-13 font-[450] text-ink-2 no-underline transition-colors duration-140 hover:bg-sidebar-hover hover:text-ink data-[status=active]:bg-sidebar-active data-[status=active]:font-medium data-[status=active]:text-ink"
-    >
+    <Link to={to} activeOptions={{ exact }} className={navItemClass}>
       {({ isActive }) => (
         <>
           <CxIcon
@@ -220,6 +217,7 @@ export function Sidebar() {
         </Group>
         <Group label="Data">
           <Item to="/data" icon="data" label="All connections" exact />
+          <SidebarConnections />
         </Group>
         <Group label="Mac">
           <Item to="/domains" icon="domain" label="Domains" />

@@ -31,6 +31,8 @@ pub struct RowPage {
     pub total: Option<u64>,
     /// The count stopped at the cap: there are at least this many.
     pub total_capped: bool,
+    /// Milliseconds; always a finite number.
+    #[specta(type = specta_typescript::Number)]
     pub elapsed_ms: f64,
     /// Why the grid can't edit these rows, when it can't.
     pub read_only_reason: Option<String>,
@@ -46,6 +48,8 @@ pub struct QueryResult {
     pub affected: Option<u64>,
     /// More rows came back than the editor keeps; only the first ones are here.
     pub truncated: bool,
+    /// Milliseconds; always a finite number.
+    #[specta(type = specta_typescript::Number)]
     pub elapsed_ms: f64,
 }
 

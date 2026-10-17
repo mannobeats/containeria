@@ -196,7 +196,7 @@ export type DockerEvent = {
 };
 
 /**  A database engine Containeria can open. */
-export type Engine = "postgres" | "mySql" | "mariaDb" | "sqlite" | "clickHouse" | "mongoDb" | "redis";
+export type Engine = "postgres" | "mysql" | "mariadb" | "sqlite" | "clickhouse" | "mongodb" | "redis";
 
 /**  The engine started, stopped or changed settings; refetch its status. */
 export type EngineChanged = null;
@@ -272,8 +272,10 @@ export type HistoryEntry = {
 	connectionId: string,
 	connectionName: string,
 	sql: string,
-	atMs: number | null,
-	elapsedMs: number | null,
+	/**  Milliseconds; always a finite number. */
+	atMs: number,
+	/**  Milliseconds; always a finite number. */
+	elapsedMs: number,
 	rows: number | null,
 	error: string | null,
 };
@@ -355,7 +357,7 @@ export type Port = {
 export type PortProtocol = "tcp" | "udp" | "sctp";
 
 /**  A hosted service on top of an engine, for its logo and its defaults. */
-export type Provider = "neon" | "supabase" | "timescale" | "planetScale";
+export type Provider = "neon" | "supabase" | "timescale" | "planetscale";
 
 /**  What a statement in the SQL editor returned. */
 export type QueryResult = {
@@ -364,7 +366,8 @@ export type QueryResult = {
 	affected: number | null,
 	/**  More rows came back than the editor keeps; only the first ones are here. */
 	truncated: boolean,
-	elapsedMs: number | null,
+	/**  Milliseconds; always a finite number. */
+	elapsedMs: number,
 };
 
 export type RedisKey = {
@@ -399,7 +402,8 @@ export type RowPage = {
 	total: number | null,
 	/**  The count stopped at the cap: there are at least this many. */
 	totalCapped: boolean,
-	elapsedMs: number | null,
+	/**  Milliseconds; always a finite number. */
+	elapsedMs: number,
 	/**  Why the grid can't edit these rows, when it can't. */
 	readOnlyReason: string | null,
 };

@@ -15,7 +15,11 @@ pub struct HistoryEntry {
     pub connection_id: String,
     pub connection_name: String,
     pub sql: String,
+    /// Milliseconds; always a finite number.
+    #[specta(type = specta_typescript::Number)]
     pub at_ms: f64,
+    /// Milliseconds; always a finite number.
+    #[specta(type = specta_typescript::Number)]
     pub elapsed_ms: f64,
     pub rows: Option<u32>,
     pub error: Option<String>,
