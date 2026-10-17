@@ -8,3 +8,4 @@ coverage/
 .react-doctor/
 apps/desktop/src-tauri/gen/
 coverage/
+.claude/worktrees/
