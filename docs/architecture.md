@@ -49,6 +49,17 @@ The app starts two long-lived tasks in `lib.rs` setup:
 - `metrics::Sampler::run` samples every running container's CPU and memory every two seconds and
   builds the memory ledger. One sampler feeds the list, the ledger, the menu bar and Activity.
 
+## Windows and the menu bar
+
+- `main` is the app window. With "Keep running in the menu bar" on, closing it hides it; the Dock
+  icon or the menu bar popover brings it back.
+- `tray` is the menu bar popover: a second, borderless webview built from `tray.html`
+  (`src/tray/main.tsx`), shown under the tray icon and hidden when it loses focus. It reuses the
+  same commands and hooks as the main window.
+- The native menu (`src-tauri/src/menu.rs`) emits `Navigate(path)`; the UI opens that path.
+- App preferences that aren't engine settings live in `~/.containeria/settings.json`
+  (`preferences.rs`); engine settings live in `colima.yaml`.
+
 ## Engine state
 
 `~/.containeria` is Containeria's home (`$CONTAINERIA_HOME` overrides it). Colima runs with

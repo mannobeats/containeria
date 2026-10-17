@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -62,6 +61,10 @@ pub struct EngineConfig {
     pub udp_ports: bool,
     pub container_ip_access: bool,
     pub set_docker_context: bool,
+    /// Pull-through mirrors for Docker Hub, tried in order.
+    pub registry_mirrors: Vec<String>,
+    /// Registries Docker may reach over plain HTTP, such as a local `registry:2`.
+    pub insecure_registries: Vec<String>,
 }
 
 impl Default for EngineConfig {
@@ -79,6 +82,8 @@ impl Default for EngineConfig {
             udp_ports: false,
             container_ip_access: false,
             set_docker_context: true,
+            registry_mirrors: Vec::new(),
+            insecure_registries: Vec::new(),
         }
     }
 }
@@ -137,7 +142,17 @@ struct ColimaFile {
     network: Network,
     kubernetes: ColimaKubernetes,
     #[serde(default)]
-    docker: BTreeMap<String, serde_json::Value>,
+    docker: DaemonSettings,
+}
+
+/// The part of Docker's `daemon.json` Containeria manages. Colima writes it into the VM as is.
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+struct DaemonSettings {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    registry_mirrors: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    insecure_registries: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -176,7 +191,10 @@ impl ColimaFile {
                 version: config.kubernetes.version.clone(),
                 k3s_args: vec!["--disable=traefik".to_owned()],
             },
-            docker: BTreeMap::new(),
+            docker: DaemonSettings {
+                registry_mirrors: config.registry_mirrors.clone(),
+                insecure_registries: config.insecure_registries.clone(),
+            },
         }
     }
 }
@@ -199,6 +217,8 @@ impl From<ColimaFile> for EngineConfig {
             udp_ports: file.port_forwarder == "grpc",
             container_ip_access: file.network.address,
             set_docker_context: file.auto_activate,
+            registry_mirrors: file.docker.registry_mirrors,
+            insecure_registries: file.docker.insecure_registries,
         }
     }
 }
@@ -215,11 +235,31 @@ mod tests {
             cpus: 6,
             memory_gib: 12,
             udp_ports: true,
+            registry_mirrors: vec!["https://mirror.gcr.io".into()],
             kubernetes: Kubernetes { enabled: true, ..Kubernetes::default() },
             ..EngineConfig::default()
         };
         config.save(&path, Profile::Containers).unwrap();
         assert_eq!(EngineConfig::load(&path).unwrap(), Some(config));
+    }
+
+    #[test]
+    fn writes_registries_into_the_docker_daemon_settings() {
+        let config = EngineConfig {
+            registry_mirrors: vec!["https://mirror.gcr.io".into()],
+            insecure_registries: vec!["localhost:5000".into()],
+            ..EngineConfig::default()
+        };
+        let yaml = config.to_colima_yaml(Profile::Containers).unwrap();
+        assert!(yaml.contains("registry-mirrors:"));
+        assert!(yaml.contains("- https://mirror.gcr.io"));
+        assert!(yaml.contains("insecure-registries:"));
+    }
+
+    #[test]
+    fn leaves_the_docker_settings_empty_by_default() {
+        let yaml = EngineConfig::default().to_colima_yaml(Profile::Containers).unwrap();
+        assert!(yaml.contains("docker: {}"));
     }
 
     #[test]

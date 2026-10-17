@@ -20,6 +20,22 @@ export const commands = {
 	containers: ContainerUsage[],
 	ledger: Ledger,
 } | null>("metrics_latest"),
+	/**  The last half hour of samples, oldest first, for the Activity charts. */
+	metricsHistory: () => __TAURI_INVOKE<MetricsPoint[]>("metrics_history"),
+	preferencesGet: () => __TAURI_INVOKE<Preferences>("preferences_get"),
+	preferencesSet: (preferences: Preferences) => __TAURI_INVOKE<null>("preferences_set", { preferences }),
+	/**  The Mac's chip, cores and memory, to size the engine's limits. */
+	hostInfo: () => __TAURI_INVOKE<Host>("host_info"),
+	about: () => __TAURI_INVOKE<About>("about"),
+	/**  Brings the main window forward, for the menu bar popover. */
+	windowShowMain: () => __TAURI_INVOKE<null>("window_show_main"),
+	appQuit: () => __TAURI_INVOKE<null>("app_quit"),
+	dockerDesktopDetect: () => __TAURI_INVOKE<DockerDesktop>("docker_desktop_detect"),
+	/**
+	 *  Copies images from Docker Desktop into Containeria's engine, one at a time, reporting each.
+	 *  A failed image is reported and skipped; the rest still copy.
+	 */
+	dockerDesktopImportImages: (references: string[], progress: Channel<ImportProgress>) => __TAURI_INVOKE<null>("docker_desktop_import_images", { references, progress }),
 	containersList: () => __TAURI_INVOKE<ContainerSummary[]>("containers_list"),
 	containerAct: (id: string, action: ContainerAction) => __TAURI_INVOKE<null>("container_act", { id, action }),
 	/**  Streams stats readings into `channel` until cancelled with `stream_cancel`. */
@@ -31,9 +47,17 @@ export const events = {
 	dockerChanged: makeEvent<DockerChanged>("docker-changed"),
 	engineChanged: makeEvent<EngineChanged>("engine-changed"),
 	metricsUpdated: makeEvent<MetricsUpdated>("metrics-updated"),
+	navigate: makeEvent<Navigate>("navigate"),
 };
 
 /* Types */
+export type About = {
+	appVersion: string,
+	colimaVersion: string | null,
+	/**  `None` while the engine is stopped. */
+	engine: EngineInfo | null,
+};
+
 /**  The one error shape every command rejects with. */
 export type CommandError = {
 	kind: ErrorKind,
@@ -69,6 +93,14 @@ export type ContainerUsage = {
 /**  Something in Docker changed; refetch lists of that kind. */
 export type DockerChanged = DockerEvent;
 
+/**  What first launch can bring over from Docker Desktop. */
+export type DockerDesktop = {
+	installed: boolean,
+	/**  Its engine answers, so its images can be copied. */
+	running: boolean,
+	images: string[],
+};
+
 /**  Something changed in the engine; the UI refetches what it shows of that kind. */
 export type DockerEvent = {
 	kind: ObjectKind,
@@ -92,6 +124,19 @@ export type EngineConfig = {
 	udpPorts: boolean,
 	containerIpAccess: boolean,
 	setDockerContext: boolean,
+	/**  Pull-through mirrors for Docker Hub, tried in order. */
+	registryMirrors: string[],
+	/**  Registries Docker may reach over plain HTTP, such as a local `registry:2`. */
+	insecureRegistries: string[],
+};
+
+/**  What the engine says about itself. */
+export type EngineInfo = {
+	serverVersion: string,
+	kernelVersion: string,
+	operatingSystem: string,
+	cpus: number,
+	memoryBytes: number,
 };
 
 export type EnginePhase = 
@@ -112,6 +157,21 @@ export type EngineStatus = {
 
 /**  What the UI can do about a failure: each kind gets its own empty state or action. */
 export type ErrorKind = "engineMissing" | "engineStopped" | "notFound" | "engine" | "internal";
+
+/**  The Mac the engine runs on, for sizing the engine's limits. */
+export type Host = {
+	chip: string,
+	cores: number,
+	memoryBytes: number,
+};
+
+export type ImportProgress = {
+	reference: string,
+	state: ImportState,
+	message: string | null,
+};
+
+export type ImportState = "copying" | "done" | "failed";
 
 /**  One line of `colima list --json`. */
 export type Instance = {
@@ -159,8 +219,20 @@ export type Metrics = {
 	ledger: Ledger,
 };
 
+/**  One point of the Activity charts: totals and the ledger at one moment. */
+export type MetricsPoint = {
+	sampledAtMs: number | null,
+	/**  Summed over containers, where 100 is one full core. */
+	cpuPercent: number | null,
+	usedBytes: number,
+	segments: LedgerSegment[],
+};
+
 /**  A fresh CPU and memory sample, about every two seconds while the engine runs. */
 export type MetricsUpdated = Metrics;
+
+/**  The native menu asks the main window to open a view, such as `/settings`. */
+export type Navigate = string;
 
 export type ObjectKind = "container" | "image" | "volume" | "network";
 
@@ -171,6 +243,16 @@ export type Port = {
 };
 
 export type PortProtocol = "tcp" | "udp" | "sctp";
+
+/**  App settings that aren't engine settings. Engine settings live in `colima.yaml`. */
+export type Preferences = {
+	/**  Closing the window hides it; the app stays in the menu bar. */
+	keepRunningInMenuBar: boolean,
+	/**  Shows the engine's memory next to the menu bar icon. */
+	memoryInMenuBar: boolean,
+	/**  First launch was finished or skipped. */
+	onboarded: boolean,
+};
 
 export type SegmentKind = "project" | "standalone" | "kubernetes";
 

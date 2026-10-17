@@ -20,12 +20,24 @@ export function isServing(phase: EnginePhase | undefined): boolean {
   return phase === "running" || phase === "external";
 }
 
-type BootLog = { lines: LogLine[]; push: (line: LogLine) => void; clear: () => void };
+type NumberedLine = LogLine & { id: number };
+
+type BootLog = {
+  lines: NumberedLine[];
+  next: number;
+  push: (line: LogLine) => void;
+  clear: () => void;
+};
 
 /** Colima's progress lines for the current start or stop, shown while it runs. */
 export const useBootLog = create<BootLog>((set) => ({
   lines: [],
-  push: (line) => set((state) => ({ lines: [...state.lines.slice(-200), line] })),
+  next: 0,
+  push: (line) =>
+    set((state) => ({
+      lines: [...state.lines.slice(-200), { ...line, id: state.next }],
+      next: state.next + 1,
+    })),
   clear: () => set({ lines: [] }),
 }));
 

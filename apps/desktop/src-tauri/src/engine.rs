@@ -162,6 +162,19 @@ impl Engine {
         Ok(docker)
     }
 
+    pub(crate) const fn is_external(&self) -> bool {
+        self.external_socket.is_some()
+    }
+
+    pub(crate) const fn home(&self) -> &Home {
+        &self.home
+    }
+
+    /// The Colima release, when Colima is there and answers.
+    pub(crate) async fn colima_version(&self) -> Option<String> {
+        self.colima.as_ref()?.version().await.ok()
+    }
+
     fn socket(&self) -> PathBuf {
         self.external_socket.clone().unwrap_or_else(|| self.home.docker_socket())
     }

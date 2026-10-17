@@ -58,20 +58,27 @@ type RenderOptions = {
   /** Rendered as the root route, with `ui` as the page inside its `<Outlet />`. */
   shell?: () => ReactNode;
   staticData?: StaticDataRouteOption;
+  /** The page's route path, for components that read params, such as `settings/$section`. */
+  path?: string;
+  /** Where the router starts. */
+  url?: string;
 };
 
 /** Renders `ui` inside the app's providers and a router that accepts any path. */
-export function renderWithApp(ui: ReactNode, { shell, staticData = {} }: RenderOptions = {}) {
+export function renderWithApp(
+  ui: ReactNode,
+  { shell, staticData = {}, path = "$", url = "/test" }: RenderOptions = {},
+) {
   const root = createRootRoute(shell ? { component: shell } : {});
   const page = createRoute({
     getParentRoute: () => root,
-    path: "$",
+    path,
     staticData,
     component: () => ui,
   });
   const router = createRouter({
     routeTree: root.addChildren([page]),
-    history: createMemoryHistory({ initialEntries: ["/test"] }),
+    history: createMemoryHistory({ initialEntries: [url] }),
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const result = render(

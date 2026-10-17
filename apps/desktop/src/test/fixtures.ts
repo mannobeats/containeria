@@ -1,4 +1,4 @@
-import type { ContainerSummary, EngineStatus, Metrics } from "@/lib/ipc/bindings";
+import type { ContainerSummary, EngineStatus, Metrics, Preferences } from "@/lib/ipc/bindings";
 
 export function containerFixture(overrides: Partial<ContainerSummary> = {}): ContainerSummary {
   return {
@@ -32,6 +32,8 @@ export function engineFixture(overrides: Partial<EngineStatus> = {}): EngineStat
       udpPorts: false,
       containerIpAccess: false,
       setDockerContext: true,
+      registryMirrors: [],
+      insecureRegistries: [],
     },
     returnsMemory: false,
     dockerSocket: "/Users/ada/.containeria/colima/containeria/docker.sock",
@@ -46,4 +48,8 @@ export function metricsFixture(overrides: Partial<Metrics> = {}): Metrics {
     ledger: { totalBytes: 8 * 1024 ** 3, usedBytes: 0, segments: [] },
     ...overrides,
   };
+}
+
+export function preferencesFixture(overrides: Partial<Preferences> = {}): Preferences {
+  return { keepRunningInMenuBar: true, memoryInMenuBar: true, onboarded: true, ...overrides };
 }

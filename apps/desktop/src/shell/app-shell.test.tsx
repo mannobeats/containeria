@@ -1,24 +1,31 @@
+import { emit } from "@tauri-apps/api/event";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-
 import type { EnginePhase } from "@/lib/ipc/bindings";
-import { containerFixture, engineFixture, metricsFixture } from "@/test/fixtures";
+
+import {
+  containerFixture,
+  engineFixture,
+  metricsFixture,
+  preferencesFixture,
+} from "@/test/fixtures";
 import { mockCommands, renderWithApp } from "@/test/harness";
 
 import { AppShell } from "./app-shell";
 
-function renderShell(phase: EnginePhase) {
+function renderShell(phase: EnginePhase, onboarded = true) {
   const calls = mockCommands({
     engineStatus: () => engineFixture({ phase }),
     containersList: () => [containerFixture({ name: "shop-db-1" })],
     metricsLatest: () => metricsFixture(),
+    preferencesGet: () => preferencesFixture({ onboarded }),
   });
-  renderWithApp(<p>Page content</p>, {
+  const { router } = renderWithApp(<p>Page content</p>, {
     shell: AppShell,
     staticData: { needsEngine: true, title: "Containers" },
   });
-  return calls;
+  return Object.assign(calls, { router });
 }
 
 describe("AppShell", () => {
@@ -55,5 +62,23 @@ describe("AppShell", () => {
         screen.getByRole("button", { name: "Hide sidebar" }).closest("[class*=opacity-0]"),
       ).not.toBeNull(),
     );
+  });
+
+  it("opens first launch while the engine was never created", async () => {
+    const { router } = renderShell("notCreated", false);
+    await waitFor(() => expect(router.state.location.pathname).toBe("/welcome"));
+  });
+
+  it("stays put once setup was finished", async () => {
+    const { router } = renderShell("notCreated", true);
+    await screen.findByRole("heading", { name: "Set up the engine" });
+    expect(router.state.location.pathname).toBe("/test");
+  });
+
+  it("opens the view the native menu asks for", async () => {
+    const { router } = renderShell("running");
+    await screen.findByText("Page content");
+    await emit("navigate", "/activity");
+    await waitFor(() => expect(router.state.location.pathname).toBe("/activity"));
   });
 });

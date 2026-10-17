@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { useEngineEvents } from "@/app/use-engine-events";
 import { isServing, useEngineStatus } from "@/features/engine/api";
 import { EngineOff } from "@/features/engine/engine-off";
+import { useFirstLaunch } from "@/features/welcome/use-first-launch";
 import { Toaster } from "@/ui/toaster";
 import { TooltipProvider } from "@/ui/tooltip";
 
@@ -11,12 +12,15 @@ import { CommandPalette } from "./command-palette";
 import { Page } from "./page";
 import { Sidebar } from "./sidebar";
 import { useUi } from "./ui-store";
+import { useMenuNavigation } from "./use-menu-navigation";
 import { useShortcuts } from "./use-shortcuts";
 
 /** The window: sidebar over the macOS vibrancy, the current view beside it. */
 export function AppShell() {
   useEngineEvents();
   useShortcuts();
+  useMenuNavigation();
+  useFirstLaunch();
   const collapsed = useUi((state) => state.sidebarCollapsed);
   const matches = useMatches();
   const leaf = matches.at(-1);
