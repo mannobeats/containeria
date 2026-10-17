@@ -12,8 +12,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Docker, Result};
 
-const COMPOSE_PROJECT: &str = "com.docker.compose.project";
-const COMPOSE_SERVICE: &str = "com.docker.compose.service";
+pub(crate) const COMPOSE_PROJECT: &str = "com.docker.compose.project";
+pub(crate) const COMPOSE_SERVICE: &str = "com.docker.compose.service";
 const POD_NAMESPACE: &str = "io.kubernetes.pod.namespace";
 const POD_NAME: &str = "io.kubernetes.pod.name";
 
@@ -41,6 +41,22 @@ impl From<Option<ContainerSummaryStateEnum>> for ContainerState {
             Some(Raw::CREATED) => Self::Created,
             Some(Raw::EXITED | Raw::STOPPING | Raw::EMPTY) | None => Self::Exited,
         }
+    }
+}
+
+/// The same mapping for `docker inspect`, which uses its own enum.
+pub(crate) fn state_from_inspect(
+    state: Option<bollard::models::ContainerStateStatusEnum>,
+) -> ContainerState {
+    use bollard::models::ContainerStateStatusEnum as Raw;
+    match state {
+        Some(Raw::RUNNING) => ContainerState::Running,
+        Some(Raw::PAUSED) => ContainerState::Paused,
+        Some(Raw::RESTARTING) => ContainerState::Restarting,
+        Some(Raw::REMOVING) => ContainerState::Removing,
+        Some(Raw::DEAD) => ContainerState::Dead,
+        Some(Raw::CREATED) => ContainerState::Created,
+        Some(Raw::EXITED | Raw::STOPPING | Raw::EMPTY) | None => ContainerState::Exited,
     }
 }
 

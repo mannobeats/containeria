@@ -256,8 +256,10 @@ impl Docker {
     /// Fails when the engine can't reach Docker Hub.
     pub async fn search_hub(&self, term: &str) -> Result<Vec<HubImage>> {
         let options = SearchImagesOptionsBuilder::new().term(term).limit(25).build();
-        let results = self.api.search_images(options).await?;
-        Ok(results.into_iter().map(Into::into).collect())
+        let mut images: Vec<HubImage> =
+            self.api.search_images(options).await?.into_iter().map(Into::into).collect();
+        images.sort_by_key(|image| (!image.official, std::cmp::Reverse(image.stars)));
+        Ok(images)
     }
 }
 

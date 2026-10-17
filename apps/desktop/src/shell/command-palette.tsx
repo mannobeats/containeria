@@ -4,6 +4,7 @@ import { Dialog } from "radix-ui";
 import type { ReactNode } from "react";
 
 import { useContainers } from "@/features/containers/api";
+import { useRunSheet } from "@/features/containers/run/api";
 import { isServing, useEngineControl, useEngineStatus } from "@/features/engine/api";
 import { useImageSheet } from "@/features/images/sheet-store";
 import { applyAppearance, useIsDark } from "@/lib/theme";
@@ -53,6 +54,7 @@ export function CommandPalette() {
     navigate({ to: "/images" }).catch(() => undefined);
     setImageSheet(sheet);
   };
+  const showRunSheet = useRunSheet((state) => state.show);
   const run = (action: () => void) => () => {
     setOpen(false);
     action();
@@ -86,6 +88,14 @@ export function CommandPalette() {
                     onSelect={run(() => navigate({ to: section.to }))}
                   />
                 ))}
+              </Command.Group>
+              <Command.Group heading="Actions" className={groupClass}>
+                <Item
+                  icon="container"
+                  label="Run container…"
+                  hint={<Kbd>⌘N</Kbd>}
+                  onSelect={run(showRunSheet)}
+                />
               </Command.Group>
               <Command.Group heading="Images" className={groupClass}>
                 <Item icon="image" label="Pull image…" onSelect={run(() => openImages("pull"))} />

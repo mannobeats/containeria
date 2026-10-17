@@ -1,10 +1,15 @@
+import { IconPlayerPlay } from "@tabler/icons-react";
+
 import { MemoryLedger } from "@/features/metrics/memory-ledger";
 import { segmentColor } from "@/features/metrics/segment-color";
 import { formatMemory } from "@/lib/format";
 import type { ContainerSummary, Ledger } from "@/lib/ipc/bindings";
+import { Button } from "@/ui/button";
+import { Kbd } from "@/ui/kbd";
 import { Skeleton } from "@/ui/progress";
 
 import { isRunning } from "./model";
+import { useRunSheet } from "./run/api";
 
 function Answer({
   containers,
@@ -81,11 +86,19 @@ type HeroProps = {
 
 /** The answer to "what's running and where's my memory going", above the list. */
 export function ContainersHero({ containers, ledger, hot, onHot }: HeroProps) {
+  const showRunSheet = useRunSheet((state) => state.show);
   return (
     <section className="px-5 pt-[18px] pb-4">
-      <h1 className="m-0 mb-2.5 text-20 font-semibold tracking-[-0.012em] text-balance text-ink">
-        Containers
-      </h1>
+      <div className="mb-2.5 flex items-center">
+        <h1 className="m-0 text-20 font-semibold tracking-[-0.012em] text-balance text-ink">
+          Containers
+        </h1>
+        <Button variant="brand" className="ml-auto" onClick={showRunSheet}>
+          <IconPlayerPlay />
+          Run container
+          <Kbd className="bg-white/15 text-inherit shadow-none">⌘N</Kbd>
+        </Button>
+      </div>
       {containers ? (
         <Answer containers={containers} ledger={ledger} />
       ) : (

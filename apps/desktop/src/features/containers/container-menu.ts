@@ -1,7 +1,6 @@
-import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { toast } from "sonner";
 
+import { copyText } from "@/lib/clipboard";
 import type { ContainerAction, ContainerSummary } from "@/lib/ipc/bindings";
 import type { MenuEntry } from "@/ui/menu";
 
@@ -12,12 +11,6 @@ type Handlers = {
   act: (action: ContainerAction) => void;
   remove: () => void;
 };
-
-function copy(label: string, value: string) {
-  writeText(value)
-    .then(() => toast("Copied", { description: `${label}: ${value}` }))
-    .catch(() => undefined);
-}
 
 /** The same menu on the row's ⋯ button and on right-click. */
 export function containerMenu(
@@ -40,8 +33,8 @@ export function containerMenu(
           },
         ]
       : []),
-    { label: "Copy name", onSelect: () => copy("Name", container.name) },
-    { label: "Copy ID", onSelect: () => copy("ID", container.id.slice(0, 12)) },
+    { label: "Copy name", onSelect: () => copyText("Name", container.name) },
+    { label: "Copy ID", onSelect: () => copyText("ID", container.id.slice(0, 12)) },
     { kind: "separator" },
     running
       ? { label: "Stop", onSelect: () => act("stop") }

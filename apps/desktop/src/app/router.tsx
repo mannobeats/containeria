@@ -64,9 +64,10 @@ const containerDetail = createRoute({
   path: "containers/$id",
   staticData: { needsEngine: true, title: "Container" },
   validateSearch: tabSearch,
-  component: lazyRouteComponent(
-    () => import("@/features/containers/container-page"),
-    "ContainerPage",
+  component: lazyRouteComponent(() =>
+    import("@/features/containers/container-page").then((module) => ({
+      default: module.ContainerPage,
+    })),
   ),
 });
 

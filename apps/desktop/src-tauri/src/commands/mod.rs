@@ -1,3 +1,4 @@
+pub(crate) mod container_detail;
 pub(crate) mod containers;
 pub(crate) mod domains;
 pub(crate) mod engine;
@@ -6,7 +7,9 @@ pub(crate) mod kubernetes;
 pub(crate) mod machines;
 pub(crate) mod metrics;
 pub(crate) mod networks;
+pub(crate) mod run;
 pub(crate) mod settings;
+pub(crate) mod shell;
 pub(crate) mod streams;
 pub(crate) mod volumes;
 pub(crate) mod welcome;

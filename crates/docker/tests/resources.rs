@@ -1,5 +1,5 @@
 //! Runs against a real Docker engine: `cargo test -p containeria-docker -- --ignored`.
-//! Uses `$CONTAINERIA_TEST_SOCKET`, or `/var/run/docker.sock`. Only touches `containeria-test-*`.
+//! Uses `$CONTAINERIA_DOCKER_SOCKET`, or `/var/run/docker.sock`. Only touches `containeria-test-*`.
 
 use std::path::PathBuf;
 
@@ -7,7 +7,7 @@ use containeria_docker::{Docker, NetworkSpec, Result};
 use futures::TryStreamExt;
 
 fn docker() -> Result<Docker> {
-    let socket = std::env::var_os("CONTAINERIA_TEST_SOCKET")
+    let socket = std::env::var_os("CONTAINERIA_DOCKER_SOCKET")
         .map_or_else(|| PathBuf::from("/var/run/docker.sock"), PathBuf::from);
     Docker::connect(&socket)
 }

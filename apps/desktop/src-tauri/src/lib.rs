@@ -11,6 +11,7 @@ mod machines;
 mod menu;
 mod metrics;
 mod preferences;
+mod shells;
 mod state;
 mod streams;
 mod tray;
@@ -26,6 +27,7 @@ use crate::kubernetes::Kubernetes;
 use crate::machines::MachinesEngine;
 use crate::metrics::Sampler;
 use crate::preferences::PreferencesStore;
+use crate::shells::Shells;
 use crate::state::AppState;
 use crate::streams::Streams;
 
@@ -83,6 +85,7 @@ pub fn run() -> tauri::Result<()> {
                 machines,
                 metrics,
                 preferences,
+                shells: Shells::default(),
                 streams: Streams::default(),
             });
             tray::install(app.handle())?;

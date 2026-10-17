@@ -7,6 +7,7 @@ import {
   RouterProvider,
   type StaticDataRouteOption,
 } from "@tanstack/react-router";
+import type { Channel } from "@tauri-apps/api/core";
 import { clearMocks, mockIPC } from "@tauri-apps/api/mocks";
 import { cleanup, render } from "@testing-library/react";
 import { domMax, LazyMotion } from "motion/react";
@@ -52,6 +53,11 @@ export function mockCommands(handlers: Handlers): Call[] {
     { shouldMockEvents: true },
   );
   return calls;
+}
+
+/** Pushes a message into a `Channel` a mocked command received, as Rust would. */
+export function sendToChannel<T>(channel: unknown, message: T) {
+  (channel as Channel<T>).onmessage(message);
 }
 
 type RenderOptions = {

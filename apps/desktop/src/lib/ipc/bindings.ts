@@ -7,7 +7,7 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 
 /** Commands */
 export const commands = {
-	/**  Stops a stream the UI no longer shows. */
+	/**  Stops a stream the UI no longer shows, and closes the terminal it fed, if any. */
 	streamCancel: (id: number) => __TAURI_INVOKE<null>("stream_cancel", { id }),
 	engineStatus: () => __TAURI_INVOKE<EngineStatus>("engine_status"),
 	engineStart: (progress: Channel<LogLine>) => __TAURI_INVOKE<null>("engine_start", { progress }),
@@ -40,6 +40,31 @@ export const commands = {
 	containerAct: (id: string, action: ContainerAction) => __TAURI_INVOKE<null>("container_act", { id, action }),
 	/**  Streams stats readings into `channel` until cancelled with `stream_cancel`. */
 	containerStats: (id: string, channel: Channel<StatsSample>) => __TAURI_INVOKE<number>("container_stats", { id, channel }),
+	containerDetails: (id: string) => __TAURI_INVOKE<ContainerDetails>("container_details", { id }),
+	/**  Streams the last `tail` lines, then new ones as they're written, until cancelled. */
+	containerLogs: (id: string, tail: number, channel: Channel<LogEntry[]>) => __TAURI_INVOKE<number>("container_logs", { id, tail, channel }),
+	containerFiles: (id: string, path: string) => __TAURI_INVOKE<FileEntry[]>("container_files", { id, path }),
+	/**  Saves `path` from the container to `destination` on the Mac. */
+	containerDownload: (id: string, path: string, destination: string) => __TAURI_INVOKE<null>("container_download", { id, path, destination }),
+	/**  Copies files and folders from the Mac into `directory`. */
+	containerUpload: (id: string, directory: string, sources: string[]) => __TAURI_INVOKE<null>("container_upload", { id, directory, sources }),
+	/**  Writes the whole filesystem to `destination` as a tar. */
+	containerExport: (id: string, destination: string) => __TAURI_INVOKE<null>("container_export", { id, destination }),
+	containerRename: (id: string, name: string) => __TAURI_INVOKE<null>("container_rename", { id, name }),
+	/**  Saves the container as image `reference` and returns the new image id. */
+	containerCommit: (id: string, reference: string) => __TAURI_INVOKE<string>("container_commit", { id, reference }),
+	/**  Writes text the user chose to save, such as logs, to the path they picked in a save dialog. */
+	saveText: (destination: string, contents: string) => __TAURI_INVOKE<null>("save_text", { destination, contents }),
+	/**
+	 *  Opens a terminal in the container, or a busybox debug shell beside it when `debug` is set.
+	 *  Output streams into `channel`; type with `shell_input`, resize with `shell_resize`.
+	 */
+	containerShell: (id: string, debug: boolean, cols: number, rows: number, channel: Channel<ShellEvent>) => __TAURI_INVOKE<number>("container_shell", { id, debug, cols, rows, channel }),
+	/**  Types into an open terminal. */
+	shellInput: (stream: number, text: string) => __TAURI_INVOKE<null>("shell_input", { stream, text }),
+	shellResize: (stream: number, cols: number, rows: number) => __TAURI_INVOKE<null>("shell_resize", { stream, cols, rows }),
+	/**  Pulls the image if needed, then creates and starts the container. Returns its id. */
+	containerRun: (spec: RunSpec) => __TAURI_INVOKE<string>("container_run", { spec }),
 	domainsStatus: () => __TAURI_INVOKE<DomainsStatus>("domains_status"),
 	/**  Turns domains on or off. On starts the DNS server and the proxy at once. */
 	domainsSetEnabled: (enabled: boolean) => __TAURI_INVOKE<null>("domains_set_enabled", { enabled }),
@@ -178,6 +203,34 @@ export type ConfigSummary = {
 
 /**  What the user can do to a container from the list. */
 export type ContainerAction = "start" | "stop" | "restart" | "pause" | "resume" | "kill" | "remove";
+
+/**  Everything the detail page shows about one container. */
+export type ContainerDetails = {
+	id: string,
+	name: string,
+	image: string,
+	imageId: string,
+	command: string,
+	state: ContainerState,
+	createdAt: string,
+	startedAt: string | null,
+	finishedAt: string | null,
+	exitCode: number,
+	error: string | null,
+	restartCount: number,
+	restartPolicy: string,
+	platform: string,
+	ipAddress: string | null,
+	networks: string[],
+	project: string | null,
+	service: string | null,
+	ports: Port[],
+	mounts: Mount[],
+	env: EnvVar[],
+	health: Health | null,
+	/**  `docker inspect` output, pretty-printed, for the Inspect tab. */
+	raw: string,
+};
 
 export type ContainerState = "created" | "running" | "paused" | "restarting" | "exited" | "removing" | "dead";
 
@@ -332,12 +385,44 @@ export type EngineStatus = {
 	dockerSocket: string,
 };
 
+export type EnvVar = {
+	key: string,
+	value: string,
+};
+
 /**  What the UI can do about a failure: each kind gets its own empty state or action. */
 export type ErrorKind = "engineMissing" | "engineStopped" | 
 /**  Kubernetes is off, still starting, or its API server doesn't answer. */
 "kubernetesUnavailable" | "notFound" | 
 /**  The user dismissed a macOS permission prompt; nothing to report. */
 "cancelled" | "invalidInput" | "engine" | "internal";
+
+export type FileEntry = {
+	name: string,
+	kind: FileKind,
+	size: number,
+	/**  Seconds since 1970. */
+	modified: number,
+	/**  `drwxr-xr-x`, as `ls -l` shows it. */
+	permissions: string,
+};
+
+export type FileKind = "directory" | "file" | "symlink" | "other";
+
+export type Health = {
+	status: HealthStatus,
+	failingStreak: number,
+	/**  The most recent checks, oldest first. */
+	checks: HealthCheck[],
+};
+
+export type HealthCheck = {
+	startedAt: string,
+	exitCode: number,
+	output: string,
+};
+
+export type HealthStatus = "starting" | "healthy" | "unhealthy";
 
 /**  The Mac the engine runs on, for sizing the engine's limits. */
 export type Host = {
@@ -456,6 +541,17 @@ export type LedgerSegment = {
 	bytes: number,
 };
 
+export type Level = "error" | "warning" | "info" | "debug";
+
+/**  One line of a container's output. */
+export type LogEntry = {
+	stream: LogStream,
+	/**  RFC 3339 with nanoseconds, as Docker stamps it. */
+	timestamp: string | null,
+	level: Level,
+	message: string,
+};
+
 export type LogLevel = "info" | "warning" | "error";
 
 /**  One progress line from Colima's logrus output, for the boot overlay. */
@@ -463,6 +559,8 @@ export type LogLine = {
 	level: LogLevel,
 	message: string,
 };
+
+export type LogStream = "stdout" | "stderr";
 
 export type Machine = {
 	name: string,
@@ -529,6 +627,16 @@ export type MetricsPoint = {
 
 /**  A fresh CPU and memory sample, about every two seconds while the engine runs. */
 export type MetricsUpdated = Metrics;
+
+export type Mount = {
+	kind: MountKind,
+	/**  The volume name for volumes, the Mac or VM path for binds. */
+	source: string,
+	destination: string,
+	readOnly: boolean,
+};
+
+export type MountKind = "volume" | "bind" | "tmpfs" | "other";
 
 /**  The native menu asks the main window to open a view, such as `/settings`. */
 export type Navigate = string;
@@ -607,6 +715,12 @@ export type PortForward = {
 	podPort: number,
 };
 
+export type PortMapping = {
+	host: number,
+	container: number,
+	protocol: PortProtocol,
+};
+
 export type PortProtocol = "tcp" | "udp" | "sctp";
 
 /**  App settings that aren't engine settings. Engine settings live in `colima.yaml`. */
@@ -651,6 +765,8 @@ export type ResolverState = "installed" |
 /**  Objects whose YAML the UI can show. */
 export type ResourceKind = "pod" | "deployment" | "service";
 
+export type Restart = "no" | "onFailure" | "unlessStopped" | "always";
+
 /**  Why a route can't be reached right now. */
 export type RouteDown = 
 /**  The container is stopped or gone. */
@@ -659,6 +775,20 @@ export type RouteDown =
 "notPublished";
 
 export type RouteKind = "container" | "custom";
+
+/**  What the Run container sheet asks for. */
+export type RunSpec = {
+	image: string,
+	name: string | null,
+	ports: PortMapping[],
+	env: EnvVar[],
+	storage: StorageMapping[],
+	restart: Restart,
+	/**  Replaces the image's default command when set, already split into arguments. */
+	command: string[] | null,
+	/**  `linux/amd64` to run an Intel image under Rosetta or QEMU. */
+	platform: string | null,
+};
 
 export type SegmentKind = "project" | "standalone" | "kubernetes";
 
@@ -679,6 +809,9 @@ export type ServiceSummary = {
 	fromMac: string | null,
 };
 
+/**  What a terminal receives: text to draw, then one `closed` when the shell exits. */
+export type ShellEvent = { kind: "output"; text: string } | { kind: "closed" };
+
 /**  One stats reading, already turned into the numbers the UI draws. */
 export type StatsSample = {
 	cpuPercent: number | null,
@@ -688,6 +821,13 @@ export type StatsSample = {
 	networkTxBytes: number,
 	diskReadBytes: number,
 	diskWriteBytes: number,
+};
+
+/**  A volume by name, or a folder on the Mac by absolute path. */
+export type StorageMapping = {
+	source: string,
+	target: string,
+	readOnly: boolean,
 };
 
 /**

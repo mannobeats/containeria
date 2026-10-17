@@ -2,11 +2,15 @@
 //! small, fully populated types the app shows.
 
 mod containers;
+mod details;
 mod events;
+mod files;
 mod helper;
 mod images;
 mod logs;
 mod networks;
+mod run;
+mod shell;
 mod stats;
 mod system;
 mod transfer;
@@ -17,10 +21,14 @@ use std::path::Path;
 use bollard::API_DEFAULT_VERSION;
 
 pub use containers::{ContainerAction, ContainerState, ContainerSummary, Port, PortProtocol};
+pub use details::{ContainerDetails, EnvVar, Health, HealthCheck, HealthStatus, Mount, MountKind};
 pub use events::{DockerEvent, ObjectKind};
+pub use files::{FileEntry, FileKind};
 pub use images::{HubImage, ImageDetail, ImageLayer, ImageSummary, PullProgress, split_reference};
-pub use logs::{LogChunk, LogStream};
+pub use logs::{Level, LogChunk, LogEntry, LogStream};
 pub use networks::{NetworkDetail, NetworkEndpoint, NetworkSpec, NetworkSummary};
+pub use run::{PortMapping, Restart, RunSpec, StorageMapping};
+pub use shell::{Shell, ShellTarget, Utf8Decoder};
 pub use stats::{CpuCounters, StatsSample, Usage};
 pub use system::EngineInfo;
 pub use volumes::{VolumeFile, VolumeFileKind, VolumeSummary, VolumeUser};

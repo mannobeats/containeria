@@ -96,7 +96,7 @@ async fn act(names: &[String], action: ContainerAction) -> Result {
 async fn logs(name: &str, tail: usize, follow: bool) -> Result {
     let docker = docker()?;
     let container = find(&docker, name).await?;
-    let mut chunks = pin!(docker.logs(&container.id, tail, follow));
+    let mut chunks = pin!(docker.raw_logs(&container.id, tail, follow));
     while let Some(chunk) = chunks.next().await {
         let chunk = chunk?;
         match chunk.stream {
