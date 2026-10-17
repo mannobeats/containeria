@@ -1,4 +1,12 @@
-import type { ContainerSummary, EngineStatus, Metrics, Preferences } from "@/lib/ipc/bindings";
+import type {
+  ContainerSummary,
+  EngineStatus,
+  ImageSummary,
+  Metrics,
+  NetworkSummary,
+  Preferences,
+  VolumeSummary,
+} from "@/lib/ipc/bindings";
 
 export function containerFixture(overrides: Partial<ContainerSummary> = {}): ContainerSummary {
   return {
@@ -52,4 +60,48 @@ export function metricsFixture(overrides: Partial<Metrics> = {}): Metrics {
 
 export function preferencesFixture(overrides: Partial<Preferences> = {}): Preferences {
   return { keepRunningInMenuBar: true, memoryInMenuBar: true, onboarded: true, ...overrides };
+}
+
+export function imageFixture(overrides: Partial<ImageSummary> = {}): ImageSummary {
+  return {
+    id: "sha256:0123456789abcdef",
+    repository: "nginx",
+    tag: "1.29",
+    references: ["nginx:1.29"],
+    sizeBytes: 190_000_000,
+    createdAt: 1_760_000_000,
+    containers: 0,
+    dangling: false,
+    ...overrides,
+  };
+}
+
+export function volumeFixture(overrides: Partial<VolumeSummary> = {}): VolumeSummary {
+  return {
+    name: "shop_pgdata",
+    driver: "local",
+    createdAt: "2026-10-01T10:00:00Z",
+    sizeBytes: 48_000_000,
+    project: "shop",
+    anonymous: false,
+    usedBy: [],
+    ...overrides,
+  };
+}
+
+export function networkFixture(overrides: Partial<NetworkSummary> = {}): NetworkSummary {
+  return {
+    id: "n3tw0rk",
+    name: "shop_default",
+    driver: "bridge",
+    scope: "local",
+    subnet: "172.18.0.0/16",
+    gateway: "172.18.0.1",
+    internal: false,
+    ipv6: false,
+    builtIn: false,
+    project: "shop",
+    containers: [],
+    ...overrides,
+  };
 }

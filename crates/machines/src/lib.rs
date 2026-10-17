@@ -11,7 +11,7 @@ mod name;
 pub use catalogue::{DISTROS, Distro, Release};
 pub use client::Incus;
 pub use exec::{Shell, ShellInput};
-pub use files::{FileEntry, FileKind};
+pub use files::{MachineFile, MachineFileKind};
 pub use machine::{CreateMachine, Machine, MachineAction, MachineKind, MachineState};
 pub use name::validate_name;
 

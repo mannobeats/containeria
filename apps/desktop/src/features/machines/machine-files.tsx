@@ -11,7 +11,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { formatBytes } from "@/lib/format";
-import { commands, type FileEntry } from "@/lib/ipc/bindings";
+import { commands, type MachineFile } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
 import { Button } from "@/ui/button";
 import { EmptyState } from "@/ui/empty-state";
@@ -20,7 +20,7 @@ import { IconAction } from "@/ui/icon-action";
 import { machineKeys, useMachineFiles } from "./api";
 import { pathSteps } from "./model";
 
-async function download(machine: string, entry: FileEntry) {
+async function download(machine: string, entry: MachineFile) {
   const destination = await save({ defaultPath: entry.name });
   if (destination) {
     await commands.machineFileDownload(machine, entry.path, destination);
@@ -34,7 +34,7 @@ function Row({
   onOpen,
 }: {
   machine: string;
-  entry: FileEntry;
+  entry: MachineFile;
   onOpen: (path: string) => void;
 }) {
   const folder = entry.kind === "directory";

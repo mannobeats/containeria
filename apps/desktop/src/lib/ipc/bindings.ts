@@ -64,7 +64,7 @@ export const commands = {
 	machineCreate: (request: CreateMachine, progress: Channel<string>) => __TAURI_INVOKE<null>("machine_create", { request, progress }),
 	machineAct: (name: string, action: MachineAction) => __TAURI_INVOKE<null>("machine_act", { name, action }),
 	machineDelete: (name: string) => __TAURI_INVOKE<null>("machine_delete", { name }),
-	machineFiles: (name: string, path: string) => __TAURI_INVOKE<FileEntry[]>("machine_files", { name, path }),
+	machineFiles: (name: string, path: string) => __TAURI_INVOKE<MachineFile[]>("machine_files", { name, path }),
 	/**  Copies a file out of the machine to `destination`, a path the user picked on the Mac. */
 	machineFileDownload: (name: string, path: string, destination: string) => __TAURI_INVOKE<null>("machine_file_download", { name, path, destination }),
 	/**  Copies `source`, a file the user picked on the Mac, into `directory` in the machine. */
@@ -76,6 +76,36 @@ export const commands = {
 	machineShell: (name: string, cols: number, rows: number, output: Channel<string>) => __TAURI_INVOKE<number>("machine_shell", { name, cols, rows, output }),
 	machineShellInput: (id: number, data: string) => __TAURI_INVOKE<null>("machine_shell_input", { id, data }),
 	machineShellResize: (id: number, cols: number, rows: number) => __TAURI_INVOKE<null>("machine_shell_resize", { id, cols, rows }),
+	imagesList: () => __TAURI_INVOKE<ImageSummary[]>("images_list"),
+	imageDetail: (id: string) => __TAURI_INVOKE<ImageDetail>("image_detail", { id }),
+	/**  Pulls `reference`, streaming progress into `channel`. Cancel with `stream_cancel`. */
+	imagePull: (reference: string, channel: Channel<PullEvent>) => __TAURI_INVOKE<number>("image_pull", { reference, channel }),
+	imageRemove: (id: string, force: boolean) => __TAURI_INVOKE<null>("image_remove", { id, force }),
+	imageTag: (id: string, reference: string) => __TAURI_INVOKE<null>("image_tag", { id, reference }),
+	/**  Deletes images no container uses; with `all` off, only dangling build layers. */
+	imagesPrune: (all: boolean) => __TAURI_INVOKE<PruneReport>("images_prune", { all }),
+	hubSearch: (term: string) => __TAURI_INVOKE<HubImage[]>("hub_search", { term }),
+	volumesList: () => __TAURI_INVOKE<VolumeSummary[]>("volumes_list"),
+	volumeCreate: (name: string) => __TAURI_INVOKE<null>("volume_create", { name }),
+	volumeRemove: (name: string) => __TAURI_INVOKE<null>("volume_remove", { name }),
+	/**  Deletes every volume no container uses. */
+	volumesPrune: () => __TAURI_INVOKE<PruneReport>("volumes_prune"),
+	/**  One folder of a volume, read through a short-lived helper container. */
+	volumeFiles: (name: string, path: string) => __TAURI_INVOKE<VolumeFile[]>("volume_files", { name, path }),
+	/**
+	 *  Copies `path` out of the volume into `destination`, a folder the user picked. Returns where it
+	 *  landed.
+	 */
+	volumeDownload: (name: string, path: string, destination: string) => __TAURI_INVOKE<string>("volume_download", { name, path, destination }),
+	/**  Saves the whole volume as a `.tar.gz` at `destination`. */
+	volumeBackup: (name: string, destination: string) => __TAURI_INVOKE<null>("volume_backup", { name, destination }),
+	volumeClone: (source: string, target: string) => __TAURI_INVOKE<null>("volume_clone", { source, target }),
+	networksList: () => __TAURI_INVOKE<NetworkSummary[]>("networks_list"),
+	networkDetail: (id: string) => __TAURI_INVOKE<NetworkDetail>("network_detail", { id }),
+	networkCreate: (spec: NetworkSpec) => __TAURI_INVOKE<null>("network_create", { spec }),
+	networkRemove: (id: string) => __TAURI_INVOKE<null>("network_remove", { id }),
+	networkConnect: (network: string, container: string) => __TAURI_INVOKE<null>("network_connect", { network, container }),
+	networkDisconnect: (network: string, container: string) => __TAURI_INVOKE<null>("network_disconnect", { network, container }),
 };
 
 /** Events */
@@ -251,20 +281,56 @@ export type ErrorKind = "engineMissing" | "engineStopped" | "notFound" |
 /**  The user dismissed a macOS permission prompt; nothing to report. */
 "cancelled" | "invalidInput" | "engine" | "internal";
 
-export type FileEntry = {
-	name: string,
-	path: string,
-	kind: FileKind,
-	sizeBytes: number,
-};
-
-export type FileKind = "file" | "directory" | "symlink";
-
 /**  The Mac the engine runs on, for sizing the engine's limits. */
 export type Host = {
 	chip: string,
 	cores: number,
 	memoryBytes: number,
+};
+
+/**  A Docker Hub search result for the pull sheet. */
+export type HubImage = {
+	name: string,
+	description: string,
+	official: boolean,
+	stars: number,
+};
+
+export type ImageDetail = {
+	id: string,
+	references: string[],
+	platform: string,
+	user: string,
+	entrypoint: string[],
+	command: string[],
+	workingDir: string,
+	exposedPorts: string[],
+	env: string[],
+	labels: { [key in string]: string },
+	/**  Oldest first, as the Dockerfile reads. */
+	layers: ImageLayer[],
+};
+
+export type ImageLayer = {
+	/**  1 for the base layer, counting up in Dockerfile order. */
+	step: number,
+	/**  The Dockerfile instruction that made this layer. */
+	createdBy: string,
+	sizeBytes: number,
+};
+
+export type ImageSummary = {
+	id: string,
+	/**  `None` for a dangling build layer, which has no name. */
+	repository: string | null,
+	tag: string | null,
+	/**  Every `repository:tag` pointing at this image. */
+	references: string[],
+	sizeBytes: number,
+	createdAt: number,
+	/**  How many containers, running or not, were created from this image. */
+	containers: number,
+	dangling: boolean,
 };
 
 export type ImportProgress = {
@@ -336,6 +402,15 @@ export type Machine = {
 
 export type MachineAction = "start" | "stop" | "restart";
 
+export type MachineFile = {
+	name: string,
+	path: string,
+	kind: MachineFileKind,
+	sizeBytes: number,
+};
+
+export type MachineFileKind = "file" | "directory" | "symlink";
+
 export type MachineKind = 
 /**  A system container: shares the engine's kernel, boots in about a second. */
 "container" | 
@@ -375,6 +450,46 @@ export type MetricsUpdated = Metrics;
 /**  The native menu asks the main window to open a view, such as `/settings`. */
 export type Navigate = string;
 
+export type NetworkDetail = {
+	network: NetworkSummary,
+	endpoints: NetworkEndpoint[],
+};
+
+/**  A container's address on one network. */
+export type NetworkEndpoint = {
+	containerId: string,
+	container: string,
+	ipv4: string | null,
+	mac: string | null,
+};
+
+/**  What the new-network sheet asks for. */
+export type NetworkSpec = {
+	name: string,
+	driver: string,
+	subnet: string | null,
+	gateway: string | null,
+	internal: boolean,
+	ipv6: boolean,
+};
+
+export type NetworkSummary = {
+	id: string,
+	name: string,
+	driver: string,
+	scope: string,
+	subnet: string | null,
+	gateway: string | null,
+	internal: boolean,
+	ipv6: boolean,
+	/**  `bridge`, `host` and `none` come with Docker and can't be deleted. */
+	builtIn: boolean,
+	/**  The Compose project that created it, from its labels. */
+	project: string | null,
+	/**  Names of the containers attached to it. */
+	containers: string[],
+};
+
 export type ObjectKind = "container" | "image" | "volume" | "network";
 
 export type Port = {
@@ -393,6 +508,24 @@ export type Preferences = {
 	memoryInMenuBar: boolean,
 	/**  First launch was finished or skipped. */
 	onboarded: boolean,
+};
+
+/**  What a clean-up removed. */
+export type PruneReport = {
+	removed: number,
+	reclaimedBytes: number,
+};
+
+/**  What a pull reports, ending with `done` or `failed`. */
+export type PullEvent = { kind: "progress"; progress: PullProgress } | { kind: "done" } | { kind: "failed"; message: string };
+
+/**  One line of pull progress. Layers report several times as they download and extract. */
+export type PullProgress = {
+	/**  The layer id, or `None` for messages about the whole image. */
+	layer: string | null,
+	status: string,
+	current: number | null,
+	total: number | null,
 };
 
 /**  A release of a distribution, as aliased on images.linuxcontainers.org (`ubuntu/24.04`). */
@@ -433,6 +566,36 @@ export type StatsSample = {
  *  fixed when the engine is created.
  */
 export type VmType = "vz" | "krunkit";
+
+/**  One entry of a folder inside a volume. */
+export type VolumeFile = {
+	name: string,
+	kind: VolumeFileKind,
+	sizeBytes: number,
+	modifiedAt: number,
+};
+
+export type VolumeFileKind = "file" | "directory" | "link" | "other";
+
+export type VolumeSummary = {
+	name: string,
+	driver: string,
+	createdAt: string | null,
+	/**  `None` while Docker hasn't measured it. */
+	sizeBytes: number | null,
+	project: string | null,
+	/**  Created for a container without a name; a 64-character hash. */
+	anonymous: boolean,
+	usedBy: VolumeUser[],
+};
+
+/**  A container using a volume, and where it sees it. */
+export type VolumeUser = {
+	containerId: string,
+	container: string,
+	mountedAt: string,
+	running: boolean,
+};
 
 /* Tauri Specta runtime */
 type EventEmit<T> = [T] extends [null] ? () => Promise<void> : (payload: T) => Promise<void>;

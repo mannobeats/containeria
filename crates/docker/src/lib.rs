@@ -3,10 +3,14 @@
 
 mod containers;
 mod events;
+mod helper;
+mod images;
 mod logs;
+mod networks;
 mod stats;
 mod system;
 mod transfer;
+mod volumes;
 
 use std::path::Path;
 
@@ -14,9 +18,12 @@ use bollard::API_DEFAULT_VERSION;
 
 pub use containers::{ContainerAction, ContainerState, ContainerSummary, Port, PortProtocol};
 pub use events::{DockerEvent, ObjectKind};
+pub use images::{HubImage, ImageDetail, ImageLayer, ImageSummary, PullProgress, split_reference};
 pub use logs::{LogChunk, LogStream};
+pub use networks::{NetworkDetail, NetworkEndpoint, NetworkSpec, NetworkSummary};
 pub use stats::{CpuCounters, StatsSample, Usage};
 pub use system::EngineInfo;
+pub use volumes::{VolumeFile, VolumeFileKind, VolumeSummary, VolumeUser};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -30,6 +37,27 @@ pub enum Error {
 
     #[error("{0}")]
     Engine(String),
+
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+}
+
+/// What a clean-up removed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PruneReport {
+    pub removed: u32,
+    #[specta(type = specta_typescript::Number)]
+    pub reclaimed_bytes: u64,
+}
+
+impl PruneReport {
+    fn new(removed: usize, reclaimed: Option<i64>) -> Self {
+        Self {
+            removed: u32::try_from(removed).unwrap_or(u32::MAX),
+            reclaimed_bytes: reclaimed.and_then(|bytes| u64::try_from(bytes).ok()).unwrap_or(0),
+        }
+    }
 }
 
 impl From<bollard::errors::Error> for Error {

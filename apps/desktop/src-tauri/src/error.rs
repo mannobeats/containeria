@@ -52,6 +52,7 @@ impl From<containeria_docker::Error> for CommandError {
             containeria_docker::Error::Unreachable(_) => ErrorKind::EngineStopped,
             containeria_docker::Error::NotFound(_) => ErrorKind::NotFound,
             containeria_docker::Error::Engine(_) => ErrorKind::Engine,
+            containeria_docker::Error::Io(_) => ErrorKind::Internal,
         };
         Self::new(kind, error.to_string())
     }

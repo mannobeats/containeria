@@ -10,7 +10,7 @@ const tones = {
   line: "bg-transparent text-ink-2 hairline",
 } as const;
 
-export type ChipTone = keyof typeof tones;
+type ChipTone = keyof typeof tones;
 
 type ChipProps = { tone?: ChipTone; mono?: boolean; className?: string; children: ReactNode };
 

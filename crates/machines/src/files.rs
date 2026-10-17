@@ -11,7 +11,7 @@ use crate::{Error, Result};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
-pub enum FileKind {
+pub enum MachineFileKind {
     File,
     Directory,
     Symlink,
@@ -19,21 +19,21 @@ pub enum FileKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
-pub struct FileEntry {
+pub struct MachineFile {
     pub name: String,
     pub path: String,
-    pub kind: FileKind,
+    pub kind: MachineFileKind,
     #[specta(type = specta_typescript::Number)]
     pub size_bytes: u64,
 }
 
 const TYPE_HEADER: &str = "x-incus-type";
 
-fn kind_of(headers: &HeaderMap) -> FileKind {
+fn kind_of(headers: &HeaderMap) -> MachineFileKind {
     match headers.get(TYPE_HEADER).and_then(|value| value.to_str().ok()) {
-        Some("directory") => FileKind::Directory,
-        Some("symlink") => FileKind::Symlink,
-        _ => FileKind::File,
+        Some("directory") => MachineFileKind::Directory,
+        Some("symlink") => MachineFileKind::Symlink,
+        _ => MachineFileKind::File,
     }
 }
 
@@ -53,10 +53,10 @@ fn join(directory: &str, name: &str) -> String {
     format!("{}/{name}", directory.trim_end_matches('/'))
 }
 
-fn sort(entries: &mut [FileEntry]) {
+fn sort(entries: &mut [MachineFile]) {
     entries.sort_by(|a, b| {
-        (a.kind != FileKind::Directory, a.name.to_lowercase())
-            .cmp(&(b.kind != FileKind::Directory, b.name.to_lowercase()))
+        (a.kind != MachineFileKind::Directory, a.name.to_lowercase())
+            .cmp(&(b.kind != MachineFileKind::Directory, b.name.to_lowercase()))
     });
 }
 
@@ -78,9 +78,9 @@ impl Incus {
     ///
     /// # Errors
     /// Fails when the path isn't a folder in a running machine.
-    pub async fn list_files(&self, machine: &str, path: &str) -> Result<Vec<FileEntry>> {
+    pub async fn list_files(&self, machine: &str, path: &str) -> Result<Vec<MachineFile>> {
         let reply = self.file(Method::GET, machine, path).await?;
-        if kind_of(&reply.headers) != FileKind::Directory {
+        if kind_of(&reply.headers) != MachineFileKind::Directory {
             return Err(Error::Invalid(format!("{path} isn't a folder.")));
         }
         let names: Vec<String> = serde_json::from_slice::<serde_json::Value>(&reply.body)?
@@ -88,7 +88,7 @@ impl Incus {
             .map(|metadata| serde_json::from_value(metadata.clone()))
             .transpose()?
             .unwrap_or_default();
-        let mut entries: Vec<FileEntry> = stream::iter(names)
+        let mut entries: Vec<MachineFile> = stream::iter(names)
             .map(|name| async move {
                 let path = join(path, &name);
                 let head = self.file(Method::HEAD, machine, &path).await.ok()?;
@@ -97,7 +97,7 @@ impl Incus {
                     .get(header::CONTENT_LENGTH)
                     .and_then(|value| value.to_str().ok()?.parse().ok())
                     .unwrap_or(0);
-                Some(FileEntry { kind: kind_of(&head.headers), name, path, size_bytes })
+                Some(MachineFile { kind: kind_of(&head.headers), name, path, size_bytes })
             })
             .buffer_unordered(8)
             .filter_map(|entry| async move { entry })
@@ -111,7 +111,7 @@ impl Incus {
     /// Fails when the path isn't a file in a running machine.
     pub async fn read_file(&self, machine: &str, path: &str) -> Result<Bytes> {
         let reply = self.file(Method::GET, machine, path).await?;
-        if kind_of(&reply.headers) == FileKind::Directory {
+        if kind_of(&reply.headers) == MachineFileKind::Directory {
             return Err(Error::Invalid(format!("{path} is a folder.")));
         }
         Ok(reply.body)
@@ -159,23 +159,23 @@ mod tests {
     #[test]
     fn reads_the_entry_kind_from_incus_headers() {
         let mut headers = HeaderMap::new();
-        assert_eq!(kind_of(&headers), FileKind::File);
+        assert_eq!(kind_of(&headers), MachineFileKind::File);
         headers.insert(TYPE_HEADER, HeaderValue::from_static("directory"));
-        assert_eq!(kind_of(&headers), FileKind::Directory);
+        assert_eq!(kind_of(&headers), MachineFileKind::Directory);
     }
 
     #[test]
     fn sorts_folders_first_then_by_name() {
-        let entry = |name: &str, kind| FileEntry {
+        let entry = |name: &str, kind| MachineFile {
             name: name.into(),
             path: name.into(),
             kind,
             size_bytes: 0,
         };
         let mut entries = vec![
-            entry("b.txt", FileKind::File),
-            entry("Zeta", FileKind::Directory),
-            entry("a.txt", FileKind::File),
+            entry("b.txt", MachineFileKind::File),
+            entry("Zeta", MachineFileKind::Directory),
+            entry("a.txt", MachineFileKind::File),
         ];
         sort(&mut entries);
         let names: Vec<_> = entries.iter().map(|entry| entry.name.as_str()).collect();

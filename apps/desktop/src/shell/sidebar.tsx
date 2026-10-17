@@ -7,8 +7,11 @@ import { toast } from "sonner";
 
 import { useContainers } from "@/features/containers/api";
 import { isServing, useEngineControl, useEngineStatus } from "@/features/engine/api";
+import { useImages } from "@/features/images/api";
 import { useMetrics } from "@/features/metrics/api";
 import { MemoryLedger } from "@/features/metrics/memory-ledger";
+import { useNetworks } from "@/features/networks/api";
+import { useVolumes } from "@/features/volumes/api";
 import { formatMemory } from "@/lib/format";
 import type { EnginePhase } from "@/lib/ipc/bindings";
 import { AppMark } from "@/ui/app-mark";
@@ -159,6 +162,9 @@ export function Sidebar() {
   const toggle = useUi((state) => state.toggleSidebar);
   const openPalette = useUi((state) => state.setPaletteOpen);
   const { data: containers } = useContainers();
+  const { data: images } = useImages();
+  const { data: volumes } = useVolumes();
+  const { data: networks } = useNetworks();
   const visible = containers?.filter((container) => container.pod === null) ?? [];
   const running = visible.filter((container) => container.state === "running").length;
   const crashed = visible.filter(
@@ -212,9 +218,9 @@ export function Sidebar() {
               )
             }
           />
-          <Item to="/images" icon="image" label="Images" />
-          <Item to="/volumes" icon="volume" label="Volumes" />
-          <Item to="/networks" icon="network" label="Networks" />
+          <Item to="/images" icon="image" label="Images" count={images?.length} />
+          <Item to="/volumes" icon="volume" label="Volumes" count={volumes?.length} />
+          <Item to="/networks" icon="network" label="Networks" count={networks?.length} />
           <Item to="/kubernetes" icon="kube" label="Kubernetes" />
           <Item to="/machines" icon="machine" label="Linux machines" />
         </Group>

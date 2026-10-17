@@ -113,6 +113,15 @@ const routeTree = root.addChildren([
       default: module.NetworksPage,
     })),
   ),
+  page("images/$id", "Image", () =>
+    import("@/features/images/image-page").then((module) => ({ default: module.ImagePage })),
+  ),
+  page("volumes/$name", "Volume", () =>
+    import("@/features/volumes/volume-page").then((module) => ({ default: module.VolumePage })),
+  ),
+  page("networks/$id", "Network", () =>
+    import("@/features/networks/network-page").then((module) => ({ default: module.NetworkPage })),
+  ),
   page("kubernetes", "Kubernetes", () =>
     import("@/features/kubernetes/kubernetes-page").then((module) => ({
       default: module.KubernetesPage,

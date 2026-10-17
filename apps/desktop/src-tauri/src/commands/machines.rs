@@ -1,6 +1,6 @@
 use containeria_engine::LogLine;
 use containeria_machines::{
-    CreateMachine, DISTROS, Distro, FileEntry, Machine, MachineAction, ShellInput,
+    CreateMachine, DISTROS, Distro, Machine, MachineAction, MachineFile, ShellInput,
 };
 use tauri::ipc::Channel;
 use tauri::{AppHandle, State};
@@ -111,7 +111,7 @@ pub(crate) async fn machine_files(
     state: State<'_, AppState>,
     name: String,
     path: String,
-) -> Result<Vec<FileEntry>> {
+) -> Result<Vec<MachineFile>> {
     Ok(state.machines.incus().await?.list_files(&name, &path).await?)
 }
 

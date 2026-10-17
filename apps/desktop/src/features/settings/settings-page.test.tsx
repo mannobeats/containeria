@@ -36,7 +36,9 @@ function renderSection(section: string, phase: EnginePhase = "running") {
       },
     }),
   });
-  renderWithApp(<SettingsPage />, { path: "settings/$section", url: `/settings/${section}` });
+  renderWithApp(<SettingsPage />, {
+    route: { path: "settings/$section", url: `/settings/${section}` },
+  });
   return calls;
 }
 
