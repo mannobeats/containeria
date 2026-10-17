@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import { useContainers } from "@/features/containers/api";
 import { isServing, useEngineControl, useEngineStatus } from "@/features/engine/api";
+import { useImageSheet } from "@/features/images/sheet-store";
 import { applyAppearance, useIsDark } from "@/lib/theme";
 import { CxIcon, type CxIconName } from "@/ui/cx-icon";
 import { Kbd } from "@/ui/kbd";
@@ -47,6 +48,11 @@ export function CommandPalette() {
   const control = useEngineControl();
   const { data: containers } = useContainers();
   const dark = useIsDark();
+  const setImageSheet = useImageSheet((state) => state.setSheet);
+  const openImages = (sheet: "pull" | "prune") => {
+    navigate({ to: "/images" }).catch(() => undefined);
+    setImageSheet(sheet);
+  };
   const run = (action: () => void) => () => {
     setOpen(false);
     action();
@@ -80,6 +86,14 @@ export function CommandPalette() {
                     onSelect={run(() => navigate({ to: section.to }))}
                   />
                 ))}
+              </Command.Group>
+              <Command.Group heading="Images" className={groupClass}>
+                <Item icon="image" label="Pull image…" onSelect={run(() => openImages("pull"))} />
+                <Item
+                  icon="image"
+                  label="Clean up unused images"
+                  onSelect={run(() => openImages("prune"))}
+                />
               </Command.Group>
               <Command.Group heading="Engine" className={groupClass}>
                 {isServing(engine?.phase) ? (

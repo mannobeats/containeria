@@ -10,7 +10,8 @@
 - Components are tested through the user's eyes: `renderWithApp(<Page />)` from `src/test/harness`
   renders inside the app's providers, `mockCommands({ containersList: () => [...] })` answers Tauri
   commands, typed by what each Rust command returns, and records every call, and `src/test/fixtures` builds typed sample
-  data. Assert on roles and text, then on the recorded IPC calls.
+  data. Assert on roles and text, then on the recorded IPC calls. Pages that read route params
+  render with `renderWithApp(<ImagePage />, { route: { path: "images/$id", url: "/images/sha256:pg" } })`.
 - fallow scores every function's CRAP (complexity × untested) from Vitest coverage. A component with
   branches needs a test that exercises them; keep functions under 60 lines and cognitive complexity
   under 15 by extracting subcomponents and hooks.

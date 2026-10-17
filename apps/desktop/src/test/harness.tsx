@@ -58,20 +58,26 @@ type RenderOptions = {
   /** Rendered as the root route, with `ui` as the page inside its `<Outlet />`. */
   shell?: () => ReactNode;
   staticData?: StaticDataRouteOption;
+  /** Mount `ui` on a real route pattern, such as `images/$id`, opened at `url`. */
+  route?: { path: string; url: string };
 };
 
 /** Renders `ui` inside the app's providers and a router that accepts any path. */
-export function renderWithApp(ui: ReactNode, { shell, staticData = {} }: RenderOptions = {}) {
+export function renderWithApp(
+  ui: ReactNode,
+  { shell, staticData = {}, route = { path: "$", url: "/test" } }: RenderOptions = {},
+) {
   const root = createRootRoute(shell ? { component: shell } : {});
   const page = createRoute({
     getParentRoute: () => root,
-    path: "$",
+    path: route.path,
     staticData,
     component: () => ui,
   });
+  const fallback = createRoute({ getParentRoute: () => root, path: "$", component: () => null });
   const router = createRouter({
-    routeTree: root.addChildren([page]),
-    history: createMemoryHistory({ initialEntries: ["/test"] }),
+    routeTree: root.addChildren(route.path === "$" ? [page] : [page, fallback]),
+    history: createMemoryHistory({ initialEntries: [route.url] }),
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const result = render(

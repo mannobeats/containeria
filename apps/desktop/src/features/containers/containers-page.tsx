@@ -3,13 +3,13 @@ import { useRef, useState } from "react";
 import { usageById, useMetrics } from "@/features/metrics/api";
 import type { ContainerAction, ContainerSummary } from "@/lib/ipc/bindings";
 import { useIdSet } from "@/lib/use-id-set";
+import { useSlashToSearch } from "@/lib/use-slash-to-search";
 import { Crumb, Page } from "@/shell/page";
 import { Button } from "@/ui/button";
 import { EmptyState } from "@/ui/empty-state";
 import { SearchField } from "@/ui/search-field";
 import { Segmented } from "@/ui/segmented";
 import { Tile } from "@/ui/tile";
-
 import { useContainerAction, useContainers } from "./api";
 import { BulkBar } from "./bulk-bar";
 import { ContainerTable } from "./container-table";
@@ -17,7 +17,6 @@ import { ContainersHero } from "./containers-hero";
 import { CrashBanners } from "./crash-banners";
 import { DeleteSheet } from "./delete-sheet";
 import { emptyTitle, type Filter, filterOptions, groupByProject, matches } from "./model";
-import { useSlashToSearch } from "./use-slash-to-search";
 
 function NoContainers() {
   return (

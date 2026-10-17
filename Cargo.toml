@@ -22,12 +22,14 @@ containeria-net = { path = "crates/net" }
 anyhow = "1.0.104"
 bollard = "0.21.1"
 bytes = "1.12.1"
+flate2 = "1.1.10"
 futures = "0.3.34"
 jiff = { version = "0.2.38", features = ["serde"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 specta-typescript = "=0.0.12"
 specta = { version = "=2.0.0-rc.25", features = ["derive", "serde_json", "jiff"] }
+tar = "0.4.46"
 tauri = "2.12.4"
 tauri-build = "2.7.3"
 tauri-plugin-autostart = "2.7.0"
