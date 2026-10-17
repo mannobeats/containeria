@@ -30,7 +30,7 @@ type CellEditorProps = {
  * nullable column writes NULL only through ⌘⌫.
  */
 export function CellEditor({ column, value, onDone }: CellEditorProps) {
-  const [text, setText] = useState(cellText(value) ?? "");
+  const [text, setText] = useState(() => cellText(value) ?? "");
   const [long] = useState(() => column.kind === "json" || text.length > 60 || text.includes("\n"));
   const onKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === "Escape") {

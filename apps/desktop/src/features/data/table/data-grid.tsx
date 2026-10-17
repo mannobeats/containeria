@@ -1,5 +1,4 @@
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { Column, Sort, Value } from "@/lib/ipc/bindings";
 
@@ -24,6 +23,46 @@ type DataGridProps = {
 };
 
 const ROW_HEIGHT = 28;
+const HEADER_HEIGHT = 40;
+const OVERSCAN = 12;
+
+/**
+ * Fixed-height row windowing: the rows to render at the scroller's position, and scrolling one into
+ * view below the sticky header.
+ */
+function useRowWindow(scroller: React.RefObject<HTMLDivElement | null>, count: number) {
+  const [view, setView] = useState({ top: 0, height: 0 });
+  useEffect(() => {
+    const element = scroller.current;
+    if (!element) {
+      return;
+    }
+    const update = () => setView({ top: element.scrollTop, height: element.clientHeight });
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    element.addEventListener("scroll", update, { passive: true });
+    return () => {
+      observer.disconnect();
+      element.removeEventListener("scroll", update);
+    };
+  }, [scroller]);
+  const first = Math.max(0, Math.floor(view.top / ROW_HEIGHT) - OVERSCAN);
+  const last = Math.min(count, Math.ceil((view.top + view.height) / ROW_HEIGHT) + OVERSCAN);
+  const reveal = (index: number) => {
+    const element = scroller.current;
+    if (!element) {
+      return;
+    }
+    const bottom = HEADER_HEIGHT + (index + 1) * ROW_HEIGHT;
+    if (index * ROW_HEIGHT < element.scrollTop) {
+      element.scrollTo({ top: index * ROW_HEIGHT });
+    } else if (bottom > element.scrollTop + element.clientHeight) {
+      element.scrollTo({ top: bottom - element.clientHeight });
+    }
+  };
+  return { first, last, reveal };
+}
 
 function Spacer({ height, columns }: { height: number; columns: number }) {
   return height > 0 ? (
@@ -33,7 +72,7 @@ function Spacer({ height, columns }: { height: number; columns: number }) {
   ) : null;
 }
 
-/** The table grid: virtualized rows, sticky header and row numbers, keyboard moves, in-place edits. */
+/** The table grid: windowed rows, sticky header and row numbers, keyboard moves, in-place edits. */
 export function DataGrid({
   label,
   columns,
@@ -51,20 +90,14 @@ export function DataGrid({
   const scroller = useRef<HTMLDivElement>(null);
   const [widths, setWidths] = useState(() => columns.map(columnWidth));
   const [editing, setEditing] = useState(false);
-  const virtual = useVirtualizer({
-    count: rows.length,
-    getScrollElement: () => scroller.current,
-    estimateSize: () => ROW_HEIGHT,
-    overscan: 12,
-  });
-  const items = virtual.getVirtualItems();
+  const shown = useRowWindow(scroller, rows.length);
   const added = rows.filter((row) => row.added !== null).length;
   const onKey = (event: React.KeyboardEvent) => {
     const move = active ? moveFrom(active, event.key, rows.length, columns.length) : undefined;
     if (move) {
       event.preventDefault();
       onActive(move);
-      virtual.scrollToIndex(move.row);
+      shown.reveal(move.row);
     } else if (event.key === "Enter" && onEdit) {
       event.preventDefault();
       setEditing(true);
@@ -98,21 +131,21 @@ export function DataGrid({
           }
         />
         <tbody>
-          <Spacer height={items[0]?.start ?? 0} columns={columns.length} />
-          {items.map((item) => {
-            const row = rows[item.index];
-            return row ? (
+          <Spacer height={shown.first * ROW_HEIGHT} columns={columns.length} />
+          {rows.slice(shown.first, shown.last).map((row, slot) => {
+            const index = shown.first + slot;
+            return (
               <GridRow
                 key={row.id}
                 row={row}
-                number={offset + item.index + 1 - added}
+                number={offset + index + 1 - added}
                 columns={columns}
                 selected={selected.has(row.id)}
-                activeColumn={active?.row === item.index ? active.column : null}
-                editing={editing && active?.row === item.index}
+                activeColumn={active?.row === index ? active.column : null}
+                editing={editing && active?.row === index}
                 onToggle={() => onToggleRow(row)}
                 onSelect={(column, edit) => {
-                  onActive({ row: item.index, column });
+                  onActive({ row: index, column });
                   setEditing(edit && onEdit !== undefined);
                 }}
                 onKey={onKey}
@@ -120,12 +153,9 @@ export function DataGrid({
                 onStopEdit={() => setEditing(false)}
                 onJump={onJump}
               />
-            ) : null;
+            );
           })}
-          <Spacer
-            height={virtual.getTotalSize() - (items.at(-1)?.end ?? 0)}
-            columns={columns.length}
-          />
+          <Spacer height={(rows.length - shown.last) * ROW_HEIGHT} columns={columns.length} />
         </tbody>
       </table>
     </div>

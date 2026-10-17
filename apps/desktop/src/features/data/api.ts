@@ -158,7 +158,11 @@ export function useRunQuery(id: string) {
 }
 
 export function useCancelQuery() {
-  return useMutation({ mutationFn: (runId: string) => commands.dataCancel(runId) });
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (runId: string) => commands.dataCancel(runId),
+    onSettled: () => client.invalidateQueries({ queryKey: dataKeys.history }),
+  });
 }
 
 export function useHistory() {

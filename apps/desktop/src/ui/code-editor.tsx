@@ -1,10 +1,10 @@
-import { type Extension, Prec } from "@codemirror/state";
-import { EditorView, keymap } from "@codemirror/view";
+import type { Extension } from "@codemirror/state";
+import type { EditorView } from "@codemirror/view";
 import clsx from "clsx";
-import { basicSetup } from "codemirror";
 import { useEffect, useEffectEvent, useRef } from "react";
+import { toast } from "sonner";
 
-const theme = EditorView.theme({
+const themeSpec = {
   "&": { height: "100%", fontSize: "12.5px", backgroundColor: "var(--bg)", color: "var(--ink)" },
   "&.cm-focused": { outline: "none" },
   ".cm-scroller": { fontFamily: "var(--font-mono)", lineHeight: "20px" },
@@ -33,7 +33,52 @@ const theme = EditorView.theme({
     color: "white",
   },
   ".cm-matchingBracket": { backgroundColor: "var(--brand-soft)", outline: "none" },
-});
+};
+
+type EditorOptions = {
+  parent: HTMLElement;
+  doc: string;
+  label: string;
+  extensions: Extension[];
+  onChange: (value: string) => void;
+  onRun: (code: string) => void;
+};
+
+/** Builds the editor, loading CodeMirror with the first one rather than with the app. */
+async function createEditor({ parent, doc, label, extensions, onChange, onRun }: EditorOptions) {
+  const [{ Prec }, { EditorView, keymap }, { basicSetup }] = await Promise.all([
+    import("@codemirror/state"),
+    import("@codemirror/view"),
+    import("codemirror"),
+  ]);
+  return new EditorView({
+    parent,
+    doc,
+    extensions: [
+      Prec.highest(
+        keymap.of([
+          {
+            key: "Mod-Enter",
+            run: (target) => {
+              const { from, to } = target.state.selection.main;
+              onRun(from === to ? target.state.doc.toString() : target.state.sliceDoc(from, to));
+              return true;
+            },
+          },
+        ]),
+      ),
+      basicSetup,
+      EditorView.theme(themeSpec),
+      EditorView.contentAttributes.of({ "aria-label": label }),
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged) {
+          onChange(update.state.doc.toString());
+        }
+      }),
+      ...extensions,
+    ],
+  });
+}
 
 type CodeEditorProps = {
   value: string;
@@ -61,39 +106,27 @@ export function CodeEditor({
   const run = useEffectEvent((code: string) => onRun?.(code));
   const initial = useEffectEvent(() => value);
   useEffect(() => {
-    if (!host.current) {
+    const parent = host.current;
+    if (!parent) {
       return;
     }
-    const editor = new EditorView({
-      parent: host.current,
-      doc: initial(),
-      extensions: [
-        Prec.highest(
-          keymap.of([
-            {
-              key: "Mod-Enter",
-              run: (target) => {
-                const { from, to } = target.state.selection.main;
-                run(from === to ? target.state.doc.toString() : target.state.sliceDoc(from, to));
-                return true;
-              },
-            },
-          ]),
-        ),
-        basicSetup,
-        theme,
-        EditorView.contentAttributes.of({ "aria-label": label }),
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged) {
-            changed(update.state.doc.toString());
-          }
-        }),
-        ...extensions,
-      ],
-    });
-    view.current = editor;
+    let editor: EditorView | undefined;
+    let stale = false;
+    createEditor({ parent, doc: initial(), label, extensions, onChange: changed, onRun: run })
+      .then((created) => {
+        if (stale) {
+          created.destroy();
+          return;
+        }
+        editor = created;
+        view.current = created;
+      })
+      .catch(() => {
+        toast.error("The editor couldn't load. Reopen the tab to try again.");
+      });
     return () => {
-      editor.destroy();
+      stale = true;
+      editor?.destroy();
       view.current = null;
     };
   }, [extensions, label]);

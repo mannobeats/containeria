@@ -58,7 +58,7 @@ function Connections({ query, onNew, onEdit, onRemove }: ConnectionsProps) {
   const detected = useDetected();
   const { data: history = [] } = useHistory();
   const { data: saved = [] } = useSavedQueries();
-  if (!connections.data || !detected.data) {
+  if (!(connections.data && detected.data)) {
     return null;
   }
   if (connections.data.length === 0 && detected.data.length === 0) {

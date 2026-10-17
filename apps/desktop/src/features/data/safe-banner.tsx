@@ -25,8 +25,9 @@ export function SafeBanner({ info }: { info: ServerInfo }) {
       >
         <IconLockOpen aria-hidden />
         <span>
-          <b className="font-semibold">Writes allowed</b> until{" "}
-          {time(info.writableUntilMs ?? Date.now())}. Commits run against production.
+          <b className="font-semibold">Writes allowed</b>
+          {info.writableUntilMs === null ? "" : ` until ${time(info.writableUntilMs)}`}. Commits run
+          against production.
         </span>
         <Button size="sm" className="ml-auto" onClick={() => protect.mutate()}>
           Turn safe mode back on

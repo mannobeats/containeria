@@ -62,7 +62,6 @@ export function QueryView({ info, tabKey, namespaces }: QueryViewProps) {
   const run = useRunQuery(info.id);
   const save = useSaveQuery();
   const open = useOpenTab(info.id);
-  const [runId, setRunId] = useState("");
   const [saving, setSaving] = useState(false);
   const cancel = useCancelQuery();
   const language = sqlLanguage(info.engine, namespaces);
@@ -70,9 +69,7 @@ export function QueryView({ info, tabKey, namespaces }: QueryViewProps) {
     if (code.trim() === "" || run.isPending) {
       return;
     }
-    const id = crypto.randomUUID();
-    setRunId(id);
-    run.mutate({ sql: code, runId: id });
+    run.mutate({ sql: code, runId: crypto.randomUUID() });
   };
   return (
     <div className="grid min-h-0 flex-1 grid-rows-[44px_minmax(120px,42%)_minmax(0,1fr)]">
@@ -111,7 +108,7 @@ export function QueryView({ info, tabKey, namespaces }: QueryViewProps) {
           result={run.data}
           error={run.error}
           running={run.isPending}
-          onCancel={() => cancel.mutate(runId)}
+          onCancel={() => run.variables && cancel.mutate(run.variables.runId)}
         />
       </div>
       <SaveSheet

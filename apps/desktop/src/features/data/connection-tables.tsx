@@ -17,6 +17,22 @@ import { engineLabel, engineLogo } from "./engines";
 const tableClass =
   "w-full table-fixed border-separate border-spacing-0 text-13 [&_td]:h-12 [&_td]:border-b-[0.5px] [&_td]:border-line [&_td]:px-2.5 [&_td:first-child]:pl-5 [&_td:last-child]:pr-5 [&_th]:h-[30px] [&_th]:border-b-[0.5px] [&_th]:border-line [&_th]:px-2.5 [&_th]:text-left [&_th]:text-12 [&_th]:font-medium [&_th]:text-ink-3 [&_th:first-child]:w-[30%] [&_th:first-child]:pl-5 [&_th:last-child]:w-[150px]";
 
+function Head({ fourth, last }: { fourth: string; last: string }) {
+  return (
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Engine</th>
+        <th>Address</th>
+        <th>{fourth}</th>
+        <th>
+          <span className="sr-only">{last}</span>
+        </th>
+      </tr>
+    </thead>
+  );
+}
+
 function NameCell({
   logo,
   name,
@@ -53,17 +69,7 @@ function OpenLink({ id, children }: { id: string; children: ReactNode }) {
 export function DetectedTable({ detected }: { detected: Detected[] }) {
   return (
     <table className={tableClass}>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Engine</th>
-          <th>Address</th>
-          <th>Credentials</th>
-          <th>
-            <span className="sr-only">Open</span>
-          </th>
-        </tr>
-      </thead>
+      <Head fourth="Credentials" last="Open" />
       <tbody>
         {detected.map((found) => (
           <tr key={found.id} className="transition-colors duration-140 hover:bg-hover">
@@ -146,17 +152,7 @@ type SavedTableProps = {
 export function SavedTable({ connections, onEdit, onRemove }: SavedTableProps) {
   return (
     <table className={tableClass}>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Engine</th>
-          <th>Address</th>
-          <th>Environment</th>
-          <th>
-            <span className="sr-only">Actions</span>
-          </th>
-        </tr>
-      </thead>
+      <Head fourth="Environment" last="Actions" />
       <tbody>
         {connections.map((connection) => (
           <tr
