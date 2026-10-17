@@ -4,6 +4,7 @@ import { useEffect, useEffectEvent } from "react";
 
 import { isCommandError } from "@/lib/ipc/errors";
 import { Crumb, Page } from "@/shell/page";
+import { ParentCrumb } from "@/shell/parent-crumb";
 import { buttonClass } from "@/ui/button-class";
 import { EmptyState } from "@/ui/empty-state";
 import { IconAction } from "@/ui/icon-action";
@@ -93,13 +94,7 @@ export function ContainerPage() {
   const running = details?.state === "running";
   const crumbs = (
     <>
-      <Link
-        to="/containers"
-        className="rounded-[5px] px-1 py-0.5 font-medium text-ink-3 no-underline hover:bg-hover hover:text-ink"
-      >
-        Containers
-      </Link>
-      <IconChevronRight aria-hidden className="size-3.5 text-ink-4" />
+      <ParentCrumb to="/containers" label="Containers" />
       {details?.project ? (
         <>
           <span className="px-1 py-0.5">{details.project}</span>

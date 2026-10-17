@@ -10,6 +10,9 @@ MotionGlobalConfig.skipAnimations = true;
 // Lazy routes and CodeMirror load on first render; a busy machine can take over a second.
 configure({ asyncUtilTimeout: 3000 });
 
+// happy-dom has no FontFaceSet: every font counts as loaded.
+Object.defineProperty(document, "fonts", { value: { load: () => Promise.resolve([]) } });
+
 vi.mock("uplot", () => ({ default: FakePlot }));
 vi.mock("@xterm/xterm", () => ({ Terminal: FakeTerminal }));
 vi.mock("@xterm/addon-fit", () => ({ FitAddon: FakeFitAddon }));

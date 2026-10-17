@@ -3,8 +3,8 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, Tray
 use tauri::utils::config::WindowEffectsConfig;
 use tauri::window::{Effect, EffectState};
 use tauri::{
-    AppHandle, LogicalPosition, LogicalSize, Manager, Rect, WebviewUrl, WebviewWindow,
-    WebviewWindowBuilder, WindowEvent,
+    AppHandle, LogicalPosition, Manager, Rect, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
+    WindowEvent,
 };
 
 use crate::state::AppState;
@@ -93,14 +93,6 @@ fn place_under(popover: &WebviewWindow, rect: Rect) -> tauri::Result<()> {
     let size = rect.size.to_logical::<f64>(scale);
     let x = position.x + size.width / 2.0 - POPOVER_WIDTH / 2.0;
     popover.set_position(LogicalPosition::new(x, position.y + size.height + 4.0))
-}
-
-/// Fits the popover to its content's height, measured by the page.
-pub(crate) fn fit(app: &AppHandle, height: u32) -> tauri::Result<()> {
-    match app.get_webview_window(POPOVER) {
-        Some(popover) => popover.set_size(LogicalSize::new(POPOVER_WIDTH, f64::from(height))),
-        None => Ok(()),
-    }
 }
 
 /// Brings the main window back, from the popover, the Dock or a menu.

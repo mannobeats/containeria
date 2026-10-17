@@ -31,7 +31,7 @@ export function Tabs<T extends string>({
           <Radix.Trigger
             key={tab.value}
             value={tab.value}
-            className="relative inline-flex h-9 items-center gap-1.5 px-2.5 text-13 font-medium text-ink-3 transition-colors duration-140 hover:text-ink data-[state=active]:text-ink data-[state=active]:after:absolute data-[state=active]:after:inset-x-2.5 data-[state=active]:after:-bottom-px data-[state=active]:after:h-0.5 data-[state=active]:after:rounded-full data-[state=active]:after:bg-ink"
+            className="relative inline-flex h-9 items-center gap-1.5 rounded-sm px-2.5 text-13 font-medium text-ink-3 transition-colors duration-140 hover:text-ink data-[state=active]:text-ink data-[state=active]:after:absolute data-[state=active]:after:inset-x-2.5 data-[state=active]:after:-bottom-px data-[state=active]:after:h-0.5 data-[state=active]:after:rounded-full data-[state=active]:after:bg-ink"
           >
             {tab.label}
             {tab.count === undefined ? null : (

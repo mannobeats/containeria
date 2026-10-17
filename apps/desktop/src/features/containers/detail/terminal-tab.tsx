@@ -1,15 +1,16 @@
 import { IconCopy, IconRefresh } from "@tabler/icons-react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import { copyText } from "@/lib/clipboard";
 import { Banner } from "@/ui/banner";
 import { Button } from "@/ui/button";
 import { EmptyState } from "@/ui/empty-state";
 import { Switch } from "@/ui/switch";
+import { TerminalView } from "@/ui/terminal-view";
 import { Tile } from "@/ui/tile";
 import { Tip } from "@/ui/tooltip";
 
-import { type TerminalStatus, useTerminal } from "./use-terminal";
+import { connectShell, type TerminalStatus } from "./use-terminal";
 
 function StatusLine({ status, onReconnect }: { status: TerminalStatus; onReconnect: () => void }) {
   if (status.state === "failed") {
@@ -54,8 +55,7 @@ type LiveTerminalProps = {
 };
 
 function LiveTerminal({ id, name, debug, onDebug, onReconnect }: LiveTerminalProps) {
-  const host = useRef<HTMLDivElement>(null);
-  const status = useTerminal(host, id, debug);
+  const [status, setStatus] = useState<TerminalStatus>({ state: "connecting" });
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-11 shrink-0 items-center gap-3 border-b-[0.5px] border-line pr-3 pl-5">
@@ -78,9 +78,10 @@ function LiveTerminal({ id, name, debug, onDebug, onReconnect }: LiveTerminalPro
         </Button>
       </div>
       <StatusLine status={status} onReconnect={onReconnect} />
-      <div className="min-h-0 flex-1 bg-term-bg px-3 py-2">
-        <div ref={host} className="h-full" />
-      </div>
+      <TerminalView
+        label={`Terminal in ${name}`}
+        connect={(terminal) => connectShell(terminal, id, debug, setStatus)}
+      />
     </div>
   );
 }

@@ -29,8 +29,14 @@ export const commands = {
 	about: () => __TAURI_INVOKE<About>("about"),
 	/**  Brings the main window forward, for the menu bar popover. */
 	windowShowMain: () => __TAURI_INVOKE<null>("window_show_main"),
-	/**  Sizes the menu bar popover to its content. */
-	trayFit: (height: number) => __TAURI_INVOKE<null>("tray_fit", { height }),
+	/**  Sizes the calling window, the menu bar popover or Settings, to its content's height. */
+	windowFit: (height: number) => __TAURI_INVOKE<null>("window_fit", { height }),
+	/**  Hides the calling window, as Esc dismisses the menu bar popover. */
+	windowHide: () => __TAURI_INVOKE<null>("window_hide"),
+	/**  Opens Settings at a pane, or switches the open Settings window to it. */
+	settingsOpen: (pane: SettingsPane) => __TAURI_INVOKE<null>("settings_open", { pane }),
+	/**  The pane the Settings window should show. */
+	settingsPane: () => __TAURI_INVOKE<SettingsPane>("settings_pane"),
 	/**  Matches the native materials, the sidebar and the menu bar popover, to the page's appearance. */
 	appSetAppearance: (appearance: Appearance) => __TAURI_INVOKE<null>("app_set_appearance", { appearance }),
 	appQuit: () => __TAURI_INVOKE<null>("app_quit"),
@@ -198,6 +204,7 @@ export const events = {
 	machinesChanged: makeEvent<MachinesChanged>("machines-changed"),
 	metricsUpdated: makeEvent<MetricsUpdated>("metrics-updated"),
 	navigate: makeEvent<Navigate>("navigate"),
+	settingsPaneShown: makeEvent<SettingsPaneShown>("settings-pane-shown"),
 };
 
 /* Types */
@@ -1085,6 +1092,12 @@ export type ServiceSummary = {
 	/**  `localhost:port` for a `LoadBalancer` service: k3s binds it in the VM and Lima forwards it. */
 	fromMac: string | null,
 };
+
+/**  A tab in the Settings window's toolbar. */
+export type SettingsPane = "general" | "engine" | "kubernetes" | "docker" | "about";
+
+/**  Switches the open Settings window to a pane. */
+export type SettingsPaneShown = SettingsPane;
 
 /**  What a terminal receives: text to draw, then one `closed` when the shell exits. */
 export type ShellEvent = { kind: "output"; text: string } | { kind: "closed" };

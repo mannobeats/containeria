@@ -12,6 +12,7 @@ mod machines;
 mod menu;
 mod metrics;
 mod preferences;
+mod settings_window;
 mod shells;
 mod state;
 mod streams;
@@ -45,11 +46,8 @@ pub fn run() -> tauri::Result<()> {
     tracing_subscriber::fmt().with_env_filter(filter).init();
     let ipc = ipc::builder();
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.set_focus();
-            }
-        }))
+        // Opening the app again, from Finder or Spotlight, brings back its window even when hidden.
+        .plugin(tauri_plugin_single_instance::init(|app, _, _| tray::show_main(app)))
         .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
@@ -65,6 +63,7 @@ pub fn run() -> tauri::Result<()> {
             let background = Background::from(&state);
             // Registered before any task starts: the tasks read it through the app handle.
             app.manage(state);
+            app.manage(settings_window::ShownPane::default());
             background.spawn(app.handle());
             tray::install(app.handle())?;
             Ok(())

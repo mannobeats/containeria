@@ -25,7 +25,6 @@ export function useShortcuts() {
       k: () => ui.setPaletteOpen(!ui.paletteOpen),
       n: useRunSheet.getState().show,
       "\\": ui.toggleSidebar,
-      ",": () => navigate({ to: "/settings" }).catch(() => undefined),
     };
     return actions[key];
   });

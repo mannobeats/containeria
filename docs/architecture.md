@@ -52,10 +52,17 @@ The app starts two long-lived tasks in `lib.rs` setup:
 ## Windows and the menu bar
 
 - `main` is the app window. With "Keep running in the menu bar" on, closing it hides it; the Dock
-  icon or the menu bar popover brings it back.
-- `tray` is the menu bar popover: a second, borderless webview built from `tray.html`
-  (`src/tray/main.tsx`), shown under the tray icon and hidden when it loses focus. It reuses the
-  same commands and hooks as the main window.
+  icon, opening the app again, or the menu bar popover brings it back.
+- `tray` is the menu bar popover: a borderless webview built from `tray.html`
+  (`src/tray/main.tsx`), drawn on the native popover material, shown under the tray icon and
+  hidden when it loses focus.
+- `settings` is the Settings window, built from `settings.html` (`src/settings/main.tsx`), as a
+  Mac app has one: opened with ⌘, or `settings_open(pane)`, the pane's name in its title bar and a
+  toolbar of panes. Rust holds the shown pane (`settings_window.rs`) and announces changes with
+  `SettingsPaneShown`, so the menu, links and the toolbar all go through one path.
+- The popover and Settings size themselves to their content with `window_fit` (`lib/fit-window.ts`).
+- Every window shares the same commands and hooks, and `behaveNatively()`: focus rings only for
+  keyboard use, and no WebKit context menu outside text.
 - The native menu (`src-tauri/src/menu.rs`) emits `Navigate(path)`; the UI opens that path.
 - App preferences that aren't engine settings live in `~/.containeria/settings.json`
   (`preferences.rs`); engine settings live in `colima.yaml`.

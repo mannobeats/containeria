@@ -86,7 +86,7 @@
   --shadow-1: var(--shadow-1);
   --shadow-2: var(--shadow-2);
   --shadow-3: var(--shadow-3);
-  --shadow-focus: var(--focus);
+  --shadow-focus: var(--key-focus);
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
@@ -167,21 +167,35 @@
     user-select: none;
     cursor: default;
   }
-  button {
+  /* A Mac app keeps the arrow over its controls; the pointing hand is for links in a page. */
+  a,
+  button,
+  label,
+  summary,
+  [role="button"],
+  [role="tab"],
+  [role="option"],
+  [role="menuitem"] {
     cursor: default;
   }
   ::selection {
     background: var(--select);
   }
+  /* WebKit marks a control focused by a click or by script as focus-visible, so the ring only
+     shows after the keyboard was used, as in AppKit. */
   :focus-visible {
     outline: none;
-    box-shadow: var(--focus);
+    box-shadow: var(--key-focus);
   }
   input,
   textarea,
   [contenteditable],
   .selectable {
     user-select: text;
+  }
+  a,
+  img {
+    -webkit-user-drag: none;
   }
   * {
     scrollbar-width: thin;

@@ -9,6 +9,8 @@ import { Tile } from "@/ui/tile";
 import { useStatsHistory } from "./api";
 
 const rate = (bytes: number) => `${formatBytes(bytes)}/s`;
+/** Byte rates never tick below whole bytes: an idle container's axis reads up to 1 KB/s. */
+const KIB = 1024;
 
 type PanelProps = {
   title: string;
@@ -17,9 +19,20 @@ type PanelProps = {
   series: ChartSeries[];
   data: uPlot.AlignedData;
   format: (value: number) => string;
+  floor?: number;
+  binary?: boolean;
 };
 
-function Panel({ title, note, value, series, data, format }: PanelProps) {
+function Panel({
+  title,
+  note,
+  value,
+  series,
+  data,
+  format,
+  floor = 1,
+  binary = false,
+}: PanelProps) {
   return (
     <section>
       <div className="mb-2 flex items-center gap-2">
@@ -27,7 +40,15 @@ function Panel({ title, note, value, series, data, format }: PanelProps) {
         <span className="text-12 text-ink-3">{note}</span>
         {value ? <b className="ml-auto font-semibold text-ink tabular">{value}</b> : null}
       </div>
-      <Chart label={`${title}, ${note}`} height={170} series={series} data={data} format={format} />
+      <Chart
+        label={`${title}, ${note}`}
+        height={170}
+        series={series}
+        data={data}
+        format={format}
+        floor={floor}
+        binary={binary}
+      />
     </section>
   );
 }
@@ -74,6 +95,7 @@ export function StatsTab({ id, running }: { id: string; running: boolean }) {
           series={[{ label: "Memory", color: "var(--s2)" }]}
           data={[history.times, history.memory]}
           format={formatMemory}
+          binary
         />
         <Panel
           title="Network"
@@ -84,6 +106,7 @@ export function StatsTab({ id, running }: { id: string; running: boolean }) {
           ]}
           data={[history.times, history.received, history.sent]}
           format={rate}
+          floor={KIB}
         />
         <Panel
           title="Disk"
@@ -94,6 +117,7 @@ export function StatsTab({ id, running }: { id: string; running: boolean }) {
           ]}
           data={[history.times, history.read, history.written]}
           format={rate}
+          floor={KIB}
         />
       </div>
     </div>

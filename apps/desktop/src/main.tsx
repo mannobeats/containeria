@@ -8,9 +8,11 @@ import { createRoot } from "react-dom/client";
 
 import { queryClient } from "./app/query-client";
 import { router } from "./app/router";
+import { behaveNatively } from "./lib/native-behavior";
 import { applyAppearance } from "./lib/theme";
 
 applyAppearance();
+behaveNatively();
 
 const root = document.getElementById("root");
 if (root) {

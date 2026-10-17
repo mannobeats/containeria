@@ -3,7 +3,11 @@
   "workspaces": {
     "patterns": ["apps/*"]
   },
-  "entry": ["apps/desktop/src/main.tsx", "apps/desktop/src/tray/main.tsx"],
+  "entry": [
+    "apps/desktop/src/main.tsx",
+    "apps/desktop/src/tray/main.tsx",
+    "apps/desktop/src/settings/main.tsx"
+  ],
   "ignorePatterns": [
     "design/**",
     "apps/desktop/src/lib/ipc/bindings.ts",

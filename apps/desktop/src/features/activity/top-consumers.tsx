@@ -9,6 +9,35 @@ import type { Consumer } from "./model";
 
 const GIB = 1024 ** 3;
 
+const linkClass = "flex min-w-0 items-center gap-2 text-ink no-underline";
+
+/** A pod's container opens its pod; any other container opens itself. */
+function ConsumerLink({ consumer }: { consumer: Consumer }) {
+  const [namespace, name] = consumer.pod?.split("/") ?? [];
+  const label = (
+    <>
+      <Tile logo={logoFor(consumer.image)} />
+      <span className="truncate">{consumer.name}</span>
+    </>
+  );
+  if (namespace && name) {
+    return (
+      <Link
+        to="/kubernetes/pods/$namespace/$name"
+        params={{ namespace, name }}
+        className={linkClass}
+      >
+        {label}
+      </Link>
+    );
+  }
+  return (
+    <Link to="/containers/$id" params={{ id: consumer.id }} className={linkClass}>
+      {label}
+    </Link>
+  );
+}
+
 /** Containers using the most memory right now. */
 export function TopConsumers({ consumers }: { consumers: Consumer[] }) {
   return (
@@ -36,14 +65,7 @@ export function TopConsumers({ consumers }: { consumers: Consumer[] }) {
                 className="h-9 hover:bg-hover [&>td]:border-b-[0.5px] [&>td]:border-line [&>td]:px-2.5 [&>td:first-child]:pl-5 [&>td:last-child]:pr-5"
               >
                 <td className="max-w-0">
-                  <Link
-                    to="/containers/$id"
-                    params={{ id: consumer.id }}
-                    className="flex min-w-0 items-center gap-2 text-ink no-underline"
-                  >
-                    <Tile logo={logoFor(consumer.image)} />
-                    <span className="truncate">{consumer.name}</span>
-                  </Link>
+                  <ConsumerLink consumer={consumer} />
                 </td>
                 <td className="text-ink-3">{consumer.group}</td>
                 <td className="text-right tabular">{formatPercent(consumer.cpuPercent)}</td>

@@ -1,6 +1,3 @@
-import clsx from "clsx";
-import { type RefObject, useEffect, useEffectEvent, useRef } from "react";
-
 import type { ContainerSummary, ContainerUsage } from "@/lib/ipc/bindings";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { Checkbox } from "@/ui/checkbox";
@@ -17,8 +14,6 @@ type ContainerTableProps = ContainerCallbacks & {
   onSelect: (ids: string[], selected: boolean) => void;
   collapsed: ReadonlySet<string>;
   onCollapse: (group: string) => void;
-  hot: string | null;
-  onHot: (segment: string | null) => void;
 };
 
 /** The image column only fits beside the others in a wide window. */
@@ -38,34 +33,6 @@ function headerState(
   return count === all.length ? true : "indeterminate";
 }
 
-/** Reports which project's rows the pointer is over, so the ledger can light it up. */
-function useHoveredSegment(
-  table: RefObject<HTMLTableElement | null>,
-  onHot: (segment: string | null) => void,
-) {
-  const hover = useEffectEvent(onHot);
-  useEffect(() => {
-    const element = table.current;
-    if (!element) {
-      return;
-    }
-    const over = (event: PointerEvent) => {
-      const body =
-        event.target instanceof Element
-          ? event.target.closest<HTMLElement>("tbody[data-segment]")
-          : null;
-      hover(body?.dataset.segment ?? null);
-    };
-    const leave = () => hover(null);
-    element.addEventListener("pointerover", over);
-    element.addEventListener("pointerleave", leave);
-    return () => {
-      element.removeEventListener("pointerover", over);
-      element.removeEventListener("pointerleave", leave);
-    };
-  }, [table]);
-}
-
 export function ContainerTable({
   groups,
   usage,
@@ -73,17 +40,13 @@ export function ContainerTable({
   onSelect,
   collapsed,
   onCollapse,
-  hot,
-  onHot,
   act,
   remove,
 }: ContainerTableProps) {
   const wide = useMediaQuery(WIDE);
-  const table = useRef<HTMLTableElement>(null);
-  useHoveredSegment(table, onHot);
   const all = groups.flatMap((group) => group.containers);
   return (
-    <table ref={table} className="w-full table-fixed border-separate border-spacing-0 text-13">
+    <table className="w-full table-fixed border-separate border-spacing-0 text-13">
       <colgroup>
         <col className="w-11" />
         <col />
@@ -120,17 +83,9 @@ export function ContainerTable({
         </tr>
       </thead>
       {groups.map((group) => {
-        const segment = group.project ? `project:${group.project}` : "standalone";
         const open = !collapsed.has(group.id);
         return (
-          <tbody
-            key={group.id}
-            data-segment={segment}
-            className={clsx(
-              "transition-opacity duration-220",
-              hot !== null && hot !== segment && "opacity-45",
-            )}
-          >
+          <tbody key={group.id}>
             <ProjectRow
               group={group}
               usage={usage}

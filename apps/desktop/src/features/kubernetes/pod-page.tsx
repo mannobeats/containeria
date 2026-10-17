@@ -1,9 +1,10 @@
-import { IconArrowsExchange, IconChevronRight, IconDots, IconX } from "@tabler/icons-react";
-import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
+import { IconArrowsExchange, IconDots, IconX } from "@tabler/icons-react";
+import { getRouteApi, useNavigate } from "@tanstack/react-router";
 
 import { formatAge, plural } from "@/lib/format";
 import type { Cluster, PodSummary } from "@/lib/ipc/bindings";
 import { Crumb, Page } from "@/shell/page";
+import { ParentCrumb } from "@/shell/parent-crumb";
 import { Button } from "@/ui/button";
 import { Chip } from "@/ui/chip";
 import { EmptyState } from "@/ui/empty-state";
@@ -134,13 +135,7 @@ export function PodPage() {
   );
   const crumbs = (
     <>
-      <Link
-        to="/kubernetes"
-        className="rounded-[5px] px-1 py-0.5 font-medium text-ink-3 no-underline hover:bg-hover hover:text-ink"
-      >
-        Kubernetes
-      </Link>
-      <IconChevronRight className="size-3.5 text-ink-4" aria-hidden />
+      <ParentCrumb to="/kubernetes" label="Kubernetes" />
       <Crumb>{name}</Crumb>
     </>
   );

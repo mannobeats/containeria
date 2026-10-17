@@ -46,7 +46,7 @@ describe("TrayView", () => {
       },
     );
     const calls = renderTray("running");
-    await waitFor(() => expect(names(calls)).toContain("trayFit"));
+    await waitFor(() => expect(names(calls)).toContain("windowFit"));
   });
 
   it("lists what runs and stops a container", async () => {
@@ -66,12 +66,22 @@ describe("TrayView", () => {
     await waitFor(() => expect(names(calls)).toContain("engineStart"));
   });
 
+  it("closes on Escape, as a popover does", async () => {
+    const calls = renderTray("running");
+    await screen.findByText("Engine running · 1 container");
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(names(calls)).toContain("windowHide"));
+  });
+
   it("opens the window and quits", async () => {
     const calls = renderTray("running");
     await userEvent.click(await screen.findByRole("button", { name: "Open Containeria" }));
+    await userEvent.click(screen.getByRole("button", { name: "Settings…" }));
     await userEvent.click(screen.getByRole("button", { name: "Quit Containeria" }));
     await waitFor(() =>
-      expect(names(calls)).toEqual(expect.arrayContaining(["windowShowMain", "appQuit"])),
+      expect(names(calls)).toEqual(
+        expect.arrayContaining(["windowShowMain", "settingsOpen", "appQuit"]),
+      ),
     );
   });
 });

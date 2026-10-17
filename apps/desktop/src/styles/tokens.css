@@ -30,7 +30,7 @@
   --strong: light-dark(oklch(0.24 var(--tint) var(--hue)), oklch(0.95 0 0));
   --on-strong: light-dark(oklch(0.99 0 0), oklch(0.19 0 0));
   /* the terminal is always a dark well, in both appearances */
-  --term-bg: light-dark(oklch(0.2 0.008 255), oklch(0.17 0.008 255));
+  --term-bg: oklch(0.17 0.008 255);
   --term-fg: oklch(0.88 0.005 255);
   --term-cursor: oklch(0.85 0.1 255);
   --term-selection: oklch(0.62 0.19 255 / 0.35);
@@ -57,6 +57,8 @@
   );
   --focus: 0 0 0 3px
     light-dark(oklch(0.56 0.2 var(--brand-h) / 0.28), oklch(0.62 0.19 var(--brand-h) / 0.45));
+  /* The ring around buttons, tabs and rows: only while the keyboard drives the page. */
+  --key-focus: 0 0 #0000;
 
   /* states */
   --ok: light-dark(oklch(0.56 0.15 150), oklch(0.74 0.16 150));
@@ -99,6 +101,9 @@
     0 0 0 0.5px light-dark(oklch(0 0 0 / 0.18), oklch(1 0 0 / 0.14)),
     0 18px 50px oklch(0 0 0 / 0.28), 0 50px 100px oklch(0 0 0 / 0.18);
   --blur: saturate(180%) blur(24px);
+}
+[data-input="keyboard"] {
+  --key-focus: var(--focus);
 }
 [data-theme="dark"] {
   color-scheme: dark;

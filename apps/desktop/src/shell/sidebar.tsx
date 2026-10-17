@@ -133,7 +133,7 @@ function EngineCard() {
     <Menu entries={entries}>
       <button
         type="button"
-        className="mx-2.5 mb-2 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors duration-140 hover:bg-sidebar-hover"
+        className="mx-2.5 mb-2 flex items-center gap-2.5 rounded-md px-2.5 py-2 text-left data-[state=open]:bg-sidebar-active"
       >
         <AppMark size={28} />
         <span className="min-w-0 flex-1">
@@ -157,10 +157,7 @@ function MemoryFooter() {
   const { data: metrics } = useMetrics();
   const ledger = metrics?.ledger;
   return (
-    <Link
-      to="/activity"
-      className="block rounded-[7px] px-2 pt-1.5 pb-2 no-underline transition-colors duration-140 hover:bg-sidebar-hover"
-    >
+    <Link to="/activity" className="block rounded-[7px] px-2 pt-1.5 pb-2 no-underline">
       <span className="mb-1.5 flex justify-between text-12 text-ink-3">
         Memory
         <b className="font-medium text-ink tabular">
@@ -231,7 +228,7 @@ export function Sidebar() {
       <button
         type="button"
         onClick={() => openPalette(true)}
-        className="mx-2.5 mb-1.5 flex h-7 items-center gap-[7px] rounded-[7px] bg-sidebar-hover px-2 text-13 text-ink-3 transition-colors duration-140 hover:bg-sidebar-active"
+        className="mx-2.5 mb-1.5 flex h-7 items-center gap-[7px] rounded-[7px] bg-sidebar-hover px-2 text-13 text-ink-3"
       >
         <IconSearch aria-hidden />
         <span className="truncate">Search</span>
@@ -258,7 +255,6 @@ export function Sidebar() {
         <Group label="Mac">
           <Item to="/domains" icon="domain" label="Domains" />
           <Item to="/activity" icon="activity" label="Activity" />
-          <Item to="/settings" icon="settings" label="Settings" />
         </Group>
       </nav>
       <div className="shrink-0 border-t-[0.5px] border-[light-dark(oklch(0_0_0/0.07),oklch(1_0_0/0.06))] px-2.5 pt-2.5 pb-3">

@@ -71,14 +71,6 @@ const containerDetail = createRoute({
   ),
 });
 
-const settings = createRoute({
-  getParentRoute: () => root,
-  path: "settings",
-  beforeLoad: () => {
-    throw redirect({ to: "/settings/$section", params: { section: "general" } });
-  },
-});
-
 const welcome = createRoute({
   getParentRoute: () => root,
   path: "welcome",
@@ -178,16 +170,6 @@ const routeTree = root.addChildren([
     () =>
       import("@/features/activity/activity-page").then((module) => ({
         default: module.ActivityPage,
-      })),
-    false,
-  ),
-  settings,
-  page(
-    "settings/$section",
-    "Settings",
-    () =>
-      import("@/features/settings/settings-page").then((module) => ({
-        default: module.SettingsPage,
       })),
     false,
   ),

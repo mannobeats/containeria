@@ -120,8 +120,6 @@ export function ContainersPage() {
             onSelect={selection.set}
             collapsed={collapsed.ids}
             onCollapse={collapsed.toggle}
-            hot={hot}
-            onHot={setHot}
             act={act}
             remove={setRemoving}
           />

@@ -4,6 +4,7 @@ import { getRouteApi, Link } from "@tanstack/react-router";
 import type { Namespace, ServerInfo } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
 import { Crumb, Page } from "@/shell/page";
+import { ParentCrumb } from "@/shell/parent-crumb";
 import { Button } from "@/ui/button";
 import { buttonClass } from "@/ui/button-class";
 import { EmptyState } from "@/ui/empty-state";
@@ -154,13 +155,7 @@ export function WorkspacePage() {
       flush
       crumbs={
         <>
-          <Link
-            to="/data"
-            className="rounded-[5px] px-1 py-0.5 font-medium text-ink-3 no-underline hover:bg-hover hover:text-ink"
-          >
-            Data
-          </Link>
-          <span aria-hidden>/</span>
+          <ParentCrumb to="/data" label="Data" />
           <Crumb>{session.data?.name ?? connection.replace(/^container:/, "")}</Crumb>
         </>
       }

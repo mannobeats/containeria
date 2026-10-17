@@ -68,6 +68,7 @@ export function EngineCharts({ points, cpus, totalBytes }: ChartsProps) {
             series={memory.map(({ label, color }) => ({ label, color, fill: false }))}
             data={[times, ...memory.map((line) => line.values)]}
             format={formatMemory}
+            binary
           />
         </div>
       </div>

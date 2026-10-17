@@ -1,10 +1,11 @@
 use containeria_docker::EngineInfo;
 use containeria_engine::Host;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, State, Theme};
+use tauri::{AppHandle, LogicalSize, State, Theme, WebviewWindow};
 
 use crate::error::Result;
 use crate::preferences::Preferences;
+use crate::settings_window::{self, SettingsPane, ShownPane};
 use crate::state::AppState;
 use crate::tray;
 
@@ -65,11 +66,33 @@ pub(crate) async fn window_show_main(app: AppHandle) -> Result<()> {
     Ok(())
 }
 
-/// Sizes the menu bar popover to its content.
+/// Sizes the calling window, the menu bar popover or Settings, to its content's height.
 #[tauri::command]
 #[specta::specta]
-pub(crate) async fn tray_fit(app: AppHandle, height: u32) -> Result<()> {
-    Ok(tray::fit(&app, height)?)
+pub(crate) async fn window_fit(window: WebviewWindow, height: u32) -> Result<()> {
+    let width = window.inner_size()?.to_logical::<f64>(window.scale_factor()?).width;
+    Ok(window.set_size(LogicalSize::new(width, f64::from(height)))?)
+}
+
+/// Hides the calling window, as Esc dismisses the menu bar popover.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn window_hide(window: WebviewWindow) -> Result<()> {
+    Ok(window.hide()?)
+}
+
+/// Opens Settings at a pane, or switches the open Settings window to it.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn settings_open(app: AppHandle, pane: SettingsPane) -> Result<()> {
+    Ok(settings_window::open(&app, pane)?)
+}
+
+/// The pane the Settings window should show.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn settings_pane(shown: State<'_, ShownPane>) -> Result<SettingsPane> {
+    Ok(shown.get())
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, specta::Type)]

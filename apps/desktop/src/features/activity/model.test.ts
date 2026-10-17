@@ -47,22 +47,24 @@ describe("memorySeries", () => {
 });
 
 describe("topConsumers", () => {
-  it("names containers and sorts them by memory", () => {
+  it("names containers by their pod, skips pod sandboxes and sorts by memory", () => {
     const metrics = metricsFixture({
       containers: [
         { id: "a", cpuPercent: 1, memoryBytes: 10 },
         { id: "b", cpuPercent: null, memoryBytes: 30 },
         { id: "gone", cpuPercent: 1, memoryBytes: 99 },
+        { id: "pause", cpuPercent: 0, memoryBytes: 50 },
       ],
     });
     const containers = [
       containerFixture({ id: "a", name: "api", project: "shop" }),
-      containerFixture({ id: "b", name: "web", pod: "default/web" }),
+      containerFixture({ id: "b", name: "k8s_web_web-7d9_default_1", pod: "default/web-7d9" }),
+      containerFixture({ id: "pause", name: "k8s_POD_web-7d9_default_1", pod: "default/web-7d9" }),
     ];
     expect(
       topConsumers(metrics, containers).map((consumer) => [consumer.name, consumer.group]),
     ).toEqual([
-      ["web", "Kubernetes"],
+      ["web-7d9", "Kubernetes"],
       ["api", "shop"],
     ]);
     expect(topConsumers(undefined, containers)).toEqual([]);

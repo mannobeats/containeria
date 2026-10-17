@@ -16,7 +16,9 @@ export default defineConfig({
   build: {
     target: "safari18",
     chunkSizeWarningLimit: 1500,
-    rolldownOptions: { input: { main: "index.html", tray: "tray.html" } },
+    rolldownOptions: {
+      input: { main: "index.html", tray: "tray.html", settings: "settings.html" },
+    },
   },
   test: {
     environment: "happy-dom",

@@ -1,10 +1,11 @@
-import { IconChevronRight, IconDots, IconPlayerPlay, IconPlayerStop } from "@tabler/icons-react";
-import { getRouteApi, Link } from "@tanstack/react-router";
+import { IconDots, IconPlayerPlay, IconPlayerStop } from "@tabler/icons-react";
+import { getRouteApi } from "@tanstack/react-router";
 import { useState } from "react";
 
 import type { Machine } from "@/lib/ipc/bindings";
 import { logoFor } from "@/lib/logos";
 import { Crumb, Page } from "@/shell/page";
+import { ParentCrumb } from "@/shell/parent-crumb";
 import { Button } from "@/ui/button";
 import { EmptyState } from "@/ui/empty-state";
 import { Menu } from "@/ui/menu";
@@ -159,13 +160,7 @@ export function MachineView({ name, tab, onTab, onLeave }: Navigation & { name: 
   const machine = list?.machines.find((candidate) => candidate.name === name);
   const crumbs = (
     <>
-      <Link
-        to="/machines"
-        className="rounded-[5px] px-1 py-0.5 font-medium text-ink-3 no-underline hover:bg-hover hover:text-ink"
-      >
-        Linux machines
-      </Link>
-      <IconChevronRight className="size-3.5 text-ink-4" aria-hidden />
+      <ParentCrumb to="/machines" label="Linux machines" />
       <Crumb>{name}</Crumb>
     </>
   );

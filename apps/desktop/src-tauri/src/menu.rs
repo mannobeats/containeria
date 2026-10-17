@@ -4,8 +4,11 @@ use tauri_plugin_opener::OpenerExt;
 use tauri_specta::Event;
 
 use crate::events::Navigate;
+use crate::settings_window::{self, SettingsPane};
 use crate::tray;
 
+const SETTINGS: &str = "settings";
+const ABOUT: &str = "about";
 const DOCS: &str = "https://github.com/mannobeats/containeria#readme";
 const ISSUES: &str = "https://github.com/mannobeats/containeria/issues/new/choose";
 
@@ -22,11 +25,11 @@ const SECTIONS: [(&str, &str, &str); 6] = [
 /// The macOS menu bar: the standard app, Edit and Window menus plus Containeria's views.
 pub(crate) fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     let containeria = SubmenuBuilder::new(app, "Containeria")
-        .text("/settings/about", "About Containeria")
+        .text(ABOUT, "About Containeria")
         .separator()
         .item(&tauri::menu::MenuItem::with_id(
             app,
-            "/settings",
+            SETTINGS,
             "Settings…",
             true,
             Some("CmdOrCtrl+,"),
@@ -34,11 +37,11 @@ pub(crate) fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .separator()
         .item(&PredefinedMenuItem::services(app, None)?)
         .separator()
-        .item(&PredefinedMenuItem::hide(app, None)?)
+        .item(&PredefinedMenuItem::hide(app, Some("Hide Containeria"))?)
         .item(&PredefinedMenuItem::hide_others(app, None)?)
         .item(&PredefinedMenuItem::show_all(app, None)?)
         .separator()
-        .item(&PredefinedMenuItem::quit(app, None)?)
+        .item(&PredefinedMenuItem::quit(app, Some("Quit Containeria"))?)
         .build()?;
     let file = SubmenuBuilder::new(app, "File")
         .text("/welcome", "Import from Docker Desktop…")
@@ -78,10 +81,14 @@ pub(crate) fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     MenuBuilder::new(app).items(&[&containeria, &file, &edit, &view, &window, &help]).build()
 }
 
-/// Routes open a view in the main window; web addresses open in the browser.
+/// Settings opens its own window; routes open a view in the main window; web addresses open in
+/// the browser.
 pub(crate) fn handle(app: &AppHandle, event: &MenuEvent) {
     let id = event.id().as_ref();
-    if id.starts_with("https://") {
+    if id == SETTINGS || id == ABOUT {
+        let pane = if id == ABOUT { SettingsPane::About } else { SettingsPane::General };
+        let _ = settings_window::open(app, pane);
+    } else if id.starts_with("https://") {
         let _ = app.opener().open_url(id, None::<&str>);
     } else if id.starts_with('/') {
         tray::show_main(app);

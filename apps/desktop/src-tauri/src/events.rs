@@ -1,6 +1,7 @@
 use containeria_docker::DockerEvent;
 
 use crate::metrics::Metrics;
+use crate::settings_window::SettingsPane;
 use serde::{Deserialize, Serialize};
 
 /// The engine started, stopped or changed settings; refetch its status.
@@ -26,3 +27,7 @@ pub(crate) struct Navigate(pub(crate) String);
 /// Something in the Kubernetes cluster changed, or it came or went; refetch the cluster.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
 pub(crate) struct KubeChanged;
+
+/// Switches the open Settings window to a pane.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+pub(crate) struct SettingsPaneShown(pub(crate) SettingsPane);

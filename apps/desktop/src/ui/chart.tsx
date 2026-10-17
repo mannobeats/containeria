@@ -23,14 +23,20 @@ type ChartProps = {
   spark?: boolean;
   /** A fixed top for the y axis, such as 100 for a percentage; otherwise it follows the data. */
   max?: number;
+  /** The lowest top the y axis may have while the data is near zero, in the series' unit. */
+  floor?: number;
+  /** Byte values read in binary units, so the y ticks step in powers of two: 64, 128, 192 MB. */
+  binary?: boolean;
 };
+
+const BINARY_STEPS = Array.from({ length: 50 }, (_, power) => 2 ** power);
 
 function options(
   host: HTMLElement,
   props: ChartProps,
   onCursor: (plot: uPlot) => void,
 ): uPlot.Options {
-  const { series, height, spark = false, format, max } = props;
+  const { series, height, spark = false, format, max, floor = 1, binary = false } = props;
   const axis = {
     show: !spark,
     stroke: resolveColor(host, "var(--ink-3)"),
@@ -45,7 +51,7 @@ function options(
     cursor: { y: false, points: { size: 7, width: 2, fill: resolveColor(host, "var(--surface)") } },
     scales: {
       x: { time: true },
-      y: { range: (_, __, high) => [0, max ?? Math.max(high * 1.15, 1)] },
+      y: { range: (_, __, high) => [0, max ?? Math.max(high * 1.15, floor)] },
     },
     axes: [
       {
@@ -59,6 +65,7 @@ function options(
         ...axis,
         grid: { show: !spark, stroke: resolveColor(host, "var(--line)"), width: 1 },
         size: 62,
+        ...(binary ? { incrs: BINARY_STEPS } : {}),
         values: (_, ticks) => ticks.map((tick) => format(tick)),
       },
     ],
@@ -144,5 +151,10 @@ function Canvas(props: ChartProps) {
 export function Chart(props: ChartProps) {
   const dark = useIsDark();
   const shape = props.series.map((entry) => `${entry.label}/${entry.color}/${entry.fill}`).join();
-  return <Canvas key={`${dark}:${props.height}:${props.spark}:${props.max}:${shape}`} {...props} />;
+  return (
+    <Canvas
+      key={`${dark}:${props.height}:${props.spark}:${props.max}:${props.floor}:${props.binary}:${shape}`}
+      {...props}
+    />
+  );
 }

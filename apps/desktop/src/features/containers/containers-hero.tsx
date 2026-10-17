@@ -5,8 +5,8 @@ import { segmentColor } from "@/features/metrics/segment-color";
 import { formatMemory } from "@/lib/format";
 import type { ContainerSummary, Ledger } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
-import { Kbd } from "@/ui/kbd";
 import { Skeleton } from "@/ui/progress";
+import { Tip } from "@/ui/tooltip";
 
 import { isRunning } from "./model";
 import { useRunSheet } from "./run/api";
@@ -93,11 +93,12 @@ export function ContainersHero({ containers, ledger, hot, onHot }: HeroProps) {
         <h1 className="m-0 text-20 font-semibold tracking-[-0.012em] text-balance text-ink">
           Containers
         </h1>
-        <Button variant="brand" className="ml-auto" onClick={showRunSheet}>
-          <IconPlayerPlay />
-          Run container
-          <Kbd className="bg-white/15 text-inherit shadow-none">⌘N</Kbd>
-        </Button>
+        <Tip label="Run a container" kbd="⌘N">
+          <Button variant="brand" className="ml-auto" onClick={showRunSheet}>
+            <IconPlayerPlay />
+            Run container
+          </Button>
+        </Tip>
       </div>
       {containers ? (
         <Answer containers={containers} ledger={ledger} />

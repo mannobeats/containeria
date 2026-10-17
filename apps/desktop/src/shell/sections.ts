@@ -10,8 +10,7 @@ export type Section = {
     | "/machines"
     | "/data"
     | "/domains"
-    | "/activity"
-    | "/settings";
+    | "/activity";
   label: string;
   icon: CxIconName;
   shortcut?: string;
@@ -28,5 +27,4 @@ export const SECTIONS: Section[] = [
   { to: "/data", label: "Data", icon: "data" },
   { to: "/domains", label: "Domains", icon: "domain" },
   { to: "/activity", label: "Activity", icon: "activity" },
-  { to: "/settings", label: "Settings", icon: "settings", shortcut: "⌘," },
 ];

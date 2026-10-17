@@ -30,7 +30,7 @@ export function GeneralPane() {
         title="Appearance"
         note="The accent colour follows the one set in macOS System Settings."
       >
-        <SettingsRow block label="Appearance">
+        <SettingsRow block label="Theme">
           <ThemePicker />
         </SettingsRow>
       </SettingsSection>

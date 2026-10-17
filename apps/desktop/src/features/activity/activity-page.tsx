@@ -1,11 +1,11 @@
 import { IconAdjustments } from "@tabler/icons-react";
-import { Link } from "@tanstack/react-router";
 
 import { useContainers } from "@/features/containers/api";
 import { isServing, useEngineStatus } from "@/features/engine/api";
 import { useMetrics } from "@/features/metrics/api";
+import { commands } from "@/lib/ipc/bindings";
 import { Crumb, Page } from "@/shell/page";
-import { buttonClass } from "@/ui/button-class";
+import { Button } from "@/ui/button";
 import { EmptyState } from "@/ui/empty-state";
 import { Tile } from "@/ui/tile";
 import { Tip } from "@/ui/tooltip";
@@ -18,14 +18,14 @@ import { TopConsumers } from "./top-consumers";
 
 const tools = (
   <Tip label="Engine settings">
-    <Link
-      to="/settings/$section"
-      params={{ section: "engine" }}
+    <Button
+      variant="ghost"
+      iconOnly
       aria-label="Engine settings"
-      className={buttonClass({ variant: "ghost", iconOnly: true })}
+      onClick={() => commands.settingsOpen("engine").catch(() => undefined)}
     >
       <IconAdjustments />
-    </Link>
+    </Button>
   </Tip>
 );
 

@@ -7,6 +7,7 @@ use crate::commands::{
 };
 use crate::events::{
     DockerChanged, EngineChanged, KubeChanged, MachinesChanged, MetricsUpdated, Navigate,
+    SettingsPaneShown,
 };
 
 /// Every command and event the UI can use. `bindings.ts` is generated from this list.
@@ -21,7 +22,8 @@ pub(crate) fn builder() -> Builder<Wry> {
             MetricsUpdated,
             Navigate,
             MachinesChanged,
-            KubeChanged
+            KubeChanged,
+            SettingsPaneShown
         ])
 }
 
@@ -45,7 +47,10 @@ fn commands() -> Commands<Wry> {
         settings::host_info,
         settings::about,
         settings::window_show_main,
-        settings::tray_fit,
+        settings::window_fit,
+        settings::window_hide,
+        settings::settings_open,
+        settings::settings_pane,
         settings::app_set_appearance,
         settings::app_quit,
         welcome::docker_desktop_detect,

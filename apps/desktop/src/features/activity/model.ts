@@ -47,13 +47,19 @@ export function memorySeries(points: MetricsPoint[]): TimeSeries[] {
 export type Consumer = {
   id: string;
   name: string;
+  /** `namespace/name` when the container runs a Kubernetes pod. */
+  pod: string | null;
   image: string;
   group: string;
   cpuPercent: number | null;
   memoryBytes: number;
 };
 
-/** Running containers by memory, biggest first, named from the container list. */
+/** The pause container Kubernetes keeps beside every pod: plumbing, not a workload. */
+const isPodSandbox = (container: ContainerSummary) =>
+  container.pod !== null && container.name.startsWith("k8s_POD_");
+
+/** Running containers by memory, biggest first. A pod's container goes by its pod's name. */
 export function topConsumers(
   metrics: Metrics | null | undefined,
   containers: ContainerSummary[],
@@ -63,14 +69,15 @@ export function topConsumers(
   return (metrics?.containers ?? [])
     .flatMap((usage) => {
       const container = byId.get(usage.id);
-      if (!container) {
+      if (!container || isPodSandbox(container)) {
         return [];
       }
       const group = container.pod ? "Kubernetes" : (container.project ?? "Standalone");
       return [
         {
           id: usage.id,
-          name: container.name,
+          name: container.pod?.split("/").at(-1) ?? container.name,
+          pod: container.pod,
           image: container.image,
           group,
           cpuPercent: usage.cpuPercent,

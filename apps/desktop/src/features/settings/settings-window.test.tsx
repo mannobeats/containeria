@@ -1,15 +1,17 @@
-import { screen, waitFor } from "@testing-library/react";
+import { emit } from "@tauri-apps/api/event";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
-import type { EnginePhase } from "@/lib/ipc/bindings";
+import type { EnginePhase, SettingsPane } from "@/lib/ipc/bindings";
 import { engineFixture, preferencesFixture } from "@/test/fixtures";
 import { mockCommands, renderWithApp } from "@/test/harness";
 
-import { SettingsPage } from "./settings-page";
+import { SettingsWindow } from "./settings-window";
 
-function renderSection(section: string, phase: EnginePhase = "running") {
+function renderSection(section: SettingsPane, phase: EnginePhase = "running") {
   const calls = mockCommands({
+    settingsPane: () => section,
     engineStatus: () =>
       engineFixture({
         phase,
@@ -36,15 +38,27 @@ function renderSection(section: string, phase: EnginePhase = "running") {
       },
     }),
   });
-  renderWithApp(<SettingsPage />, {
-    route: { path: "settings/$section", url: `/settings/${section}` },
-  });
+  renderWithApp(<SettingsWindow />);
   return calls;
 }
 
 const commandsOf = (calls: { command: string }[]) => calls.map((call) => call.command);
 
-describe("SettingsPage", () => {
+describe("SettingsWindow", () => {
+  it("asks for a pane from its toolbar and shows the one Rust names", async () => {
+    const calls = renderSection("general");
+    await userEvent.click(await screen.findByRole("button", { name: "About" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({ command: "settingsOpen", args: { pane: "about" } }),
+    );
+    await act(() => emit("settings-pane-shown", "about"));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "About" }).getAttribute("aria-current")).toBe(
+        "page",
+      ),
+    );
+  });
+
   it("switches appearance and menu bar settings", async () => {
     const calls = renderSection("general");
     await userEvent.click(await screen.findByRole("radio", { name: "Dark" }));
