@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useEngineStatus, useSaveEngineConfig } from "@/features/engine/api";
 import { useHost } from "@/features/settings/api";
 import { SettingsRow, SettingsSection } from "@/features/settings/settings-section";
+import { plural } from "@/lib/format";
 import type { EngineConfig } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
 import { Slider } from "@/ui/slider";
@@ -25,7 +26,7 @@ function ResourcesForm({ initial, onDone }: { initial: EngineConfig; onDone: () 
             value={config.cpus}
             min={1}
             max={host?.cores ?? 8}
-            unit="cores"
+            format={(count) => plural(count, "core")}
             onChange={(cpus) => update({ cpus })}
           />
         </SettingsRow>
@@ -35,7 +36,7 @@ function ResourcesForm({ initial, onDone }: { initial: EngineConfig; onDone: () 
             value={config.memoryGib}
             min={2}
             max={host ? Math.floor(host.memoryBytes / GIB) : 16}
-            unit="GB"
+            format={(gib) => `${gib} GB`}
             onChange={(memoryGib) => update({ memoryGib })}
           />
         </SettingsRow>

@@ -1,6 +1,6 @@
 import { IconDeviceLaptop } from "@tabler/icons-react";
 
-import { formatMemory } from "@/lib/format";
+import { formatMemory, plural } from "@/lib/format";
 import type { EngineConfig, VmType } from "@/lib/ipc/bindings";
 import { Select } from "@/ui/select";
 import { Slider } from "@/ui/slider";
@@ -24,8 +24,10 @@ function Resources({ config, update, savedDisk }: Edit & { savedDisk: number }) 
       {host ? (
         <p className="m-0 mb-3.5 flex items-center gap-2 text-13 text-ink-3">
           <IconDeviceLaptop aria-hidden />
-          This Mac: <b className="font-medium text-ink">{host.chip}</b>, {host.cores} cores,{" "}
-          {formatMemory(host.memoryBytes)} memory
+          <span>
+            This Mac: <b className="font-medium text-ink">{host.chip}</b>,{" "}
+            {plural(host.cores, "core")}, {formatMemory(host.memoryBytes)} memory
+          </span>
         </p>
       ) : null}
       <SettingsSection title="Resources">
@@ -35,7 +37,7 @@ function Resources({ config, update, savedDisk }: Edit & { savedDisk: number }) 
             value={config.cpus}
             min={1}
             max={cores}
-            unit="cores"
+            format={(count) => plural(count, "core")}
             onChange={(cpus) => update({ cpus })}
           />
         </SettingsRow>
@@ -49,7 +51,7 @@ function Resources({ config, update, savedDisk }: Edit & { savedDisk: number }) 
             value={config.memoryGib}
             min={2}
             max={memory}
-            unit="GB"
+            format={(gib) => `${gib} GB`}
             onChange={(memoryGib) => update({ memoryGib })}
           />
         </SettingsRow>
@@ -60,7 +62,7 @@ function Resources({ config, update, savedDisk }: Edit & { savedDisk: number }) 
             min={savedDisk}
             max={Math.max(512, savedDisk)}
             step={8}
-            unit="GB"
+            format={(gib) => `${gib} GB`}
             onChange={(diskGib) => update({ diskGib })}
           />
         </SettingsRow>

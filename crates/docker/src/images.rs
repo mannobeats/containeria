@@ -35,6 +35,10 @@ pub struct ImageSummary {
 /// last slash; a reference without one is `latest`.
 #[must_use]
 pub fn split_reference(reference: &str) -> (String, String) {
+    if let Some((repository, digest)) = reference.split_once('@') {
+        let short = digest.split_once(':').map_or(digest, |(_, hex)| hex);
+        return (repository.to_owned(), format!("@{}", &short[..short.len().min(12)]));
+    }
     let name_start = reference.rfind('/').map_or(0, |slash| slash + 1);
     match reference[name_start..].rfind(':') {
         Some(colon) => {
@@ -268,6 +272,13 @@ mod tests {
     use bollard::models::{ErrorDetail, ImageConfig, ProgressDetail};
 
     use super::*;
+
+    #[test]
+    fn shows_a_digest_reference_as_a_short_digest() {
+        let (repository, tag) =
+            split_reference("postgres@sha256:d3e1620b530c944afa9e887d22eb899824da68");
+        assert_eq!((repository.as_str(), tag.as_str()), ("postgres", "@d3e1620b530c"));
+    }
 
     #[test]
     fn splits_references_with_registry_ports_and_digests_of_tags() {

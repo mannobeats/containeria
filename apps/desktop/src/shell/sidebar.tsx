@@ -14,7 +14,7 @@ import { MemoryLedger } from "@/features/metrics/memory-ledger";
 import { useNetworks } from "@/features/networks/api";
 import { useVolumes } from "@/features/volumes/api";
 import { formatMemory, plural } from "@/lib/format";
-import type { EnginePhase } from "@/lib/ipc/bindings";
+import type { EnginePhase, EngineStatus } from "@/lib/ipc/bindings";
 import { AppMark } from "@/ui/app-mark";
 import { Button } from "@/ui/button";
 import { CxIcon, type CxIconName } from "@/ui/cx-icon";
@@ -77,6 +77,16 @@ const phaseLine: Record<EnginePhase, string> = {
   external: "Using another engine",
 };
 
+function engineLabel(status: EngineStatus | undefined): string {
+  if (!status) {
+    return "Engine";
+  }
+  if (status.phase === "external") {
+    return "Docker engine from CONTAINERIA_DOCKER_SOCKET";
+  }
+  return `Engine · ${status.config.cpus} CPUs · ${status.config.memoryGib} GB`;
+}
+
 function EngineCard() {
   const { data: status } = useEngineStatus();
   const control = useEngineControl();
@@ -85,9 +95,7 @@ function EngineCard() {
   const entries: MenuEntry[] = [
     {
       kind: "label",
-      label: status
-        ? `Engine · ${status.config.cpus} CPUs · ${status.config.memoryGib} GB`
-        : "Engine",
+      label: engineLabel(status),
     },
     serving
       ? {

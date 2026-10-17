@@ -77,7 +77,15 @@ export function ImageRow({ image, users, onTag, onDelete }: ImageRowProps) {
             </span>
           </Link>
         </td>
-        <td>{image.tag ? <Chip mono>{image.tag}</Chip> : <Dash />}</td>
+        <td className="max-w-0">
+          {image.tag ? (
+            <Chip mono className="max-w-full truncate">
+              {image.tag}
+            </Chip>
+          ) : (
+            <Dash />
+          )}
+        </td>
         <td className="font-mono text-mono-12 text-ink-3">{shortId(image.id)}</td>
         <td className="text-right tabular">{formatBytes(image.sizeBytes)}</td>
         <td className="text-ink-3">{formatRelative(image.createdAt)}</td>

@@ -14,7 +14,12 @@ pub(crate) async fn domains_status(state: State<'_, AppState>) -> Result<Domains
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn domains_set_enabled(state: State<'_, AppState>, enabled: bool) -> Result<()> {
-    Ok(state.domains.set_enabled(enabled).await?)
+    state.domains.set_enabled(enabled).await?;
+    // Fill the route table now rather than on the supervisor's next tick.
+    if enabled && let Ok(docker) = state.engine.docker().await {
+        state.domains.set_containers(docker.containers().await.unwrap_or_default());
+    }
+    Ok(())
 }
 
 #[tauri::command]

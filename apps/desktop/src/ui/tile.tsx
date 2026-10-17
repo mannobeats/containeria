@@ -20,7 +20,10 @@ type TileProps = {
   className?: string;
 };
 
-/** A neutral chip carrying a real brand logo, or Containeria's own icon when there is none. */
+/**
+ * A neutral chip carrying a real brand logo, or Containeria's own icon when there is none. It is
+ * decorative: the name beside it is what screen readers announce.
+ */
 export function Tile({
   logo,
   icon = "container",
@@ -43,7 +46,8 @@ export function Tile({
       {logo ? (
         <img
           src={logoUrl(logo, dark)}
-          alt={logoTitle(logo)}
+          alt=""
+          title={logoTitle(logo)}
           draggable={false}
           className="block size-[70%] object-contain"
         />

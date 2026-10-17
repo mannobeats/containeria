@@ -11,7 +11,7 @@ export function PageHeading({
   children?: ReactNode;
 }) {
   return (
-    <section className="flex max-w-[980px] flex-col gap-2.5 px-5 pt-[18px] pb-4">
+    <section className="flex flex-col gap-2.5 px-5 pt-[18px] pb-4">
       <div className="flex items-center gap-3">
         <h1 className="m-0 mr-auto text-20 font-semibold tracking-[-0.012em] text-balance text-ink">
           {title}
@@ -26,7 +26,7 @@ export function PageHeading({
 /** The one-sentence answer under a heading. */
 export function Lede({ children }: { children: ReactNode }) {
   return (
-    <p className="m-0 text-14 text-pretty text-ink-2 [&_b]:font-semibold [&_b]:text-ink">
+    <p className="m-0 max-w-[78ch] text-14 text-pretty text-ink-2 [&_b]:font-semibold [&_b]:text-ink">
       {children}
     </p>
   );

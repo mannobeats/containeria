@@ -7,7 +7,11 @@ export default defineConfig({
   plugins: [react(), babel({ presets: [reactCompilerPreset()] }), tailwindcss()],
   resolve: { tsconfigPaths: true },
   clearScreen: false,
-  server: { port: 1420, strictPort: true, watch: { ignored: ["**/src-tauri/**"] } },
+  server: {
+    port: 1420,
+    strictPort: true,
+    watch: { ignored: ["**/src-tauri/**", "**/coverage/**"] },
+  },
   envPrefix: ["VITE_", "TAURI_ENV_"],
   build: {
     target: "safari18",
