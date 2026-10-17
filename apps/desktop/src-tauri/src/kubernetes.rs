@@ -63,10 +63,18 @@ impl Kubernetes {
     /// A connected client, connecting on first use.
     ///
     /// # Errors
-    /// Fails with `KubernetesUnavailable` while the cluster is off or starting.
+    /// Fails with `KubernetesUnavailable` while the cluster is off or starting, or the engine is
+    /// stopped.
     pub(crate) async fn client(&self, engine: &Engine) -> Result<Kube> {
         if !Self::enabled(engine) {
             return Err(CommandError::new(ErrorKind::KubernetesUnavailable, "Kubernetes is off."));
+        }
+        // k3s runs inside the engine: without this, every reconnect is a failed request kube logs.
+        if !Self::external() && engine.docker().await.is_err() {
+            return Err(CommandError::new(
+                ErrorKind::KubernetesUnavailable,
+                "Kubernetes runs inside the engine, which is stopped.",
+            ));
         }
         if let Some(client) = self.client.read().await.as_ref() {
             return Ok(client.clone());
@@ -80,9 +88,12 @@ impl Kubernetes {
         *self.client.write().await = None;
     }
 
-    fn enabled(engine: &Engine) -> bool {
+    fn external() -> bool {
         std::env::var_os("CONTAINERIA_KUBE_CONTEXT").is_some()
-            || engine.config().is_ok_and(|config| config.kubernetes.enabled)
+    }
+
+    fn enabled(engine: &Engine) -> bool {
+        Self::external() || engine.config().is_ok_and(|config| config.kubernetes.enabled)
     }
 
     /// Runs for the life of the app: while Kubernetes is on, tells the UI when the cluster changes.

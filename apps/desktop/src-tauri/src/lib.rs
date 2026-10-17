@@ -38,9 +38,11 @@ use crate::streams::Streams;
 /// # Errors
 /// Fails when Tauri can't create the app.
 pub fn run() -> tauri::Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .init();
+    // kube logs every failed request at error level, including the refused connections and 503s
+    // of a cluster that is still booting. The app already shows that as Kubernetes starting.
+    let filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("error,kube_client::client=off"));
+    tracing_subscriber::fmt().with_env_filter(filter).init();
     let ipc = ipc::builder();
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
