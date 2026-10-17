@@ -33,8 +33,10 @@ a component it exists to share (the memory ledger). `ui/` never imports from `fe
 - Shared state that isn't server data lives in a small `zustand` store with selector reads
   (`useUi((state) => state.sidebarCollapsed)`), never the whole store.
 - Accessibility: every control is a real `button`, `a`, `input` or Radix primitive with a visible
-  focus ring; icon-only buttons have `aria-label` and a `Tip`. Clickable rows use a stretched `Link`,
-  not `onClick` on `tr`.
+  focus ring (keyboard use only); icon-only buttons have `aria-label` and a `Tip`. A clickable row
+  puts a `rowLink` link with `data-row-link` in its first cell, inside a `Table` (or a table with
+  `ref={openRowOnClick}`), never `onClick` on `tr`. Don't stretch an `::after` over a row: WebKit
+  doesn't contain it in a `tr`, so it covers the whole table.
 
 ## Styling
 
