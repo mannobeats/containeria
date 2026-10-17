@@ -3,6 +3,8 @@ import { Command } from "cmdk";
 import { Dialog } from "radix-ui";
 import type { ReactNode } from "react";
 
+import { newDraft } from "@/features/compose/model";
+import { chooseComposeFile, useCompose } from "@/features/compose/store";
 import { useContainers } from "@/features/containers/api";
 import { useRunSheet } from "@/features/containers/run/api";
 import { isServing, useEngineControl, useEngineStatus } from "@/features/engine/api";
@@ -96,6 +98,18 @@ export function CommandPalette() {
                   label="Run container…"
                   hint={<Kbd>⌘N</Kbd>}
                   onSelect={run(showRunSheet)}
+                />
+                <Item
+                  icon="container"
+                  label="Deploy Compose project…"
+                  hint={<Kbd>⌘⇧N</Kbd>}
+                  onSelect={run(() => useCompose.getState().edit(newDraft()))}
+                />
+                <Item
+                  icon="container"
+                  label="Open Compose file…"
+                  hint={<Kbd>⌘O</Kbd>}
+                  onSelect={run(chooseComposeFile)}
                 />
               </Command.Group>
               <Command.Group heading="Images" className={groupClass}>

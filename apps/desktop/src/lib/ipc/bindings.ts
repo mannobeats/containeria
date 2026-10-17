@@ -75,6 +75,16 @@ export const commands = {
 	shellResize: (stream: number, cols: number, rows: number) => __TAURI_INVOKE<null>("shell_resize", { stream, cols, rows }),
 	/**  Pulls the image if needed, then creates and starts the container. Returns its id. */
 	containerRun: (spec: RunSpec) => __TAURI_INVOKE<string>("container_run", { spec }),
+	/**  Checks a definition and lists what it will run. */
+	composePreview: (source: ComposeSource, name: string | null) => __TAURI_INVOKE<ComposePreview>("compose_preview", { source, name }),
+	/**  Reads a Compose file the user dropped or picked, for the editor. */
+	composeRead: (path: string) => __TAURI_INVOKE<ComposeDocument>("compose_read", { path }),
+	/**  The file a running project came from, to edit and deploy again. */
+	composeProjectFile: (project: string) => __TAURI_INVOKE<ComposeDocument>("compose_project_file", { project }),
+	/**  Saves the definition, then brings the project up, streaming Compose's output. */
+	composeDeploy: (source: ComposeSource, name: string, channel: Channel<ComposeEvent>) => __TAURI_INVOKE<number>("compose_deploy", { source, name, channel }),
+	/**  Rebuilds, updates or removes a project Compose started, streaming its output. */
+	composeAct: (project: string, verb: ComposeVerb, channel: Channel<ComposeEvent>) => __TAURI_INVOKE<number>("compose_act", { project, verb, channel }),
 	domainsStatus: () => __TAURI_INVOKE<DomainsStatus>("domains_status"),
 	/**  Turns domains on or off. On starts the DNS server and the proxy at once. */
 	domainsSetEnabled: (enabled: boolean) => __TAURI_INVOKE<null>("domains_set_enabled", { enabled }),
@@ -202,6 +212,7 @@ export const events = {
 	engineChanged: makeEvent<EngineChanged>("engine-changed"),
 	kubeChanged: makeEvent<KubeChanged>("kube-changed"),
 	machinesChanged: makeEvent<MachinesChanged>("machines-changed"),
+	menuCommand: makeEvent<MenuCommand>("menu-command"),
 	metricsUpdated: makeEvent<MetricsUpdated>("metrics-updated"),
 	navigate: makeEvent<Navigate>("navigate"),
 	settingsPaneShown: makeEvent<SettingsPaneShown>("settings-pane-shown"),
@@ -271,6 +282,50 @@ export type CommandError = {
 	kind: ErrorKind,
 	message: string,
 };
+
+/**  A project's file, opened for editing. */
+export type ComposeDocument = {
+	path: string,
+	text: string,
+};
+
+/**  What a Compose run reports, ending with `done` or `failed`. */
+export type ComposeEvent = { kind: "line"; text: string } | { kind: "done" } | { kind: "failed"; message: string };
+
+/**  What a deploy will create, read from the files before anything runs. */
+export type ComposePreview = {
+	name: string,
+	services: ComposeService[],
+};
+
+export type ComposeService = {
+	name: string,
+	/**  The image it runs, or the one a build produces. */
+	image: string | null,
+	builds: boolean,
+	/**  Published ports as `host:container`. */
+	ports: string[],
+};
+
+/**  Where a deploy's definition comes from. */
+export type ComposeSource = 
+/**  A file on the Mac. With `text`, the edits are saved to it first. */
+{ kind: "file"; path: string; text: string | null } | 
+/**  Pasted YAML, kept in Containeria's own folder so later rebuilds find it. */
+{ kind: "text"; text: string };
+
+/**  What can be done to a whole project. */
+export type ComposeVerb = 
+/**  Creates what's missing and recreates what changed. */
+"up" | 
+/**  Builds images again and recreates every container. */
+"rebuild" | 
+/**  Pulls newer images, then recreates the containers they changed. */
+"pull" | 
+/**  Removes the containers and networks; volumes stay. */
+"down" | 
+/**  Removes the containers, networks and the project's named volumes. */
+"downWithVolumes";
 
 export type ConfigKind = "configMap" | "secret";
 
@@ -796,6 +851,9 @@ export type MachinesStatus = {
 	/**  Full VMs need nested virtualization: an M3 or newer Mac on macOS 15 or newer. */
 	supportsVms: boolean,
 };
+
+/**  A File menu command the main window carries out, such as opening a sheet. */
+export type MenuCommand = "runContainer" | "newComposeProject" | "openComposeFile" | "pullImage" | "newMachine" | "newConnection";
 
 export type Metrics = {
 	sampledAtMs: number | null,

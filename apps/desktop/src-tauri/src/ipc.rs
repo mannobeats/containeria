@@ -2,12 +2,12 @@ use tauri::Wry;
 use tauri_specta::{Builder, Commands, ErrorHandlingMode, collect_commands, collect_events};
 
 use crate::commands::{
-    container_detail, containers, data, domains, engine, images, kubernetes, machines, metrics,
-    networks, run, settings, shell, streams, volumes, welcome,
+    compose, container_detail, containers, data, domains, engine, images, kubernetes, machines,
+    metrics, networks, run, settings, shell, streams, volumes, welcome,
 };
 use crate::events::{
-    DockerChanged, EngineChanged, KubeChanged, MachinesChanged, MetricsUpdated, Navigate,
-    SettingsPaneShown,
+    DockerChanged, EngineChanged, KubeChanged, MachinesChanged, MenuCommand, MetricsUpdated,
+    Navigate, SettingsPaneShown,
 };
 
 /// Every command and event the UI can use. `bindings.ts` is generated from this list.
@@ -21,6 +21,7 @@ pub(crate) fn builder() -> Builder<Wry> {
             DockerChanged,
             MetricsUpdated,
             Navigate,
+            MenuCommand,
             MachinesChanged,
             KubeChanged,
             SettingsPaneShown
@@ -71,6 +72,11 @@ fn commands() -> Commands<Wry> {
         shell::shell_input,
         shell::shell_resize,
         run::container_run,
+        compose::compose_preview,
+        compose::compose_read,
+        compose::compose_project_file,
+        compose::compose_deploy,
+        compose::compose_act,
         domains::domains_status,
         domains::domains_set_enabled,
         domains::domains_add_route,

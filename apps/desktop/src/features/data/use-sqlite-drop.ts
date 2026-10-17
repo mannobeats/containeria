@@ -1,14 +1,12 @@
 import { useNavigate } from "@tanstack/react-router";
-import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { useEffect, useEffectEvent, useState } from "react";
+import { useFileDrop } from "@/lib/use-file-drop";
 
 import { useSaveConnection } from "./api";
 
 const DATABASE_FILE = /\.(sqlite3?|db3?)$/i;
 
-/** The first database file in a drop, if there is one. */
-function databaseFile(paths: string[]): string | undefined {
-  return paths.find((path) => DATABASE_FILE.test(path));
+function isDatabaseFile(path: string): boolean {
+  return DATABASE_FILE.test(path);
 }
 
 /**
@@ -18,12 +16,7 @@ function databaseFile(paths: string[]): string | undefined {
 export function useSqliteDrop(): boolean {
   const navigate = useNavigate();
   const save = useSaveConnection();
-  const [dragging, setDragging] = useState(false);
-  const dropped = useEffectEvent((paths: string[]) => {
-    const file = databaseFile(paths);
-    if (!file) {
-      return;
-    }
+  return useFileDrop(isDatabaseFile, (file) => {
     const name = file.split("/").at(-1)?.replace(DATABASE_FILE, "") ?? "database";
     save.mutate(
       {
@@ -47,27 +40,4 @@ export function useSqliteDrop(): boolean {
       },
     );
   });
-  useEffect(() => {
-    let stop: (() => void) | undefined;
-    let active = true;
-    getCurrentWebview()
-      .onDragDropEvent(({ payload }) => {
-        setDragging(payload.type === "enter" || payload.type === "over");
-        if (payload.type === "drop") {
-          dropped(payload.paths);
-        }
-      })
-      .then((unlisten) => {
-        stop = unlisten;
-        if (!active) {
-          unlisten();
-        }
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-      stop?.();
-    };
-  }, []);
-  return dragging;
 }

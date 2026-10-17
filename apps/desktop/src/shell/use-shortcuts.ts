@@ -1,13 +1,15 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useEffectEvent } from "react";
 
-import { useRunSheet } from "@/features/containers/run/api";
 import { applyAppearance, useIsDark } from "@/lib/theme";
 
 import { SECTIONS } from "./sections";
 import { useUi } from "./ui-store";
 
-/** App-wide ⌘ shortcuts. Each one is also shown, as a `Kbd`, where its action lives. */
+/**
+ * App-wide ⌘ shortcuts the menu bar doesn't own. Each one is also shown, as a `Kbd`, where its
+ * action lives.
+ */
 export function useShortcuts() {
   const navigate = useNavigate();
   const dark = useIsDark();
@@ -23,7 +25,6 @@ export function useShortcuts() {
     }
     const actions: Record<string, () => void> = {
       k: () => ui.setPaletteOpen(!ui.paletteOpen),
-      n: useRunSheet.getState().show,
       "\\": ui.toggleSidebar,
     };
     return actions[key];

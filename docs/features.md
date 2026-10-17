@@ -62,7 +62,7 @@ the user installed:
 | Live CPU, memory, network, disk stats | `/containers/{id}/stats` stream | Docker API | |
 | Live state changes without polling | `/events` stream | Docker API | |
 | Group by Compose project | `com.docker.compose.*` labels | Docker API | |
-| Start, stop, restart, rebuild a project | Docker Compose CLI, bundled | We build | Compose v2 is Apache-2.0. |
+| Deploy, edit, rebuild, pull, remove a project | Docker Compose CLI | Built | Paste YAML, open or drop a `compose.yaml`. Compose is Apache-2.0; the app looks for `bin/docker-compose` in its bundle, then the Docker CLI plugin, then Homebrew. Pasted projects live in `~/.containeria/compose/<name>`. |
 | Logs with follow, filter, levels | `/containers/{id}/logs` | Docker API | Levels parsed by us. |
 | Terminal into a container | exec API with TTY | Docker API | |
 | Debug shell for minimal images | sidecar container sharing PID and network namespaces | We build | Same idea as `docker debug`. |

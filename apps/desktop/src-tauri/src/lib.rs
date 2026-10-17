@@ -74,12 +74,13 @@ pub fn run() -> tauri::Result<()> {
 }
 
 fn app_state(app: &AppHandle) -> Result<AppState, Box<dyn std::error::Error>> {
-    let bundled = app.path().resource_dir().ok().map(|dir| dir.join("bin/colima"));
+    let bundled_bin = app.path().resource_dir().ok().map(|dir| dir.join("bin"));
     let home = Home::from_env()?;
-    let engine = Arc::new(Engine::new(bundled.as_deref())?);
+    let engine = Arc::new(Engine::new(bundled_bin.as_deref())?);
+    let bundled_colima = bundled_bin.map(|dir| dir.join("colima"));
     Ok(AppState {
         data: Arc::new(DataState::new(&home.root().join("data"))),
-        machines: MachinesEngine::new(home.clone(), bundled.as_deref()),
+        machines: MachinesEngine::new(home.clone(), bundled_colima.as_deref()),
         domains: Arc::new(Domains::open(&home.root().join("net"))?),
         kubernetes: Arc::new(Kubernetes::default()),
         metrics: Arc::new(Sampler::default()),

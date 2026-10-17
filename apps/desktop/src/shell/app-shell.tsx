@@ -2,6 +2,9 @@ import { Outlet, useMatches } from "@tanstack/react-router";
 import clsx from "clsx";
 
 import { useEngineEvents } from "@/app/use-engine-events";
+import { ComposeDropTarget } from "@/features/compose/compose-drop-target";
+import { ComposeRunSheet } from "@/features/compose/compose-run-sheet";
+import { ComposeSheet } from "@/features/compose/compose-sheet";
 import { RunSheet } from "@/features/containers/run/run-sheet";
 import { EngineGate } from "@/features/engine/engine-gate";
 import { useFirstLaunch } from "@/features/welcome/use-first-launch";
@@ -11,6 +14,7 @@ import { TooltipProvider } from "@/ui/tooltip";
 import { CommandPalette } from "./command-palette";
 import { Sidebar } from "./sidebar";
 import { useUi } from "./ui-store";
+import { useMenuCommands } from "./use-menu-commands";
 import { useMenuNavigation } from "./use-menu-navigation";
 import { useShortcuts } from "./use-shortcuts";
 
@@ -19,6 +23,7 @@ export function AppShell() {
   useEngineEvents();
   useShortcuts();
   useMenuNavigation();
+  useMenuCommands();
   useFirstLaunch();
   const collapsed = useUi((state) => state.sidebarCollapsed);
   const matches = useMatches();
@@ -55,6 +60,9 @@ export function AppShell() {
       </div>
       <CommandPalette />
       <RunSheet />
+      <ComposeSheet />
+      <ComposeRunSheet />
+      <ComposeDropTarget />
       <Toaster />
     </TooltipProvider>
   );

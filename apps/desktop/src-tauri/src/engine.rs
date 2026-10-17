@@ -3,7 +3,7 @@ use std::pin::pin;
 use std::sync::{Mutex, PoisonError};
 use std::time::Duration;
 
-use containeria_docker::Docker;
+use containeria_docker::{Compose, Docker};
 use containeria_engine::{
     Colima, EngineConfig, Home, Instance, InstanceStatus, KubernetesAction, LogLine, Profile,
 };
@@ -13,7 +13,7 @@ use tauri::AppHandle;
 use tauri_specta::Event;
 use tokio::sync::RwLock;
 
-use crate::error::{CommandError, Result};
+use crate::error::{CommandError, ErrorKind, Result};
 use crate::events::{DockerChanged, EngineChanged};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
@@ -61,6 +61,7 @@ pub(crate) fn phase_of(
 pub(crate) struct Engine {
     home: Home,
     colima: Option<Colima>,
+    compose: Option<Compose>,
     external_socket: Option<PathBuf>,
     docker: RwLock<Option<Docker>>,
     transition: Mutex<Option<EnginePhase>>,
@@ -71,13 +72,17 @@ impl Engine {
 
     /// # Errors
     /// Fails when no home folder can be found.
-    pub(crate) fn new(bundled_colima: Option<&Path>) -> Result<Self> {
+    pub(crate) fn new(bundled_bin: Option<&Path>) -> Result<Self> {
         let home = Home::from_env()?;
-        let colima = Colima::locate(home.clone(), bundled_colima).ok();
+        let bundled = |name| bundled_bin.map(|dir| dir.join(name));
+        let colima = Colima::locate(home.clone(), bundled("colima").as_deref()).ok();
         let external_socket = std::env::var_os("CONTAINERIA_DOCKER_SOCKET").map(PathBuf::from);
+        let socket = external_socket.clone().unwrap_or_else(|| home.docker_socket());
+        let compose = Compose::locate(&socket, bundled("docker-compose").as_deref());
         Ok(Self {
             home,
             colima,
+            compose,
             external_socket,
             docker: RwLock::new(None),
             transition: Mutex::new(None),
@@ -193,6 +198,19 @@ impl Engine {
         Ok(docker)
     }
 
+    /// Docker Compose, pointed at this engine.
+    ///
+    /// # Errors
+    /// Fails with `EngineMissing` when Compose isn't bundled or installed.
+    pub(crate) fn compose(&self) -> Result<Compose> {
+        self.compose.clone().ok_or_else(|| {
+            CommandError::new(
+                ErrorKind::EngineMissing,
+                "Docker Compose wasn't found. Install it with `brew install docker-compose`.",
+            )
+        })
+    }
+
     pub(crate) const fn is_external(&self) -> bool {
         self.external_socket.is_some()
     }
@@ -232,9 +250,9 @@ impl Engine {
     }
 
     fn colima(&self) -> Result<&Colima> {
-        self.colima.as_ref().ok_or_else(|| {
-            CommandError::new(crate::error::ErrorKind::EngineMissing, "Colima isn't installed.")
-        })
+        self.colima
+            .as_ref()
+            .ok_or_else(|| CommandError::new(ErrorKind::EngineMissing, "Colima isn't installed."))
     }
 
     fn transition(&self) -> Option<EnginePhase> {

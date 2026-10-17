@@ -24,6 +24,20 @@ pub(crate) struct MetricsUpdated(pub(crate) Metrics);
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
 pub(crate) struct Navigate(pub(crate) String);
 
+/// A File menu command the main window carries out, such as opening a sheet.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type, tauri_specta::Event,
+)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum MenuCommand {
+    RunContainer,
+    NewComposeProject,
+    OpenComposeFile,
+    PullImage,
+    NewMachine,
+    NewConnection,
+}
+
 /// Something in the Kubernetes cluster changed, or it came or went; refetch the cluster.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
 pub(crate) struct KubeChanged;

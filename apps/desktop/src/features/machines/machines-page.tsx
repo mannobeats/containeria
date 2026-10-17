@@ -13,6 +13,7 @@ import { MachineCard } from "./machine-card";
 import { MachinesIntro } from "./machines-intro";
 import { isRunning, type ListedMachine, type MachineList } from "./model";
 import { NewMachineSheet } from "./new-machine-sheet";
+import { useNewMachineSheet } from "./new-machine-store";
 
 function Lede({ machines }: { machines: ListedMachine[] }) {
   const running = machines.filter(isRunning);
@@ -84,7 +85,8 @@ function introPhase(
 export function MachinesPage() {
   const { data: status } = useMachinesStatus();
   const { data: list } = useMachines();
-  const [creating, setCreating] = useState(false);
+  const creating = useNewMachineSheet((state) => state.open);
+  const setCreating = useNewMachineSheet((state) => state.setOpen);
   const intro = introPhase(status?.phase, list);
   const showGrid = status?.phase === "running" && intro === null;
   const newButton = (

@@ -1,5 +1,7 @@
 import { useRef, useState } from "react";
 
+import { newDraft } from "@/features/compose/model";
+import { useCompose } from "@/features/compose/store";
 import { usageById, useMetrics } from "@/features/metrics/api";
 import type { ContainerAction, ContainerSummary } from "@/lib/ipc/bindings";
 import { useIdSet } from "@/lib/use-id-set";
@@ -17,16 +19,27 @@ import { ContainersHero } from "./containers-hero";
 import { CrashBanners } from "./crash-banners";
 import { DeleteSheet } from "./delete-sheet";
 import { emptyTitle, type Filter, filterOptions, groupByProject, matches } from "./model";
+import { useRunSheet } from "./run/api";
 
 function NoContainers() {
+  const showRunSheet = useRunSheet((state) => state.show);
+  const edit = useCompose((state) => state.edit);
   return (
     <EmptyState
       art={<Tile icon="container" size="xl" />}
       title="No containers yet"
       className="h-full"
+      actions={
+        <>
+          <Button onClick={() => edit(newDraft())}>Deploy Compose</Button>
+          <Button variant="brand" onClick={showRunSheet}>
+            Run container
+          </Button>
+        </>
+      }
     >
-      Run one with <code className="font-mono text-mono-13">docker run</code> or start a Compose
-      project. It shows up here at once.
+      Run one, deploy a Compose project or drop a compose.yaml here. Containers started with{" "}
+      <code className="font-mono text-mono-13">docker run</code> show up at once.
     </EmptyState>
   );
 }

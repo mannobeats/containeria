@@ -1,5 +1,7 @@
-import { IconPlayerPlay } from "@tabler/icons-react";
+import { IconPlayerPlay, IconStack2 } from "@tabler/icons-react";
 
+import { newDraft } from "@/features/compose/model";
+import { useCompose } from "@/features/compose/store";
 import { MemoryLedger } from "@/features/metrics/memory-ledger";
 import { segmentColor } from "@/features/metrics/segment-color";
 import { formatMemory } from "@/lib/format";
@@ -87,14 +89,21 @@ type HeroProps = {
 /** The answer to "what's running and where's my memory going", above the list. */
 export function ContainersHero({ containers, ledger, hot, onHot }: HeroProps) {
   const showRunSheet = useRunSheet((state) => state.show);
+  const edit = useCompose((state) => state.edit);
   return (
     <section className="px-5 pt-[18px] pb-4">
       <div className="mb-2.5 flex items-center">
         <h1 className="m-0 text-20 font-semibold tracking-[-0.012em] text-balance text-ink">
           Containers
         </h1>
+        <Tip label="Deploy a Compose project, or drop a compose.yaml on the window" kbd="⌘⇧N">
+          <Button className="ml-auto" onClick={() => edit(newDraft())}>
+            <IconStack2 />
+            Deploy Compose
+          </Button>
+        </Tip>
         <Tip label="Run a container" kbd="⌘N">
-          <Button variant="brand" className="ml-auto" onClick={showRunSheet}>
+          <Button variant="brand" className="ml-2" onClick={showRunSheet}>
             <IconPlayerPlay />
             Run container
           </Button>

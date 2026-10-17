@@ -1,12 +1,15 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import type { EnginePhase, Machine } from "@/lib/ipc/bindings";
 import { mockCommands, renderWithApp } from "@/test/harness";
 
 import { distrosFixture, machineFixture, machinesStatusFixture } from "./fixtures";
 import { MachinesPage } from "./machines-page";
+import { useNewMachineSheet } from "./new-machine-store";
+
+beforeEach(() => useNewMachineSheet.setState({ open: false }));
 
 function setup(
   phase: EnginePhase = "running",

@@ -1,4 +1,3 @@
-import { mockWindows } from "@tauri-apps/api/mocks";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -6,6 +5,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { connectionFixture, detectedFixture } from "@/test/data-fixtures";
 import { mockCommands, renderWithApp } from "@/test/harness";
 
+import { useConnectionSheet } from "./connection-sheet-store";
 import { DataPage } from "./data-page";
 import { useWorkspace } from "./workspace-store";
 
@@ -60,8 +60,8 @@ function setup(empty = false) {
 }
 
 beforeEach(() => {
-  mockWindows("main");
   useWorkspace.setState({ tabs: {}, sql: {} });
+  useConnectionSheet.setState({ open: false, connection: undefined });
 });
 
 describe("DataPage", () => {

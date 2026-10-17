@@ -1,3 +1,4 @@
+pub(crate) mod compose;
 pub(crate) mod container_detail;
 pub(crate) mod containers;
 pub(crate) mod data;

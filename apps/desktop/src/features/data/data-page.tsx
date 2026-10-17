@@ -17,6 +17,7 @@ import {
   useSavedQueries,
 } from "./api";
 import { ConnectionSheet } from "./connection-sheet";
+import { useConnectionSheet } from "./connection-sheet-store";
 import { DetectedTable, SavedTable } from "./connection-tables";
 import { QueryRail } from "./query-rail";
 import { useSqliteDrop } from "./use-sqlite-drop";
@@ -131,9 +132,7 @@ function RemoveSheet({ removing, onDone }: { removing: Connection | null; onDone
 /** All connections: databases found in containers, saved ones, and recent and saved queries. */
 export function DataPage() {
   const [query, setQuery] = useState("");
-  const [sheet, setSheet] = useState<{ open: boolean; connection?: Connection | undefined }>({
-    open: false,
-  });
+  const sheet = useConnectionSheet();
   const [removing, setRemoving] = useState<Connection | null>(null);
   const dropping = useSqliteDrop();
   return (
@@ -147,15 +146,15 @@ export function DataPage() {
             placeholder="Filter connections"
             className="w-60"
           />
-          <Button variant="brand" onClick={() => setSheet({ open: true })}>
+          <Button variant="brand" onClick={() => sheet.show()}>
             <IconPlus />
             New connection
           </Button>
         </div>
         <Connections
           query={query}
-          onNew={() => setSheet({ open: true })}
-          onEdit={(connection) => setSheet({ open: true, connection })}
+          onNew={() => sheet.show()}
+          onEdit={sheet.show}
           onRemove={setRemoving}
         />
         {dropping ? (
@@ -169,7 +168,7 @@ export function DataPage() {
         key={sheet.connection?.id ?? "new"}
         open={sheet.open}
         connection={sheet.connection}
-        onOpenChange={(open) => setSheet({ ...sheet, open })}
+        onOpenChange={sheet.setOpen}
       />
       <RemoveSheet removing={removing} onDone={() => setRemoving(null)} />
     </Page>

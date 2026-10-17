@@ -3,7 +3,7 @@ use tauri::{AppHandle, Wry};
 use tauri_plugin_opener::OpenerExt;
 use tauri_specta::Event;
 
-use crate::events::Navigate;
+use crate::events::{MenuCommand, Navigate};
 use crate::settings_window::{self, SettingsPane};
 use crate::tray;
 
@@ -11,6 +11,26 @@ const SETTINGS: &str = "settings";
 const ABOUT: &str = "about";
 const DOCS: &str = "https://github.com/mannobeats/containeria#readme";
 const ISSUES: &str = "https://github.com/mannobeats/containeria/issues/new/choose";
+
+/// File menu items the main window handles, with their ids and shortcuts.
+const COMMANDS: [(MenuCommand, &str, &str, Option<&str>); 6] = [
+    (MenuCommand::RunContainer, "command:run", "Run Container…", Some("CmdOrCtrl+N")),
+    (
+        MenuCommand::NewComposeProject,
+        "command:compose",
+        "New Compose Project…",
+        Some("CmdOrCtrl+Shift+N"),
+    ),
+    (
+        MenuCommand::OpenComposeFile,
+        "command:open-compose",
+        "Open Compose File…",
+        Some("CmdOrCtrl+O"),
+    ),
+    (MenuCommand::PullImage, "command:pull", "Pull Image…", None),
+    (MenuCommand::NewMachine, "command:machine", "New Linux Machine…", None),
+    (MenuCommand::NewConnection, "command:connection", "New Database Connection…", None),
+];
 
 /// Menu item id to the view it opens. Ids double as routes so the UI needs no lookup table.
 const SECTIONS: [(&str, &str, &str); 6] = [
@@ -43,7 +63,15 @@ pub(crate) fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .separator()
         .item(&PredefinedMenuItem::quit(app, Some("Quit Containeria"))?)
         .build()?;
-    let file = SubmenuBuilder::new(app, "File")
+    let mut file = SubmenuBuilder::new(app, "File");
+    for (index, (_, id, label, accelerator)) in COMMANDS.into_iter().enumerate() {
+        if index == 3 {
+            file = file.separator();
+        }
+        file = file.item(&tauri::menu::MenuItem::with_id(app, id, label, true, accelerator)?);
+    }
+    let file = file
+        .separator()
         .text("/welcome", "Import from Docker Desktop…")
         .separator()
         .item(&PredefinedMenuItem::close_window(app, None)?)
@@ -88,6 +116,9 @@ pub(crate) fn handle(app: &AppHandle, event: &MenuEvent) {
     if id == SETTINGS || id == ABOUT {
         let pane = if id == ABOUT { SettingsPane::About } else { SettingsPane::General };
         let _ = settings_window::open(app, pane);
+    } else if let Some((command, ..)) = COMMANDS.iter().find(|(_, item, ..)| *item == id) {
+        tray::show_main(app);
+        let _ = command.emit(app);
     } else if id.starts_with("https://") {
         let _ = app.opener().open_url(id, None::<&str>);
     } else if id.starts_with('/') {

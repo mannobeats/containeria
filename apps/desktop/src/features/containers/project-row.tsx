@@ -1,6 +1,7 @@
 import { IconChevronDown, IconPlayerPlay, IconPlayerStop, IconRefresh } from "@tabler/icons-react";
 import clsx from "clsx";
 
+import { ProjectMenu } from "@/features/compose/project-menu";
 import { segmentColor } from "@/features/metrics/segment-color";
 import { formatMemory } from "@/lib/format";
 import type { ContainerUsage } from "@/lib/ipc/bindings";
@@ -86,6 +87,7 @@ export function ProjectRow({ group, usage, collapsed, onCollapse, columns, act }
               >
                 <IconRefresh />
               </IconAction>
+              <ProjectMenu project={label} />
             </span>
           ) : null}
         </span>

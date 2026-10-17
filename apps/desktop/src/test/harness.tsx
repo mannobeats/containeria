@@ -8,7 +8,7 @@ import {
   type StaticDataRouteOption,
 } from "@tanstack/react-router";
 import type { Channel } from "@tauri-apps/api/core";
-import { clearMocks, mockIPC } from "@tauri-apps/api/mocks";
+import { clearMocks, mockIPC, mockWindows } from "@tauri-apps/api/mocks";
 import { cleanup, render } from "@testing-library/react";
 import { domMax, LazyMotion } from "motion/react";
 import type { ReactNode } from "react";
@@ -52,6 +52,7 @@ export function mockCommands(handlers: Handlers): Call[] {
     },
     { shouldMockEvents: true },
   );
+  mockWindows("main");
   return calls;
 }
 

@@ -1,6 +1,7 @@
 //! Containeria's view of the Docker Engine API. Wraps `bollard` and turns its wire types into the
 //! small, fully populated types the app shows.
 
+mod compose;
 mod containers;
 mod details;
 mod environment;
@@ -21,6 +22,10 @@ use std::path::Path;
 
 use bollard::API_DEFAULT_VERSION;
 
+pub use compose::{
+    Compose, ComposeFiles, ComposePreview, ComposeService, ComposeVerb, is_project_name,
+    project_name_from,
+};
 pub use containers::{ContainerAction, ContainerState, ContainerSummary, Port, PortProtocol};
 pub use details::{ContainerDetails, EnvVar, Health, HealthCheck, HealthStatus, Mount, MountKind};
 pub use events::{DockerEvent, ObjectKind};
