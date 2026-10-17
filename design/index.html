@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Containeria · design prototype</title>
+  <link rel="stylesheet" href="vendor/tabler/tabler-icons-300.min.css?v=5">
+  <link rel="stylesheet" href="vendor/uplot/uPlot.min.css?v=5">
+  <link rel="stylesheet" href="css/tokens.css?v=5">
+  <link rel="stylesheet" href="css/base.css?v=5">
+  <link rel="stylesheet" href="css/shell.css?v=5">
+  <link rel="stylesheet" href="css/components.css?v=5">
+  <link rel="stylesheet" href="css/containers.css?v=5">
+  <link rel="stylesheet" href="css/resources.css?v=5">
+  <link rel="stylesheet" href="css/data.css?v=5">
+  <link rel="stylesheet" href="css/system.css?v=5">
+  <script>
+    // apply saved appearance before first paint
+    (() => { const t = localStorage.getItem('cx-theme'); if (t && t !== 'system') document.documentElement.dataset.theme = t;
+      const a = JSON.parse(localStorage.getItem('cx-accent') || 'null'); if (a) { document.documentElement.style.setProperty('--brand-h', a[0]); document.documentElement.style.setProperty('--brand-c', a[1]); } })();
+  </script>
+</head>
+<body>
+  <div class="desktop" aria-hidden="true"></div>
+
+  <nav class="menubar" aria-label="macOS menu bar">
+    <button aria-label="Apple menu"><i class="ti ti-brand-apple" style="font-size:15px"></i></button>
+    <button class="mb-app" data-menu="mb-app">Containeria</button>
+    <button data-menu="mb-file">File</button>
+    <button data-menu="mb-edit">Edit</button>
+    <button data-menu="mb-view">View</button>
+    <button data-menu="mb-engine">Engine</button>
+    <button data-menu="mb-window">Window</button>
+    <button data-menu="mb-help">Help</button>
+    <div class="mb-right">
+      <button class="mb-tray" aria-label="Containeria menu bar item" data-tip="Containeria"></button>
+      <button aria-label="Wi-Fi"><i class="ti ti-wifi"></i></button>
+      <button aria-label="Battery"><i class="ti ti-battery-3"></i></button>
+      <button aria-label="Control Center"><i class="ti ti-adjustments-horizontal"></i></button>
+      <button class="mb-clock" aria-label="Clock"></button>
+    </div>
+  </nav>
+
+  <div class="window">
+    <aside class="sidebar" aria-label="Sidebar">
+      <div class="sb-top">
+        <div class="traffic" aria-hidden="true"><i></i><i></i><i></i></div>
+        <button class="btn btn-ghost btn-icon btn-sm" data-act="toggle-sidebar" aria-label="Hide sidebar" data-tip="Hide sidebar" data-kbd="⌘\"><i class="ti ti-layout-sidebar"></i></button>
+      </div>
+      <button class="sb-engine" data-menu="engine" aria-label="Engine">
+        <span class="sb-logo"></span>
+        <span class="grow"><b>Containeria</b><span><span data-engine-state>Running</span></span></span>
+        <i class="ti ti-selector ink-3"></i>
+      </button>
+      <button class="sb-search" data-act="palette"><i class="ti ti-search"></i>Search<span class="kbd">⌘K</span></button>
+      <nav class="sb-nav"></nav>
+      <div class="sb-foot">
+        <button class="sb-mem" data-go="/activity" aria-label="Engine memory">
+          <span class="row"><span>Memory</span><span><b data-mem-used></b> of <span data-mem-total></span></span></span>
+          <span class="sb-ledger"></span>
+        </button>
+      </div>
+    </aside>
+    <main class="main">
+      <div class="traffic traffic-float" aria-hidden="true"><i></i><i></i><i></i></div>
+      <header class="topbar"></header>
+      <div class="view"></div>
+      <div class="toasts" aria-live="polite"></div>
+    </main>
+  </div>
+
+  <div class="proto" aria-label="Prototype controls">
+    <b>Prototype</b>
+    <button data-act="proto-theme"><i class="ti ti-contrast"></i>Light / dark</button>
+    <button data-act="proto-tray"><i class="ti ti-layout-navbar"></i>Menu bar</button>
+    <button data-act="proto-engine"><i class="ti ti-power"></i>Engine state</button>
+    <button data-go="/welcome"><i class="ti ti-sparkles"></i>First launch</button>
+    <button data-act="palette"><i class="ti ti-command"></i>Palette</button>
+    <button data-menu="proto-screens" data-align="end"><i class="ti ti-list"></i>All screens</button>
+  </div>
+
+  <script src="vendor/uplot/uPlot.iife.min.js?v=5"></script>
+  <script src="js/data.js?v=5"></script>
+  <script src="js/icons.js?v=5"></script>
+  <script src="js/core.js?v=5"></script>
+  <script src="js/shell.js?v=5"></script>
+  <script src="js/components.js?v=5"></script>
+  <script src="js/views/containers.js?v=5"></script>
+  <script src="js/views/container-detail.js?v=5"></script>
+  <script src="js/views/resources.js?v=5"></script>
+  <script src="js/views/kubernetes.js?v=5"></script>
+  <script src="js/views/machines.js?v=5"></script>
+  <script src="js/views/data.js?v=5"></script>
+  <script src="js/views/system.js?v=5"></script>
+  <script>App.render();</script>
+</body>
+</html>

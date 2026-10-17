@@ -1,0 +1,91 @@
+@font-face { font-family: "Geist"; src: url("../vendor/fonts/Geist-Variable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Geist Mono"; src: url("../vendor/fonts/GeistMono-Variable.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+
+:root {
+  color-scheme: light dark;
+  --hue: 255; --tint: .005;
+  --brand-h: 255; --brand-c: 1;
+
+  /* neutrals */
+  --desk:        light-dark(oklch(.80 .02 250), oklch(.24 .02 260));
+  --bg:          light-dark(oklch(.995 0 0),                     oklch(.185 var(--tint) var(--hue)));
+  --panel:       light-dark(oklch(.965 var(--tint) var(--hue) / .82), oklch(.215 var(--tint) var(--hue) / .78));
+  --panel-solid: light-dark(oklch(.965 var(--tint) var(--hue)),  oklch(.215 var(--tint) var(--hue)));
+  --surface:     light-dark(oklch(1 0 0),                        oklch(.235 var(--tint) var(--hue)));
+  --raised:      light-dark(oklch(1 0 0),                        oklch(.265 var(--tint) var(--hue)));
+  --fill:        light-dark(oklch(.955 var(--tint) var(--hue)),  oklch(.27 var(--tint) var(--hue)));
+  --hover:       light-dark(oklch(.94 var(--tint) var(--hue)),   oklch(.29 var(--tint) var(--hue)));
+  --press:       light-dark(oklch(.91 var(--tint) var(--hue)),   oklch(.33 var(--tint) var(--hue)));
+  --line:        light-dark(oklch(.915 var(--tint) var(--hue)),  oklch(.30 var(--tint) var(--hue)));
+  --line-strong: light-dark(oklch(.85 var(--tint) var(--hue)),   oklch(.38 var(--tint) var(--hue)));
+  --ink:         light-dark(oklch(.21 var(--tint) var(--hue)),   oklch(.96 var(--tint) var(--hue)));
+  --ink-2:       light-dark(oklch(.33 var(--tint) var(--hue)),   oklch(.86 var(--tint) var(--hue)));
+  --ink-3:       light-dark(oklch(.50 var(--tint) var(--hue)),   oklch(.70 var(--tint) var(--hue)));
+  --ink-4:       light-dark(oklch(.70 var(--tint) var(--hue)),   oklch(.52 var(--tint) var(--hue)));
+  --strong:      light-dark(oklch(.24 var(--tint) var(--hue)),   oklch(.95 0 0));
+  --on-strong:   light-dark(oklch(.99 0 0),                      oklch(.19 0 0));
+  --scrim:       light-dark(oklch(.2 .01 255 / .18),             oklch(0 0 0 / .45));
+
+  /* brand: macOS system accent */
+  --brand-50:  oklch(.97 calc(.018 * var(--brand-c)) var(--brand-h));
+  --brand-100: oklch(.93 calc(.045 * var(--brand-c)) var(--brand-h));
+  --brand-300: oklch(.79 calc(.12 * var(--brand-c)) var(--brand-h));
+  --brand-400: oklch(.70 calc(.16 * var(--brand-c)) var(--brand-h));
+  --brand-500: oklch(.62 calc(.19 * var(--brand-c)) var(--brand-h));
+  --brand-600: oklch(.56 calc(.20 * var(--brand-c)) var(--brand-h));
+  --brand-700: oklch(.49 calc(.18 * var(--brand-c)) var(--brand-h));
+  --brand:       light-dark(var(--brand-600), var(--brand-500));
+  --brand-hover: light-dark(var(--brand-700), var(--brand-400));
+  --brand-ink:   light-dark(var(--brand-700), var(--brand-300));
+  --brand-soft:  light-dark(var(--brand-50), oklch(.30 calc(.06 * var(--brand-c)) var(--brand-h)));
+  --brand-line:  light-dark(var(--brand-100), oklch(.40 calc(.10 * var(--brand-c)) var(--brand-h)));
+  --select:      light-dark(oklch(.56 calc(.20 * var(--brand-c)) var(--brand-h) / .10), oklch(.62 calc(.19 * var(--brand-c)) var(--brand-h) / .20));
+  --focus:       0 0 0 3px light-dark(oklch(.56 .2 var(--brand-h) / .28), oklch(.62 .19 var(--brand-h) / .45));
+
+  /* states */
+  --ok:        light-dark(oklch(.56 .15 150), oklch(.74 .16 150));
+  --ok-soft:   light-dark(oklch(.96 .03 150), oklch(.28 .04 150));
+  --ok-ink:    light-dark(oklch(.42 .11 150), oklch(.84 .12 150));
+  --warn:      light-dark(oklch(.70 .16 70),  oklch(.80 .14 75));
+  --warn-soft: light-dark(oklch(.965 .035 80), oklch(.29 .04 70));
+  --warn-ink:  light-dark(oklch(.47 .11 60),  oklch(.86 .11 80));
+  --bad:       light-dark(oklch(.57 .21 27),  oklch(.68 .19 25));
+  --bad-soft:  light-dark(oklch(.965 .02 25), oklch(.28 .045 25));
+  --bad-ink:   light-dark(oklch(.47 .17 27),  oklch(.82 .11 25));
+
+  /* ledger and chart series: equal lightness, stepped hues */
+  --s1: light-dark(oklch(.62 .15 255), oklch(.70 .14 255));
+  --s2: light-dark(oklch(.64 .12 200), oklch(.74 .11 200));
+  --s3: light-dark(oklch(.62 .13 300), oklch(.72 .12 300));
+  --s4: light-dark(oklch(.64 .12 165), oklch(.74 .11 165));
+  --s5: light-dark(oklch(.63 .14 335), oklch(.72 .13 335));
+  --s6: light-dark(oklch(.68 .12 85),  oklch(.78 .11 85));
+
+  /* type */
+  --font: "Geist", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --t-12: 12px; --t-13: 13px; --t-14: 14px; --t-16: 16px; --t-20: 20px; --t-24: 24px;
+  --mono-12: 11.5px; --mono-13: 12.5px;
+
+  /* shape */
+  --r-sm: 6px; --r: 8px; --r-lg: 12px; --r-win: 12px;
+  --h-sm: 24px; --h: 28px; --h-lg: 32px; --row: 36px;
+
+  /* depth */
+  --ring: 0 0 0 .5px light-dark(oklch(0 0 0 / .10), oklch(1 0 0 / .10));
+  --shadow-1: var(--ring), 0 1px 2px light-dark(oklch(0 0 0 / .05), oklch(0 0 0 / .3));
+  --shadow-2: var(--ring), 0 4px 12px light-dark(oklch(0 0 0 / .08), oklch(0 0 0 / .35)), 0 12px 28px light-dark(oklch(0 0 0 / .06), oklch(0 0 0 / .3));
+  --shadow-3: var(--ring), 0 8px 24px light-dark(oklch(0 0 0 / .12), oklch(0 0 0 / .45)), 0 32px 64px light-dark(oklch(0 0 0 / .14), oklch(0 0 0 / .5));
+  --shadow-win: 0 0 0 .5px light-dark(oklch(0 0 0 / .18), oklch(1 0 0 / .14)), 0 18px 50px oklch(0 0 0 / .28), 0 50px 100px oklch(0 0 0 / .18);
+  --blur: saturate(180%) blur(24px);
+
+  /* motion */
+  --ease: cubic-bezier(.16, 1, .3, 1);
+  --t-fast: 140ms; --t-base: 220ms; --t-enter: 480ms;
+}
+[data-theme="dark"]  { color-scheme: dark; }
+[data-theme="light"] { color-scheme: light; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
