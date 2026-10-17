@@ -7,9 +7,10 @@ import { toast } from "sonner";
 
 import { useContainers } from "@/features/containers/api";
 import { isServing, useEngineControl, useEngineStatus } from "@/features/engine/api";
+import { useFailingPods } from "@/features/kubernetes/api";
 import { useMetrics } from "@/features/metrics/api";
 import { MemoryLedger } from "@/features/metrics/memory-ledger";
-import { formatMemory } from "@/lib/format";
+import { formatMemory, plural } from "@/lib/format";
 import type { EnginePhase } from "@/lib/ipc/bindings";
 import { AppMark } from "@/ui/app-mark";
 import { Button } from "@/ui/button";
@@ -155,6 +156,17 @@ function MemoryFooter() {
   );
 }
 
+/** A warning beside Kubernetes while a pod is crash-looping or can't pull its image. */
+function FailingPods() {
+  const failing = useFailingPods().length;
+  return failing > 0 ? (
+    <IconAlertTriangle
+      aria-label={`${plural(failing, "pod")} failing`}
+      className="size-3.5 text-bad-ink"
+    />
+  ) : null;
+}
+
 export function Sidebar() {
   const toggle = useUi((state) => state.toggleSidebar);
   const openPalette = useUi((state) => state.setPaletteOpen);
@@ -215,7 +227,7 @@ export function Sidebar() {
           <Item to="/images" icon="image" label="Images" />
           <Item to="/volumes" icon="volume" label="Volumes" />
           <Item to="/networks" icon="network" label="Networks" />
-          <Item to="/kubernetes" icon="kube" label="Kubernetes" />
+          <Item to="/kubernetes" icon="kube" label="Kubernetes" count={<FailingPods />} />
           <Item to="/machines" icon="machine" label="Linux machines" />
         </Group>
         <Group label="Data">

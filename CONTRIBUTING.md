@@ -13,6 +13,7 @@ pnpm dev
 | Variable | Effect |
 |---|---|
 | `CONTAINERIA_DOCKER_SOCKET` | Use this Docker socket instead of starting Containeria's engine. |
+| `CONTAINERIA_KUBE_CONTEXT` | Use this kubeconfig context instead of Colima's `colima-containeria`, and treat Kubernetes as on. |
 | `CONTAINERIA_HOME` | Where engine state lives. Default `~/.containeria`. |
 | `CONTAINERIA_COLIMA` | Path to a Colima binary to use instead of the bundled or installed one. |
 | `RUST_LOG` | Rust log filter, for example `info` or `containeria_app=debug`. |

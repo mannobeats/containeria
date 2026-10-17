@@ -58,20 +58,31 @@ type RenderOptions = {
   /** Rendered as the root route, with `ui` as the page inside its `<Outlet />`. */
   shell?: () => ReactNode;
   staticData?: StaticDataRouteOption;
+  /**
+   * Mounts `ui` at the app's route pattern, such as `/kubernetes/pods/$namespace/$name`, so pages
+   * that read params or search through `getRouteApi` work. Other paths still render a blank page.
+   */
+  route?: string;
+  /** The URL to open, such as `/kubernetes/pods/shop/web?tab=logs`. */
+  url?: string;
 };
 
 /** Renders `ui` inside the app's providers and a router that accepts any path. */
-export function renderWithApp(ui: ReactNode, { shell, staticData = {} }: RenderOptions = {}) {
+export function renderWithApp(
+  ui: ReactNode,
+  { shell, staticData = {}, route = "$", url = "/test" }: RenderOptions = {},
+) {
   const root = createRootRoute(shell ? { component: shell } : {});
   const page = createRoute({
     getParentRoute: () => root,
-    path: "$",
+    path: route,
     staticData,
     component: () => ui,
   });
+  const other = createRoute({ getParentRoute: () => root, path: "$", component: () => null });
   const router = createRouter({
-    routeTree: root.addChildren([page]),
-    history: createMemoryHistory({ initialEntries: ["/test"] }),
+    routeTree: root.addChildren(route === "$" ? [page] : [page, other]),
+    history: createMemoryHistory({ initialEntries: [url] }),
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const result = render(

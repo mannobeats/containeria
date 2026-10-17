@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { Tabs as Radix } from "radix-ui";
 import type { ReactNode } from "react";
 
-export type TabItem<T extends string> = { value: T; label: string; count?: number };
+type TabItem<T extends string> = { value: T; label: string; count?: number };
 
 type TabsProps<T extends string> = {
   tabs: TabItem<T>[];

@@ -14,3 +14,7 @@ pub(crate) struct DockerChanged(pub(crate) DockerEvent);
 /// A fresh CPU and memory sample, about every two seconds while the engine runs.
 #[derive(Debug, Clone, Serialize, specta::Type, tauri_specta::Event)]
 pub(crate) struct MetricsUpdated(pub(crate) Metrics);
+
+/// Something in the Kubernetes cluster changed, or it came or went; refetch the cluster.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+pub(crate) struct KubeChanged;

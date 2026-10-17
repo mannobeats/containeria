@@ -14,4 +14,7 @@ export function useEngineEvents() {
   useTauriEvent(events.dockerChanged, (event) => {
     client.invalidateQueries({ queryKey: keyForKind[event.kind] }).catch(() => undefined);
   });
+  useTauriEvent(events.kubeChanged, () => {
+    client.invalidateQueries({ queryKey: queryKeys.kubernetes }).catch(() => undefined);
+  });
 }

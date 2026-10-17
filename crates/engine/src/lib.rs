@@ -9,7 +9,7 @@ mod error;
 mod home;
 mod log_line;
 
-pub use colima::{Colima, Instance, InstanceStatus, RuntimeInfo};
+pub use colima::{Colima, Instance, InstanceStatus, KubernetesAction, RuntimeInfo};
 pub use config::{EngineConfig, K3S_DEFAULT_VERSION, Kubernetes, VmType};
 pub use error::{Error, Result};
 pub use home::{Home, Profile};

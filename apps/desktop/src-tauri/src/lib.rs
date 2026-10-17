@@ -5,6 +5,7 @@ mod engine;
 mod error;
 mod events;
 mod ipc;
+mod kubernetes;
 mod metrics;
 mod state;
 mod streams;
@@ -14,6 +15,7 @@ use std::sync::Arc;
 use tauri::Manager;
 
 use crate::engine::Engine;
+use crate::kubernetes::Kubernetes;
 use crate::metrics::Sampler;
 use crate::state::AppState;
 use crate::streams::Streams;
@@ -51,7 +53,13 @@ pub fn run() -> tauri::Result<()> {
             tauri::async_runtime::spawn(
                 async move { sampler.run(engine_for_sampler, handle).await },
             );
-            app.manage(AppState { engine, metrics, streams: Streams::default() });
+            let kubernetes = Arc::new(Kubernetes::default());
+            let (kube_watcher, engine_for_kube, handle) =
+                (Arc::clone(&kubernetes), Arc::clone(&engine), app.handle().clone());
+            tauri::async_runtime::spawn(async move {
+                kube_watcher.watch(&engine_for_kube, handle).await;
+            });
+            app.manage(AppState { engine, kubernetes, metrics, streams: Streams::default() });
             Ok(())
         })
         .run(tauri::generate_context!())

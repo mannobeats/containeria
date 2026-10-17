@@ -85,11 +85,26 @@ const routeTree = root.addChildren([
       default: module.NetworksPage,
     })),
   ),
-  page("kubernetes", "Kubernetes", () =>
-    import("@/features/kubernetes/kubernetes-page").then((module) => ({
-      default: module.KubernetesPage,
-    })),
-  ),
+  createRoute({
+    getParentRoute: () => root,
+    path: "kubernetes",
+    staticData: { needsEngine: true, title: "Kubernetes" },
+    validateSearch: tabSearch,
+    component: lazyRouteComponent(() =>
+      import("@/features/kubernetes/kubernetes-page").then((module) => ({
+        default: module.KubernetesPage,
+      })),
+    ),
+  }),
+  createRoute({
+    getParentRoute: () => root,
+    path: "kubernetes/pods/$namespace/$name",
+    staticData: { needsEngine: true, title: "Pod" },
+    validateSearch: tabSearch,
+    component: lazyRouteComponent(() =>
+      import("@/features/kubernetes/pod-page").then((module) => ({ default: module.PodPage })),
+    ),
+  }),
   page(
     "machines",
     "Linux machines",

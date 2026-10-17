@@ -4,7 +4,9 @@ use std::sync::{Mutex, PoisonError};
 use std::time::Duration;
 
 use containeria_docker::Docker;
-use containeria_engine::{Colima, EngineConfig, Home, Instance, InstanceStatus, LogLine, Profile};
+use containeria_engine::{
+    Colima, EngineConfig, Home, Instance, InstanceStatus, KubernetesAction, LogLine, Profile,
+};
 use futures::StreamExt;
 use serde::Serialize;
 use tauri::AppHandle;
@@ -132,6 +134,28 @@ impl Engine {
         self.forget_docker().await;
         self.transition_while(app, EnginePhase::Stopping, colima.stop(Profile::Containers, on_line))
             .await
+    }
+
+    /// Turns k3s on or off inside the running engine and remembers the choice for the next start.
+    pub(crate) async fn set_kubernetes(
+        &self,
+        app: &AppHandle,
+        enabled: bool,
+        on_line: impl FnMut(LogLine),
+    ) -> Result<()> {
+        let colima = self.colima()?;
+        let mut config = self.config()?;
+        config.kubernetes.enabled = enabled;
+        self.save_config(&config)?;
+        let action = if enabled { KubernetesAction::Start } else { KubernetesAction::Stop };
+        let result = colima.kubernetes(action, on_line).await;
+        EngineChanged.emit(app)?;
+        Ok(result?)
+    }
+
+    /// Deletes every Kubernetes object and starts a fresh cluster.
+    pub(crate) async fn reset_kubernetes(&self, on_line: impl FnMut(LogLine)) -> Result<()> {
+        Ok(self.colima()?.kubernetes(KubernetesAction::Reset, on_line).await?)
     }
 
     async fn transition_while(
