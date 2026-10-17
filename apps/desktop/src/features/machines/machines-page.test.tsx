@@ -36,7 +36,7 @@ describe("MachinesPage", () => {
     expect(await screen.findByText("ubuntu-dev")).toBeDefined();
     expect(screen.getByText(/running, using/).textContent).toContain("1 of 2 machines");
     expect(screen.getAllByText(/310 MB/)).toHaveLength(2);
-    expect(screen.getByRole("img", { name: "Arch Linux" })).toBeDefined();
+    expect(screen.getByTitle("Arch Linux")).toBeDefined();
   });
 
   it("stops and starts machines from their cards", async () => {
