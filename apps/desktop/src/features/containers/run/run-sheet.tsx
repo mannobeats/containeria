@@ -81,23 +81,33 @@ function Form({
       <EnvEditor rows={form.env} onChange={(env) => setForm({ ...form, env })} />
       <StorageEditor rows={form.storage} onChange={(storage) => setForm({ ...form, storage })} />
       <div className="grid grid-cols-2 gap-4">
-        <Segmented
-          label="Restart"
-          size="sm"
-          value={form.restart}
-          onChange={(restart) => setForm({ ...form, restart })}
-          options={[...RESTART]}
-        />
-        <Segmented
-          label="Platform"
-          size="sm"
-          value={form.amd64 ? "amd64" : "arm64"}
-          onChange={(platform) => setForm({ ...form, amd64: platform === "amd64" })}
-          options={[
-            { value: "arm64", label: "arm64" },
-            { value: "amd64", label: "amd64 · Rosetta" },
-          ]}
-        />
+        <div className="flex flex-col items-start gap-1.5">
+          <span aria-hidden className="text-13 font-medium text-ink-2">
+            Restart
+          </span>
+          <Segmented
+            label="Restart"
+            size="sm"
+            value={form.restart}
+            onChange={(restart) => setForm({ ...form, restart })}
+            options={[...RESTART]}
+          />
+        </div>
+        <div className="flex flex-col items-start gap-1.5">
+          <span aria-hidden className="text-13 font-medium text-ink-2">
+            Platform
+          </span>
+          <Segmented
+            label="Platform"
+            size="sm"
+            value={form.amd64 ? "amd64" : "arm64"}
+            onChange={(platform) => setForm({ ...form, amd64: platform === "amd64" })}
+            options={[
+              { value: "arm64", label: "arm64" },
+              { value: "amd64", label: "amd64 · Rosetta" },
+            ]}
+          />
+        </div>
       </div>
       <Field label="Command" htmlFor={`${id}-command`} hint="Replaces the image's default command.">
         <Input

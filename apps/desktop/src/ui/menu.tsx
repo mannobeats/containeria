@@ -1,7 +1,7 @@
 import { IconCheck } from "@tabler/icons-react";
 import clsx from "clsx";
 import { ContextMenu as Context, DropdownMenu as Dropdown } from "radix-ui";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
 const surface =
   "z-50 min-w-[200px] origin-(--radix-dropdown-menu-content-transform-origin) rounded-[10px] bg-[light-dark(oklch(0.99_0_0/0.86),oklch(0.27_0.005_255/0.86))] p-[5px] text-13 text-ink shadow-3 backdrop-blur-xl backdrop-saturate-180 animate-pop";
@@ -80,9 +80,21 @@ type DropdownProps = {
 
 /** A button-triggered menu. `children` is the trigger, rendered as is. */
 export function Menu({ entries, align = "start", children }: DropdownProps) {
+  const [open, setOpen] = useState(false);
   return (
-    <Dropdown.Root>
-      <Dropdown.Trigger asChild>{children}</Dropdown.Trigger>
+    <Dropdown.Root open={open} onOpenChange={setOpen}>
+      <Dropdown.Trigger
+        asChild
+        // Radix opens on pointer-down. Accessibility presses (VoiceOver, Voice Control) send a
+        // click with no pointer, detail 0, so open on those too.
+        onClick={(event) => {
+          if (event.detail === 0) {
+            setOpen((current) => !current);
+          }
+        }}
+      >
+        {children}
+      </Dropdown.Trigger>
       <Dropdown.Portal>
         <Dropdown.Content align={align} sideOffset={4} collisionPadding={8} className={surface}>
           <Entries parts={Dropdown} entries={entries} />
