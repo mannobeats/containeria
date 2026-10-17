@@ -29,6 +29,14 @@ describe("routeUrl", () => {
 });
 
 describe("groupRoutes", () => {
+  it("lists Kubernetes services after containers", () => {
+    const groups = groupRoutes([
+      route({ host: "web.shop.k8s.containeria.local", kind: "service", container: "shop/web" }),
+      route(),
+    ]);
+    expect(groups.map((group) => group.label)).toEqual(["Containers", "Kubernetes services"]);
+  });
+
   it("puts the user's routes first and drops empty groups", () => {
     const groups = groupRoutes([route(), route({ host: "shop.test", kind: "custom" })]);
     expect(groups.map((group) => [group.label, group.routes.length])).toEqual([

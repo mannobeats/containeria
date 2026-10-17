@@ -22,6 +22,20 @@ pub enum Error {
     #[error("the database said: {0}")]
     Database(String),
 
+    /// The SSH tunnel failed before the database was dialled.
+    #[error("{0}")]
+    Ssh(String),
+
+    #[error(
+        "{host} isn't a known SSH server yet. Check that its key fingerprint is {fingerprint}, then trust it to connect."
+    )]
+    UnknownHostKey { host: String, fingerprint: String },
+
+    #[error(
+        "the SSH key of {0} changed since it was trusted. Someone may be intercepting the connection; if the server was reinstalled, remove its old key from ~/.ssh/known_hosts."
+    )]
+    HostKeyChanged(String),
+
     #[error("the password couldn't be read from or saved to the Keychain: {0}")]
     Keychain(String),
 

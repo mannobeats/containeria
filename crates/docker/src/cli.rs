@@ -106,6 +106,8 @@ pub(crate) async fn stream(
 pub struct DockerCli {
     bin: PathBuf,
     socket: PathBuf,
+    /// The bundled CLI's own configuration: the user's, plus the bundled plugins (buildx).
+    config: Option<(PathBuf, PathBuf)>,
 }
 
 /// What to build: the folder sent to the builder, the Dockerfile in it, and the name to give.
@@ -150,11 +152,35 @@ impl BuildSpec {
 
 impl DockerCli {
     /// Finds `docker`: `$CONTAINERIA_DOCKER`, the copy bundled with the app, then Homebrew and
-    /// `PATH`.
+    /// `PATH`. When the bundled copy is used, it reads `config_dir`, which mirrors the user's
+    /// `~/.docker/config.json` so `docker login` still applies, and adds `plugins` so it finds
+    /// the bundled buildx.
     #[must_use]
-    pub fn locate(socket: &Path, bundled: Option<&Path>) -> Option<Self> {
-        locate("CONTAINERIA_DOCKER", bundled, [], "docker")
-            .map(|bin| Self { bin, socket: socket.to_path_buf() })
+    pub fn locate(
+        socket: &Path,
+        bundled: Option<&Path>,
+        plugins: Option<&Path>,
+        config_dir: &Path,
+    ) -> Option<Self> {
+        let bin = locate("CONTAINERIA_DOCKER", bundled, [], "docker")?;
+        let config = plugins
+            .filter(|_| bundled.is_some_and(|bundled| bundled == bin))
+            .map(|plugins| (config_dir.to_path_buf(), plugins.to_path_buf()));
+        Some(Self { bin, socket: socket.to_path_buf(), config })
+    }
+
+    fn command<I, S>(&self, args: I) -> Result<Command>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        let mut command = command(&self.bin, &self.socket, args)?;
+        if let Some((dir, plugins)) = &self.config {
+            let user = env::home_dir().map(|home| home.join(".docker/config.json"));
+            write_config(dir, user.as_deref(), plugins)?;
+            command.env("DOCKER_CONFIG", dir);
+        }
+        Ok(command)
     }
 
     /// Builds an image, passing `BuildKit`'s plain progress to `on_line`.
@@ -162,7 +188,7 @@ impl DockerCli {
     /// # Errors
     /// Fails with the builder's last line when the build fails.
     pub async fn build(&self, spec: &BuildSpec, on_line: impl FnMut(String)) -> Result<()> {
-        let mut command = command(&self.bin, &self.socket, spec.args())?;
+        let mut command = self.command(spec.args())?;
         command.current_dir(&spec.context).env("BUILDKIT_PROGRESS", "plain");
         stream(command, "The build", on_line).await
     }
@@ -172,9 +198,21 @@ impl DockerCli {
     /// # Errors
     /// Fails with the registry's answer when the push is refused.
     pub async fn push(&self, reference: &str, on_line: impl FnMut(String)) -> Result<()> {
-        let command = command(&self.bin, &self.socket, ["push", reference])?;
+        let command = self.command(["push", reference])?;
         stream(command, "The push", on_line).await
     }
+}
+
+/// Writes `dir/config.json`: the user's Docker configuration (logins, credential helpers) with
+/// `plugins` added to where the CLI looks for plugins.
+fn write_config(dir: &Path, user: Option<&Path>, plugins: &Path) -> io::Result<()> {
+    let mut config: serde_json::Map<String, serde_json::Value> = user
+        .and_then(|path| std::fs::read(path).ok())
+        .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+        .unwrap_or_default();
+    config.insert("cliPluginsExtraDirs".to_owned(), serde_json::json!([plugins.to_string_lossy()]));
+    std::fs::create_dir_all(dir)?;
+    std::fs::write(dir.join("config.json"), serde_json::to_vec_pretty(&config)?)
 }
 
 #[cfg(test)]
@@ -207,6 +245,20 @@ mod tests {
                 "/Users/ada/shop"
             ]
         );
+    }
+
+    #[test]
+    fn keeps_the_users_logins_and_adds_the_bundled_plugins() {
+        let dir = tempfile::tempdir().unwrap();
+        let user = dir.path().join("user.json");
+        std::fs::write(&user, r#"{"credsStore":"osxkeychain","auths":{"ghcr.io":{}}}"#).unwrap();
+        let own = dir.path().join("own");
+        write_config(&own, Some(&user), Path::new("/App/tools/cli-plugins")).unwrap();
+        let written: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(own.join("config.json")).unwrap()).unwrap();
+        assert_eq!(written["credsStore"], "osxkeychain");
+        assert!(written["auths"]["ghcr.io"].is_object());
+        assert_eq!(written["cliPluginsExtraDirs"][0], "/App/tools/cli-plugins");
     }
 
     #[test]

@@ -43,7 +43,8 @@ async fn recreates_a_container_with_its_name_settings_and_volume_data() {
 #[ignore = "needs a Docker engine and the Docker CLI"]
 async fn builds_exports_and_scans_an_image() {
     let docker = Docker::connect(&socket()).unwrap();
-    let cli = DockerCli::locate(&socket(), None).expect("docker CLI");
+    let cli =
+        DockerCli::locate(&socket(), None, None, std::path::Path::new("/tmp")).expect("docker CLI");
     let context = tempfile::tempdir().unwrap();
     std::fs::write(
         context.path().join("Dockerfile"),
@@ -155,4 +156,97 @@ async fn backs_up_and_restores_a_volume() {
 
     docker.remove_volume(&source).await.unwrap();
     docker.remove_volume(&restored).await.unwrap();
+}
+
+/// A throwaway Docker engine inside Containeria's, reached over TCP, to copy into.
+async fn second_engine(name: &str) -> Result<Docker, Box<dyn std::error::Error>> {
+    use bollard::models::{ContainerCreateBody, HostConfig, PortBinding};
+    use bollard::query_parameters::{CreateContainerOptionsBuilder, CreateImageOptionsBuilder};
+    use futures::TryStreamExt;
+
+    let api = bollard::Docker::connect_with_socket(
+        &socket().to_string_lossy(),
+        120,
+        bollard::API_DEFAULT_VERSION,
+    )?;
+    let pull = CreateImageOptionsBuilder::new().from_image("docker").tag("28-dind").build();
+    api.create_image(Some(pull), None, None).try_collect::<Vec<_>>().await?;
+    let body = ContainerCreateBody {
+        image: Some("docker:28-dind".to_owned()),
+        env: Some(vec!["DOCKER_TLS_CERTDIR=".to_owned()]),
+        cmd: Some(vec!["--host=tcp://0.0.0.0:2375".to_owned()]),
+        host_config: Some(HostConfig {
+            privileged: Some(true),
+            port_bindings: Some(std::collections::HashMap::from([(
+                "2375/tcp".to_owned(),
+                Some(vec![PortBinding {
+                    host_ip: Some("127.0.0.1".to_owned()),
+                    host_port: Some("23750".to_owned()),
+                }]),
+            )])),
+            ..HostConfig::default()
+        }),
+        ..ContainerCreateBody::default()
+    };
+    let options = CreateContainerOptionsBuilder::new().name(name).build();
+    let created = api.create_container(Some(options), body).await?;
+    api.start_container(&created.id, None::<bollard::query_parameters::StartContainerOptions>)
+        .await?;
+    let target = Docker::connect_http("tcp://127.0.0.1:23750")?;
+    for _ in 0..60 {
+        if target.ping().await.is_ok() {
+            return Ok(target);
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    }
+    Err("the second engine never answered".into())
+}
+
+#[tokio::test]
+#[ignore = "needs a Docker engine that allows privileged containers"]
+async fn copies_volumes_and_containers_to_another_engine() {
+    let docker = Docker::connect(&socket()).unwrap();
+    let id = std::process::id();
+    let dind = format!("containeria-test-dind-{id}");
+    let target = second_engine(&dind).await.unwrap();
+    let volume = format!("containeria-test-move-{id}");
+    docker.create_volume(&volume).await.unwrap();
+    let app = RunSpec {
+        image: "busybox:1.37".to_owned(),
+        name: Some(format!("containeria-test-app-{id}")),
+        ports: Vec::new(),
+        env: vec![EnvVar { key: "KEEP".to_owned(), value: "me".to_owned() }],
+        storage: vec![containeria_docker::StorageMapping {
+            source: volume.clone(),
+            target: "/d".to_owned(),
+            read_only: false,
+        }],
+        restart: Restart::No,
+        command: Some(vec!["sh".into(), "-c".into(), "echo moved > /d/note; sleep 300".into()]),
+        platform: None,
+    };
+    let source_id = docker.run(&app).await.unwrap();
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+    let inventory = docker.inventory().await.unwrap();
+    assert!(inventory.volumes.contains(&volume));
+    assert!(inventory.containers.iter().any(|container| container.id == source_id));
+
+    let copied = docker.copy_container_to(&target, &source_id, true).await.unwrap();
+    let details = target.details(&copied).await.unwrap();
+    assert!(details.env.iter().any(|var| var.key == "KEEP" && var.value == "me"));
+    let files = target.volume_files(&volume, "/").await.unwrap();
+    assert!(files.iter().any(|file| file.name == "note"), "{files:?}");
+
+    docker.act(&source_id, ContainerAction::Remove).await.unwrap();
+    docker.remove_volume(&volume).await.unwrap();
+    let api = bollard::Docker::connect_with_socket(
+        &socket().to_string_lossy(),
+        120,
+        bollard::API_DEFAULT_VERSION,
+    )
+    .unwrap();
+    let options =
+        bollard::query_parameters::RemoveContainerOptionsBuilder::new().force(true).v(true).build();
+    api.remove_container(&dind, Some(options)).await.unwrap();
 }

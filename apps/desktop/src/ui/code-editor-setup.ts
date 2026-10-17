@@ -1,10 +1,11 @@
 import type { Extension } from "@codemirror/state";
 
 /** The languages `CodeEditor` can highlight. Add one by adding its loader below. */
-export type Language = "yaml";
+export type Language = "yaml" | "json";
 
 const LANGUAGES = {
   yaml: () => import("@codemirror/lang-yaml").then((module) => module.yaml()),
+  json: () => import("@codemirror/lang-json").then((module) => module.json()),
 };
 
 export type Editor = { setValue: (value: string) => void; destroy: () => void };

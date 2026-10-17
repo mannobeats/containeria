@@ -2,8 +2,8 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { QueryResult } from "@/lib/ipc/bindings";
-import { infoFixture, namespacesFixture } from "@/test/data-fixtures";
+import type { Namespace, QueryResult } from "@/lib/ipc/bindings";
+import { infoFixture, namespacesFixture, usersTable } from "@/test/data-fixtures";
 import { mockCommands, renderWithApp } from "@/test/harness";
 
 import { useWorkspace } from "../workspace-store";
@@ -79,6 +79,65 @@ describe("QueryView", () => {
     setup(() => rows);
     await userEvent.click(await screen.findByRole("button", { name: "Query history" }));
     expect(useWorkspace.getState().tabs.pg?.map((tab) => tab.key)).toEqual(["history"]);
+  });
+});
+
+describe("QueryView for MongoDB", () => {
+  const mongo = infoFixture({
+    id: "mongo",
+    engine: "mongodb",
+    version: "MongoDB 8.0.4",
+    capabilities: { query: true, sql: false, editRows: true, tables: true, keys: false },
+  });
+  const collections: Namespace[] = [
+    {
+      name: "shop",
+      tables: [{ ...usersTable, schema: "shop", kind: "collection" }],
+      functions: [],
+      enums: [],
+    },
+  ];
+  const documents: QueryResult = {
+    columns: [
+      { name: "_id", typeName: "objectId", kind: "text" },
+      { name: "address", typeName: "object", kind: "json" },
+    ],
+    rows: [["65f1a2b3c4d5e6f708192a3b", { city: "Lisbon" }]],
+    affected: null,
+    truncated: false,
+    elapsedMs: 2,
+  };
+
+  it("starts with a find on the first collection and runs it with the results in the grid", async () => {
+    const calls = mockCommands({ dataRun: () => documents });
+    renderWithApp(<QueryView info={mongo} tabKey="query:1" namespaces={collections} />);
+    expect(await screen.findByLabelText("MongoDB query")).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: /Run/ }));
+    expect(await screen.findByText("1 rows")).toBeDefined();
+    expect(screen.getByText("65f1a2b3c4d5e6f708192a3b")).toBeDefined();
+    expect(screen.getByRole("button", { name: '{"city":"Lisbon"}' })).toBeDefined();
+    const sent = calls.find((call) => call.command === "dataRun")?.args;
+    expect(sent?.id).toBe("mongo");
+    expect(JSON.parse(String(sent?.sql))).toEqual({
+      database: "shop",
+      collection: "users",
+      find: {},
+      limit: 100,
+    });
+  });
+
+  it("runs the aggregate typed in the tab and explains safe mode", async () => {
+    const pipeline = '{"collection": "users", "aggregate": [{"$count": "n"}]}';
+    useWorkspace.getState().setSql("mongo|query:2", pipeline);
+    const calls = mockCommands({ dataRun: () => documents });
+    renderWithApp(
+      <QueryView info={{ ...mongo, readOnly: true }} tabKey="query:2" namespaces={collections} />,
+    );
+    expect(await screen.findByText(/pipelines with \$out or \$merge wait/)).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: /Run/ }));
+    await waitFor(() =>
+      expect(calls.find((call) => call.command === "dataRun")?.args.sql).toBe(pipeline),
+    );
   });
 });
 

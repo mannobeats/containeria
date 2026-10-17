@@ -2,8 +2,9 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use bytes::Bytes;
-use http::{HeaderMap, Method, Request, StatusCode, header};
+use http::{HeaderMap, Method, Request, Response, StatusCode, header};
 use http_body_util::{BodyExt, Full};
+use hyper::body::{Body, Incoming};
 use hyper_util::rt::TokioIo;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
@@ -72,13 +73,20 @@ impl Incus {
             .map_err(|_| Error::Unreachable(self.socket.display().to_string()))
     }
 
-    pub(crate) async fn send(
+    /// Sends a request and hands back the response before its body is read, so a download can
+    /// stream it.
+    pub(crate) async fn respond<B>(
         &self,
         method: Method,
         path: &str,
-        body: Bytes,
+        body: B,
         headers: &[(&str, &str)],
-    ) -> Result<Reply> {
+    ) -> Result<Response<Incoming>>
+    where
+        B: Body + Send + 'static,
+        B::Data: Send,
+        B::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+    {
         let io = TokioIo::new(self.stream().await?);
         let (mut sender, connection) = hyper::client::conn::http1::handshake(io)
             .await
@@ -88,19 +96,19 @@ impl Incus {
         for (name, value) in headers {
             request = request.header(*name, *value);
         }
-        let request =
-            request.body(Full::new(body)).map_err(|error| Error::Protocol(error.to_string()))?;
-        let response = sender
-            .send_request(request)
-            .await
-            .map_err(|error| Error::Protocol(error.to_string()))?;
-        let (parts, incoming) = response.into_parts();
-        let body = incoming
-            .collect()
-            .await
-            .map_err(|error| Error::Protocol(error.to_string()))?
-            .to_bytes();
-        Ok(Reply { status: parts.status, headers: parts.headers, body })
+        let request = request.body(body).map_err(|error| Error::Protocol(error.to_string()))?;
+        sender.send_request(request).await.map_err(|error| Error::Protocol(error.to_string()))
+    }
+
+    pub(crate) async fn send(
+        &self,
+        method: Method,
+        path: &str,
+        body: Bytes,
+        headers: &[(&str, &str)],
+    ) -> Result<Reply> {
+        let response = self.respond(method, path, Full::new(body), headers).await?;
+        read(response).await
     }
 
     async fn json(&self, method: Method, path: &str, body: Option<&Value>) -> Result<Envelope> {
@@ -114,6 +122,11 @@ impl Incus {
     pub(crate) async fn get<T: DeserializeOwned>(&self, path: &str) -> Result<T> {
         let envelope = self.json(Method::GET, path, None).await?;
         Ok(serde_json::from_value(envelope.metadata)?)
+    }
+
+    /// Changes some of an object's fields, such as an instance's config, in one synchronous call.
+    pub(crate) async fn patch(&self, path: &str, body: &Value) -> Result<()> {
+        self.json(Method::PATCH, path, Some(body)).await.map(drop)
     }
 
     /// Sends a request that starts a background operation and returns the operation's path.
@@ -167,6 +180,44 @@ impl Incus {
         let operation = self.start(method, path, body).await?;
         self.wait(&operation, drop).await
     }
+
+    /// Posts a raw body that starts an operation, such as a backup to import, and waits for it.
+    pub(crate) async fn run_upload<B>(
+        &self,
+        path: &str,
+        body: B,
+        headers: &[(&str, &str)],
+    ) -> Result<()>
+    where
+        B: Body + Send + 'static,
+        B::Data: Send,
+        B::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+    {
+        let reply = read(self.respond(Method::POST, path, body, headers).await?).await?;
+        let operation = envelope(reply.status, &reply.body)?.operation;
+        if operation.is_empty() {
+            return Err(Error::Protocol(format!("{path} started no operation")));
+        }
+        self.wait(&operation, drop).await
+    }
+
+    /// Starts a download, such as a backup's tarball, and returns its body unread.
+    pub(crate) async fn download(&self, path: &str) -> Result<Incoming> {
+        let response = self.respond(Method::GET, path, Full::new(Bytes::new()), &[]).await?;
+        if response.status().is_success() {
+            return Ok(response.into_body());
+        }
+        let reply = read(response).await?;
+        envelope(reply.status, &reply.body)?;
+        Err(Error::Incus(format!("{path} answered {}", reply.status)))
+    }
+}
+
+async fn read(response: Response<Incoming>) -> Result<Reply> {
+    let (parts, incoming) = response.into_parts();
+    let body =
+        incoming.collect().await.map_err(|error| Error::Protocol(error.to_string()))?.to_bytes();
+    Ok(Reply { status: parts.status, headers: parts.headers, body })
 }
 
 fn envelope(status: StatusCode, body: &[u8]) -> Result<Envelope> {

@@ -2,9 +2,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use containeria_data::{
-    ChangeSet, Connection, ConnectionInput, Detected, ExportFormat, HistoryEntry, ImportOptions,
-    ImportPreview, ImportRequest, ImportedRows, Namespace, QueryResult, RedisKeyPage, RedisValue,
-    RowPage, RowsRequest, SavedQuery, ServerInfo, TableRef,
+    ChangeSet, Connection, ConnectionInput, Detected, ExportFormat, HistoryEntry, HostKey,
+    ImportOptions, ImportPreview, ImportRequest, ImportedRows, Namespace, QueryResult,
+    RedisKeyPage, RedisValue, RowPage, RowsRequest, SavedQuery, ServerInfo, SshTunnel, TableRef,
 };
 use tauri::State;
 use tauri::ipc::Channel;
@@ -55,6 +55,23 @@ pub(crate) async fn data_test_connection(
     input: ConnectionInput,
 ) -> Result<String> {
     Ok(state.data.data.test(input).await?)
+}
+
+/// The host key an SSH server offers, so the user can check its fingerprint before trusting it.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn data_ssh_host_key(
+    state: State<'_, AppState>,
+    ssh: SshTunnel,
+) -> Result<HostKey> {
+    Ok(state.data.data.ssh_host_key(&ssh).await?)
+}
+
+/// Trusts an SSH server's key in Containeria's own known hosts; `~/.ssh` is never changed.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn data_trust_host_key(state: State<'_, AppState>, key: HostKey) -> Result<()> {
+    Ok(state.data.data.trust_host_key(&key)?)
 }
 
 #[tauri::command]

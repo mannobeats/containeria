@@ -23,6 +23,7 @@ specta-typescript.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tokio-tungstenite.workspace = true
+tokio-util = { workspace = true, features = ["io"] }
 tracing.workspace = true
 
 [lints]

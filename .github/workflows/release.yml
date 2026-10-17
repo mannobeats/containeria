@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.97.1
+      - uses: Swatinem/rust-cache@v2
+      - run: pnpm install --frozen-lockfile
+      - name: Fetch the bundled tools
+        run: sh scripts/fetch-tools.sh
+      - name: Bundle cx
+        run: |
+          cargo build -p containeria-cli --release --target aarch64-apple-darwin
+          install -m 0755 target/aarch64-apple-darwin/release/cx apps/desktop/src-tauri/resources/tools/bin/cx
+      - name: Build the app and disk image
+        run: pnpm --filter @containeria/desktop tauri build --target aarch64-apple-darwin --bundles app,dmg
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --title "Containeria $GITHUB_REF_NAME" --generate-notes \
+            target/aarch64-apple-darwin/release/bundle/dmg/*.dmg

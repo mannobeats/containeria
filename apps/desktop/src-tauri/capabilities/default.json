@@ -9,6 +9,7 @@
     "core:window:allow-toggle-maximize",
     "opener:default",
     "dialog:default",
+    "notification:default",
     "clipboard-manager:allow-write-text",
     "autostart:default"
   ]

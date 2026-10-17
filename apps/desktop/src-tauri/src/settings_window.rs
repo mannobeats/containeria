@@ -21,6 +21,7 @@ pub(crate) enum SettingsPane {
     Storage,
     Kubernetes,
     Docker,
+    Advanced,
     About,
 }
 
@@ -33,6 +34,7 @@ impl SettingsPane {
             Self::Storage => "Storage",
             Self::Kubernetes => "Kubernetes",
             Self::Docker => "Docker",
+            Self::Advanced => "Advanced",
             Self::About => "About",
         }
     }

@@ -726,6 +726,8 @@ mod tests {
             tls: false,
             environment,
             password: None,
+            ssh: None,
+            ssh_secret: None,
         })
         .unwrap();
         data.connect("notes", None).await.unwrap();

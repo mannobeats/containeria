@@ -11,7 +11,7 @@ use tokio::task::JoinHandle;
 use crate::ca::Authority;
 use crate::error::{Error, Result};
 use crate::host::{DEFAULT_TLD, normalize};
-use crate::routes::{CustomRoute, DomainRoute, RouteTable};
+use crate::routes::{ClusterService, CustomRoute, DomainRoute, RouteTable};
 use crate::system::{self, ResolverState};
 use crate::{dns, proxy};
 
@@ -86,6 +86,7 @@ pub struct Domains {
     dir: PathBuf,
     settings: Mutex<Settings>,
     containers: Mutex<Vec<ContainerSummary>>,
+    services: Mutex<Vec<ClusterService>>,
     table: Arc<RwLock<RouteTable>>,
     running: tokio::sync::Mutex<Option<Running>>,
 }
@@ -115,6 +116,7 @@ impl Domains {
             dir: dir.to_path_buf(),
             settings: Mutex::new(settings),
             containers: Mutex::new(Vec::new()),
+            services: Mutex::new(Vec::new()),
             table: Arc::new(RwLock::new(RouteTable::default())),
             running: tokio::sync::Mutex::new(None),
         };
@@ -147,10 +149,19 @@ impl Domains {
         let table = RouteTable::build(
             &settings.tld,
             &lock(&self.containers),
+            &lock(&self.services),
             &settings.routes,
             settings.https,
         );
         *self.table.write().unwrap_or_else(PoisonError::into_inner) = table;
+    }
+
+    /// Replaces the Kubernetes services routes are built from.
+    pub fn set_services(&self, services: Vec<ClusterService>) {
+        if *lock(&self.services) != services {
+            *lock(&self.services) = services;
+            self.rebuild();
+        }
     }
 
     /// Replaces the containers routes are built from. Call it when Docker reports a change.

@@ -140,6 +140,14 @@ impl Kube {
         Ok(Cluster { version, namespaces, pods, deployments, services, ingresses, config })
     }
 
+    /// Every service in every namespace, for the domains that reach them from the Mac.
+    ///
+    /// # Errors
+    /// Fails when the API server doesn't answer.
+    pub async fn services(&self) -> Result<Vec<ServiceSummary>> {
+        self.list::<Service, ServiceSummary>().await
+    }
+
     async fn namespaces(&self) -> Result<Vec<String>> {
         let list = Api::<Namespace>::all(self.client.clone()).list(&ListParams::default()).await?;
         Ok(list.items.into_iter().filter_map(|namespace| namespace.metadata.name).collect())

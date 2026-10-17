@@ -31,6 +31,8 @@ export function useSqliteDrop(): boolean {
         tls: false,
         environment: "local",
         password: null,
+        ssh: null,
+        sshSecret: null,
       },
       {
         onSuccess: (connection) =>

@@ -30,7 +30,7 @@ function setup() {
   });
   const info = infoFixture({
     engine: "redis",
-    capabilities: { sql: false, editRows: false, tables: false, keys: true },
+    capabilities: { query: false, sql: false, editRows: false, tables: false, keys: true },
   });
   renderWithApp(<RedisView info={info} />);
   return calls;

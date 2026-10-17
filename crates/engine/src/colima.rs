@@ -148,6 +148,15 @@ impl Colima {
         &self.home
     }
 
+    /// A tool Colima runs, such as `incus`, from the same folders Colima looks in.
+    #[must_use]
+    pub fn tool(&self, name: &str) -> Option<PathBuf> {
+        search_path(self.bin.parent())
+            .into_iter()
+            .map(|dir| dir.join(name))
+            .find(|path| path.is_file())
+    }
+
     /// The profile's VM, or `None` if it was never created.
     ///
     /// # Errors

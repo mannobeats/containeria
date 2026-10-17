@@ -181,7 +181,7 @@ impl Docker {
 
 /// The settings to create the same container again. Anonymous volumes become named binds so the
 /// new container keeps their data; a hostname Docker derived from the old ID is dropped.
-fn recreate_body(inspect: ContainerInspectResponse) -> Result<ContainerCreateBody> {
+pub(crate) fn recreate_body(inspect: ContainerInspectResponse) -> Result<ContainerCreateBody> {
     let id = inspect.id.unwrap_or_default();
     let config =
         inspect.config.ok_or_else(|| Error::Engine("the container has no settings".to_owned()))?;

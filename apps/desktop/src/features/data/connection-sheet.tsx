@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import type { Connection } from "@/lib/ipc/bindings";
-import { errorMessage } from "@/lib/ipc/errors";
+import { errorMessage, isCommandError } from "@/lib/ipc/errors";
 import { Banner } from "@/ui/banner";
 import { Button } from "@/ui/button";
 import { Sheet } from "@/ui/sheet";
@@ -11,9 +11,16 @@ import { Tile } from "@/ui/tile";
 
 import { useSaveConnection, useTestConnection } from "./api";
 import { ConnectionFields } from "./connection-fields";
-import { type ConnectionForm, formFromConnection, formProblem, toInput } from "./connection-form";
+import {
+  type ConnectionForm,
+  formFromConnection,
+  formProblem,
+  sshTunnel,
+  toInput,
+} from "./connection-form";
 import { EnginePicker } from "./engine-picker";
 import { ENGINE_CHOICES, engineLabel, engineLogo } from "./engines";
+import { HostKeyPrompt } from "./ssh-host-key";
 
 type ConnectionSheetProps = {
   open: boolean;
@@ -43,11 +50,25 @@ function Chosen({ form, onChange }: { form: ConnectionForm; onChange?: (() => vo
   );
 }
 
-function Outcome({ version, error }: { version: string | undefined; error: unknown }) {
+type OutcomeProps = {
+  form: ConnectionForm;
+  version: string | undefined;
+  error: unknown;
+  onRetry: () => void;
+};
+
+/** What testing found: connected, the SSH tunnel failed, or the database refused. */
+function Outcome({ form, version, error, onRetry }: OutcomeProps) {
+  const kind = isCommandError(error) ? error.kind : null;
+  const ssh = sshTunnel(form);
+  if (kind === "unknownHostKey" && ssh) {
+    return <HostKeyPrompt ssh={ssh} onTrusted={onRetry} className="mt-4" />;
+  }
   if (error) {
     return (
       <Banner tone="bad" icon={<IconAlertCircle aria-hidden />} className="mt-4">
-        <b>Couldn't connect.</b> {errorMessage(error)}
+        <b>{kind === "ssh" ? "Couldn't open the SSH tunnel." : "Couldn't connect."}</b>{" "}
+        {errorMessage(error)}
       </Banner>
     );
   }
@@ -131,7 +152,12 @@ export function ConnectionSheet({ open, onOpenChange, connection }: ConnectionSh
             onChange={(change) => setForm({ ...form, ...change })}
             problem={problem}
           />
-          <Outcome version={test.data} error={test.error} />
+          <Outcome
+            form={form}
+            version={test.data}
+            error={test.error}
+            onRetry={() => submit("test")}
+          />
         </>
       ) : (
         <EnginePicker onPick={setForm} />

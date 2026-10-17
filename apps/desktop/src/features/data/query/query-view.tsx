@@ -12,6 +12,7 @@ import { Sheet } from "@/ui/sheet";
 import { useCancelQuery, useRunQuery, useSaveQuery } from "../api";
 import { useOpenTab } from "../tabs";
 import { useWorkspace } from "../workspace-store";
+import { mongoQuery } from "./mongo-query";
 import { QueryResults } from "./query-results";
 import { sqlLanguage } from "./sql-language";
 
@@ -54,17 +55,25 @@ function SaveSheet({
   );
 }
 
-/** The SQL editor of one query tab: write, run with ⌘↵, read the results below. */
+/**
+ * One query tab: write, run with ⌘↵, read the results below. SQL for SQL engines; for MongoDB, a
+ * JSON `find` or `aggregate` that starts on the first collection.
+ */
 export function QueryView({ info, tabKey, namespaces }: QueryViewProps) {
   const sqlKey = `${info.id}|${tabKey}`;
-  const sql = useWorkspace((state) => state.sql[sqlKey]) ?? "";
+  const documents = !info.capabilities.sql;
+  const sql =
+    useWorkspace((state) => state.sql[sqlKey]) ??
+    (documents ? mongoQuery(namespaces[0]?.tables[0]) : "");
   const setSql = useWorkspace((state) => state.setSql);
   const run = useRunQuery(info.id);
   const save = useSaveQuery();
   const open = useOpenTab(info.id);
   const [saving, setSaving] = useState(false);
   const cancel = useCancelQuery();
-  const language = sqlLanguage(info.engine, namespaces);
+  const language = documents
+    ? { language: "json" as const }
+    : { extensions: sqlLanguage(info.engine, namespaces) };
   const execute = (code: string) => {
     if (code.trim() === "" || run.isPending) {
       return;
@@ -91,7 +100,9 @@ export function QueryView({ info, tabKey, namespaces }: QueryViewProps) {
         </IconAction>
         {info.readOnly ? (
           <span className="ml-auto text-12 text-ink-3">
-            Runs read-only: the database refuses writes in safe mode.
+            {documents
+              ? "Safe mode: pipelines with $out or $merge wait until you allow writes."
+              : "Runs read-only: the database refuses writes in safe mode."}
           </span>
         ) : null}
       </div>
@@ -99,8 +110,8 @@ export function QueryView({ info, tabKey, namespaces }: QueryViewProps) {
         value={sql}
         onChange={(next) => setSql(sqlKey, next)}
         onRun={execute}
-        extensions={language}
-        label="SQL"
+        {...language}
+        label={documents ? "MongoDB query" : "SQL"}
         className="border-b-[0.5px] border-line"
       />
       <div className="flex min-h-0 flex-col">

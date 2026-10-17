@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::pin::pin;
 use std::sync::{Mutex, PoisonError};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use containeria_docker::{Compose, Docker, DockerCli};
 use containeria_engine::{
@@ -15,6 +15,7 @@ use tokio::sync::RwLock;
 
 use crate::error::{CommandError, ErrorKind, Result};
 use crate::events::{DockerChanged, EngineChanged};
+use crate::notifications::{self, Alerts};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
@@ -73,14 +74,21 @@ impl Engine {
 
     /// # Errors
     /// Fails when no home folder can be found.
-    pub(crate) fn new(bundled_bin: Option<&Path>) -> Result<Self> {
+    /// `tools` is the app bundle's `tools` folder (see `scripts/fetch-tools.sh`); anything missing
+    /// from it is looked for in Homebrew and on the `PATH`.
+    pub(crate) fn new(tools: Option<&Path>) -> Result<Self> {
         let home = Home::from_env()?;
-        let bundled = |name| bundled_bin.map(|dir| dir.join(name));
-        let colima = Colima::locate(home.clone(), bundled("colima").as_deref()).ok();
+        let bundled = |name| tools.map(|dir| dir.join(name));
+        let colima = Colima::locate(home.clone(), bundled("bin/colima").as_deref()).ok();
         let external_socket = std::env::var_os("CONTAINERIA_DOCKER_SOCKET").map(PathBuf::from);
         let socket = external_socket.clone().unwrap_or_else(|| home.docker_socket());
-        let compose = Compose::locate(&socket, bundled("docker-compose").as_deref());
-        let docker_cli = DockerCli::locate(&socket, bundled("docker").as_deref());
+        let compose = Compose::locate(&socket, bundled("cli-plugins/docker-compose").as_deref());
+        let docker_cli = DockerCli::locate(
+            &socket,
+            bundled("bin/docker").as_deref(),
+            bundled("cli-plugins").as_deref(),
+            &home.root().join("docker"),
+        );
         Ok(Self {
             home,
             colima,
@@ -150,6 +158,19 @@ impl Engine {
         self.forget_docker().await;
         self.transition_while(app, EnginePhase::Stopping, colima.stop(Profile::Containers, on_line))
             .await
+    }
+
+    /// Deletes the engine's VM with every image, container, volume and the Kubernetes cluster in it.
+    /// Its settings stay, so the next start creates a fresh engine the same size.
+    pub(crate) async fn delete(&self, app: &AppHandle) -> Result<()> {
+        let colima = self.colima()?;
+        self.forget_docker().await;
+        self.transition_while(
+            app,
+            EnginePhase::Stopping,
+            colima.delete(Profile::Containers, |_| {}),
+        )
+        .await
     }
 
     /// Turns k3s on or off inside the running engine and remembers the choice for the next start.
@@ -252,11 +273,15 @@ impl Engine {
     /// Runs for the life of the app: relays Docker events to the UI and notices when the engine
     /// comes and goes.
     pub(crate) async fn watch(&self, app: AppHandle) {
+        let mut alerts = Alerts::default();
         loop {
             if let Ok(docker) = self.docker().await {
                 let _ = EngineChanged.emit(&app);
                 let mut events = pin!(docker.events());
                 while let Some(Ok(event)) = events.next().await {
+                    if let Some(alert) = alerts.on_event(&event, Instant::now()) {
+                        notifications::send(&app, &alert);
+                    }
                     let _ = DockerChanged(event).emit(&app);
                 }
                 self.forget_docker().await;

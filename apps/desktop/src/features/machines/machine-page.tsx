@@ -13,32 +13,34 @@ import { TabPanel, Tabs } from "@/ui/tabs";
 import { Tile } from "@/ui/tile";
 
 import { useMachineAction, useMachines, useMachinesStatus } from "./api";
-import { DeleteMachineSheet } from "./delete-machine-sheet";
+import { MachineDialogs } from "./machine-dialogs";
 import { MachineFiles } from "./machine-files";
-import { machineMenu } from "./machine-menu";
+import { type MachineDialog, machineMenu } from "./machine-menu";
 import { MachineOverview } from "./machine-overview";
+import { MachineSnapshots } from "./machine-snapshots";
 import { MachineTerminal } from "./machine-terminal";
 import { MachinesIntro } from "./machines-intro";
 import { isRunning, kindLabel, type ListedMachine, stateLabel } from "./model";
 
 const route = getRouteApi("/machines/$name");
 
-type Tab = "overview" | "terminal" | "files";
+type Tab = "overview" | "terminal" | "files" | "snapshots";
 
 const TABS: { value: Tab; label: string }[] = [
   { value: "overview", label: "Overview" },
   { value: "terminal", label: "Terminal" },
   { value: "files", label: "Files" },
+  { value: "snapshots", label: "Snapshots" },
 ];
 
 function Header({
   machine,
   onTab,
-  onRemove,
+  onDialog,
 }: {
   machine: ListedMachine;
   onTab: (tab: Tab) => void;
-  onRemove: () => void;
+  onDialog: (dialog: MachineDialog) => void;
 }) {
   const action = useMachineAction();
   const act = (verb: "start" | "stop" | "restart") =>
@@ -47,7 +49,7 @@ function Header({
   const menu = machineMenu(machine, {
     open: (tab) => onTab((tab as Tab | undefined) ?? "overview"),
     act,
-    remove: onRemove,
+    dialog: onDialog,
   });
   return (
     <div className="flex shrink-0 items-center gap-3 px-5 pt-[18px] pb-3.5">
@@ -115,13 +117,15 @@ function StoppedPane({ machine, what }: { machine: Machine; what: string }) {
 
 type Navigation = { tab: Tab; onTab: (tab: Tab) => void; onLeave: () => void };
 
-function Detail({ machine, tab, onTab: show, onLeave }: Navigation & { machine: ListedMachine }) {
+type DetailProps = Navigation & { machine: ListedMachine; taken: string[] };
+
+function Detail({ machine, taken, tab, onTab: show, onLeave }: DetailProps) {
   const action = useMachineAction();
-  const [removing, setRemoving] = useState(false);
+  const [dialog, setDialog] = useState<MachineDialog | null>(null);
   const running = isRunning(machine);
   return (
     <>
-      <Header machine={machine} onTab={show} onRemove={() => setRemoving(true)} />
+      <Header machine={machine} onTab={show} onDialog={setDialog} />
       <Tabs tabs={TABS} value={tab} onChange={show}>
         <TabPanel value="overview" className="overflow-auto pt-4">
           <MachineOverview
@@ -143,17 +147,22 @@ function Detail({ machine, tab, onTab: show, onLeave }: Navigation & { machine: 
             <StoppedPane machine={machine} what="files" />
           )}
         </TabPanel>
+        <TabPanel value="snapshots" className="flex flex-col">
+          <MachineSnapshots name={machine.name} onTake={() => setDialog("snapshot")} />
+        </TabPanel>
       </Tabs>
-      <DeleteMachineSheet
-        machine={removing ? machine : null}
-        onClose={() => setRemoving(false)}
+      <MachineDialogs
+        machine={machine}
+        dialog={dialog}
+        taken={taken}
+        onClose={() => setDialog(null)}
         onDeleted={onLeave}
       />
     </>
   );
 }
 
-/** One machine: its header, then overview, terminal and files tabs. */
+/** One machine: its header, then overview, terminal, files and snapshots tabs. */
 export function MachineView({ name, tab, onTab, onLeave }: Navigation & { name: string }) {
   const { data: status } = useMachinesStatus();
   const { data: list } = useMachines();
@@ -169,7 +178,15 @@ export function MachineView({ name, tab, onTab, onLeave }: Navigation & { name: 
       {status && status.phase !== "running" ? (
         <MachinesIntro phase={status.phase} onNew={onLeave} />
       ) : null}
-      {machine ? <Detail machine={machine} tab={tab} onTab={onTab} onLeave={onLeave} /> : null}
+      {machine ? (
+        <Detail
+          machine={machine}
+          taken={list?.machines.map((candidate) => candidate.name) ?? []}
+          tab={tab}
+          onTab={onTab}
+          onLeave={onLeave}
+        />
+      ) : null}
       {list && !machine ? (
         <EmptyState title={`${name} doesn't exist`} className="h-full">
           It may have been deleted.

@@ -1,6 +1,6 @@
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use containeria_docker::{ContainerState, ContainerSummary, CpuCounters, Docker};
 use futures::{StreamExt, stream};
@@ -11,6 +11,7 @@ use tokio::sync::RwLock;
 
 use crate::engine::Engine;
 use crate::events::MetricsUpdated;
+use crate::notifications::{self, Alerts};
 use crate::tray;
 
 const GIB: u64 = 1024 * 1024 * 1024;
@@ -118,6 +119,7 @@ impl Sampler {
 
     pub(crate) async fn run(&self, engine: Arc<Engine>, app: AppHandle) {
         let mut previous = HashMap::new();
+        let mut alerts = Alerts::default();
         loop {
             let metrics = match engine.docker().await {
                 Ok(docker) => sample(&docker, &engine, &mut previous).await,
@@ -125,6 +127,9 @@ impl Sampler {
             };
             if let Some(metrics) = &metrics {
                 self.record(metrics).await;
+                if let Some(alert) = alerts.on_sample(&metrics.ledger, Instant::now()) {
+                    notifications::send(&app, &alert);
+                }
                 let _ = MetricsUpdated(metrics.clone()).emit(&app);
             }
             tray::show_memory(&app, metrics.as_ref().map(|metrics| metrics.ledger.used_bytes));

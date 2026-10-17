@@ -78,7 +78,8 @@ mod tests {
     async fn answers_over_udp_with_localhost() {
         let server = UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let address = server.local_addr().unwrap();
-        let table = Arc::new(RwLock::new(RouteTable::build("containeria.local", &[], &[], true)));
+        let table =
+            Arc::new(RwLock::new(RouteTable::build("containeria.local", &[], &[], &[], true)));
         let task = tokio::spawn(serve(server, table));
 
         let client = UdpSocket::bind("127.0.0.1:0").await.unwrap();

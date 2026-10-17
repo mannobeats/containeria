@@ -112,7 +112,7 @@ const MIB: f64 = 1024.0 * 1024.0;
 
 /// The menu bar reading, in Activity Monitor's units: `820 MB`, `1.2 GB`.
 #[expect(clippy::cast_precision_loss, reason = "memory sizes fit an f64 exactly enough to print")]
-fn format_memory(bytes: u64) -> String {
+pub(crate) fn format_memory(bytes: u64) -> String {
     let bytes = bytes as f64;
     if bytes >= GIB { format!("{:.1} GB", bytes / GIB) } else { format!("{:.0} MB", bytes / MIB) }
 }

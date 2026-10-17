@@ -5,19 +5,25 @@ import { SqlText } from "../sql-text";
 
 type ReviewSheetProps = {
   sql: string | undefined;
+  /** MongoDB writes instead of SQL statements. */
+  documents: boolean;
   onClose: () => void;
   onCommit: () => void;
   committing: boolean;
 };
 
 /** The exact statements a commit runs, in one transaction, for a last look. */
-export function ReviewSheet({ sql, onClose, onCommit, committing }: ReviewSheetProps) {
+export function ReviewSheet({ sql, documents, onClose, onCommit, committing }: ReviewSheetProps) {
   return (
     <Sheet
       open={sql !== undefined}
       onOpenChange={(open) => (open ? undefined : onClose())}
-      title="Review SQL"
-      description="These statements run in one transaction. If any row changed since it was read, nothing is committed."
+      title={documents ? "Review changes" : "Review SQL"}
+      description={
+        documents
+          ? "On a replica set these run in one transaction. A standalone server has no transactions, so they run in order and stop at the first document that changed since it was read."
+          : "These statements run in one transaction. If any row changed since it was read, nothing is committed."
+      }
       width="lg"
       footer={
         <>

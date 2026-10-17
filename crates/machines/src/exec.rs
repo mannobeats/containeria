@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use futures::stream::BoxStream;
 use futures::{SinkExt, StreamExt, future};
 use serde_json::{Value, json};
@@ -48,6 +50,38 @@ fn bytes_of(message: Message) -> Option<Vec<u8>> {
         Message::Text(text) => Some(text.as_bytes().to_vec()),
         _ => None,
     }
+}
+
+/// The remote the `incus` client reaches the machines VM through, in Containeria's own client
+/// config folder so the person's `incus` setup is never touched.
+const REMOTE: &str = "containeria";
+
+/// An `incus` client `config.yml` whose default remote is the machines VM's socket.
+#[must_use]
+pub fn client_config(socket: &Path) -> String {
+    let address = Value::from(format!("unix://{}", socket.display()));
+    format!(
+        "default-remote: {REMOTE}\nremotes:\n  {REMOTE}:\n    addr: {address}\n    protocol: incus\n"
+    )
+}
+
+/// Quotes a word for `sh`, so paths with spaces or quotes survive.
+fn quote(word: &str) -> String {
+    format!("'{}'", word.replace('\'', r"'\''"))
+}
+
+/// The Terminal command for the same root login shell the app opens: the `incus` client at
+/// `incus`, reading the config `client_config` wrote into `config_dir`.
+///
+/// # Errors
+/// Fails when the machine name isn't valid.
+pub fn shell_command(incus: &Path, config_dir: &Path, machine: &str) -> Result<String> {
+    validate_name(machine)?;
+    Ok(format!(
+        "INCUS_CONF={} {} exec {REMOTE}:{machine} -- su -l",
+        quote(&config_dir.to_string_lossy()),
+        quote(&incus.to_string_lossy()),
+    ))
 }
 
 impl Incus {
@@ -127,6 +161,31 @@ mod tests {
         assert_eq!(secret(&metadata, "0").unwrap(), "a1b2");
         assert_eq!(secret(&metadata, "control").unwrap(), "c3d4");
         assert!(secret(&json!({}), "0").is_err());
+    }
+
+    #[test]
+    fn points_the_incus_client_at_the_machines_socket() {
+        let config = client_config(Path::new("/Users/ada/.containeria/colima/m/incus.sock"));
+        assert_eq!(
+            config,
+            "default-remote: containeria\nremotes:\n  containeria:\n    addr: \"unix:///Users/ada/.containeria/colima/m/incus.sock\"\n    protocol: incus\n"
+        );
+    }
+
+    #[test]
+    fn quotes_paths_in_the_shell_command() {
+        let command = shell_command(
+            Path::new("/opt/homebrew/bin/incus"),
+            Path::new("/Users/ada/My Stuff/.containeria/incus"),
+            "ubuntu-dev",
+        )
+        .unwrap();
+        assert_eq!(
+            command,
+            "INCUS_CONF='/Users/ada/My Stuff/.containeria/incus' '/opt/homebrew/bin/incus' exec containeria:ubuntu-dev -- su -l"
+        );
+        assert_eq!(quote("it's"), r"'it'\''s'");
+        assert!(shell_command(Path::new("incus"), Path::new("/c"), "x; rm -rf ~").is_err());
     }
 
     #[test]

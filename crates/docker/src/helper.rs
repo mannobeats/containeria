@@ -13,7 +13,7 @@ use crate::{Docker, Error, Result};
 
 /// Small and multi-arch; it carries `find`, `stat` and `cp`, which is all the helpers need.
 const IMAGE: &str = "busybox:1.37";
-const LABEL: &str = "dev.containeria.helper";
+pub(crate) const LABEL: &str = "dev.containeria.helper";
 
 /// A short-lived, network-less busybox container used to reach into volumes. Always removed.
 #[derive(Debug)]

@@ -89,7 +89,7 @@ pub(crate) fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     }
     let file = file
         .separator()
-        .text("/welcome", "Import from Docker Desktop…")
+        .text("/import", "Import from Docker Desktop or OrbStack…")
         .separator()
         .item(&PredefinedMenuItem::close_window(app, None)?)
         .build()?;

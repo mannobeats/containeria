@@ -127,7 +127,7 @@ export function WorkspaceTabs({ info, tabs, active }: TabsProps) {
           </ContextMenu>
         );
       })}
-      {info.capabilities.sql ? (
+      {info.capabilities.query ? (
         <span className="mb-1 ml-1 shrink-0">
           <IconAction label="New query" kbd="⌘T" onClick={() => open(nextQueryTab(tabs))}>
             <IconPlus />

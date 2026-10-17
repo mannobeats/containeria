@@ -21,6 +21,10 @@ pub(crate) enum ErrorKind {
     Database,
     /// A production database is in safe mode; the UI offers to allow writes.
     ReadOnly,
+    /// The SSH tunnel to a database didn't open; the database itself wasn't reached.
+    Ssh,
+    /// The SSH server's key isn't trusted yet; the UI shows its fingerprint and offers to trust it.
+    UnknownHostKey,
 }
 
 /// The one error shape every command rejects with.
@@ -51,6 +55,8 @@ impl From<containeria_data::Error> for CommandError {
             Data::Invalid(_) | Data::Unsupported(_) => ErrorKind::InvalidInput,
             Data::Docker(containeria_docker::Error::Unreachable(_)) => ErrorKind::EngineStopped,
             Data::NotConnected(_) | Data::Database(_) | Data::Docker(_) => ErrorKind::Database,
+            Data::Ssh(_) | Data::HostKeyChanged(_) => ErrorKind::Ssh,
+            Data::UnknownHostKey { .. } => ErrorKind::UnknownHostKey,
             Data::Keychain(_) | Data::Json(_) | Data::Io(_) => ErrorKind::Internal,
         };
         Self::new(kind, error.to_string())
@@ -102,7 +108,9 @@ impl From<containeria_machines::Error> for CommandError {
             containeria_machines::Error::Invalid(_) | containeria_machines::Error::Incus(_) => {
                 ErrorKind::Engine
             }
-            containeria_machines::Error::Protocol(_) => ErrorKind::Internal,
+            containeria_machines::Error::Protocol(_) | containeria_machines::Error::File { .. } => {
+                ErrorKind::Internal
+            }
         };
         Self::new(kind, error.to_string())
     }

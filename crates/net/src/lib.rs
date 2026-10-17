@@ -15,6 +15,6 @@ mod system;
 pub use ca::CA_NAME;
 pub use error::{Error, Result};
 pub use host::{DEFAULT_TLD, container_host};
-pub use routes::{CustomRoute, DomainRoute, RouteDown, RouteKind};
+pub use routes::{ClusterService, CustomRoute, DomainRoute, RouteDown, RouteKind};
 pub use service::{DNS_PORT, DomainPorts, Domains, DomainsStatus, running_ports};
-pub use system::ResolverState;
+pub use system::{ResolverState, privileged};

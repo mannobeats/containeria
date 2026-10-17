@@ -41,6 +41,7 @@ pub use scan::{ScanReport, Severity, Vulnerability};
 pub use shell::{Shell, ShellTarget, Utf8Decoder};
 pub use stats::{CpuCounters, StatsSample, Usage};
 pub use system::{DiskUsage, EngineInfo, UsageGroup};
+pub use transfer::{Inventory, MovableContainer};
 pub use volumes::{VolumeFile, VolumeFileKind, VolumeSummary, VolumeUser};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -109,6 +110,19 @@ impl Docker {
         let path = socket.to_string_lossy();
         let api = bollard::Docker::connect_with_socket(
             &path,
+            Self::TIMEOUT_SECONDS,
+            API_DEFAULT_VERSION,
+        )?;
+        Ok(Self { api })
+    }
+
+    /// Connects to an engine listening on TCP without TLS, such as `tcp://127.0.0.1:2375`.
+    ///
+    /// # Errors
+    /// Fails when the address isn't a valid URL.
+    pub fn connect_http(address: &str) -> Result<Self> {
+        let api = bollard::Docker::connect_with_http(
+            address,
             Self::TIMEOUT_SECONDS,
             API_DEFAULT_VERSION,
         )?;

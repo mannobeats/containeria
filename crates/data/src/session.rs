@@ -13,6 +13,7 @@ use crate::redis::Redis;
 use crate::result::QueryResult;
 use crate::schema::{Namespace, Table, TableRef};
 use crate::sql::SqlPool;
+use crate::tunnel::{KnownHosts, Tunnel};
 use crate::value::Value;
 
 /// The engines Containeria speaks, behind one set of operations.
@@ -30,13 +31,29 @@ pub(crate) struct Session {
     pub(crate) driver: Driver,
     pub(crate) version: String,
     schema: RwLock<Option<Vec<Namespace>>>,
+    tunnel: Option<Tunnel>,
 }
 
 /// Counting filtered rows stops here: past it the footer says "100,000+".
 pub(crate) const COUNT_CAP: u32 = 100_000;
 
 impl Session {
-    pub(crate) async fn open(target: &Target) -> Result<Self> {
+    /// Opens the SSH tunnel first when the target has one, then dials the database through it.
+    pub(crate) async fn open(target: &Target, known: KnownHosts) -> Result<Self> {
+        let tunnel = match &target.ssh {
+            Some(ssh) if target.engine != Engine::Sqlite => {
+                let port = target.port.or_else(|| target.engine.default_port()).unwrap_or_default();
+                let secret = target.ssh_secret.as_deref();
+                Some(Tunnel::open(ssh, secret, known, &target.host, port).await?)
+            }
+            _ => None,
+        };
+        let forwarded = tunnel.as_ref().map(|tunnel| Target {
+            host: "127.0.0.1".into(),
+            port: Some(tunnel.port),
+            ..target.clone()
+        });
+        let target = forwarded.as_ref().unwrap_or(target);
         let driver = match target.engine {
             Engine::Postgres | Engine::MySql | Engine::MariaDb | Engine::Sqlite => {
                 Driver::Sql(SqlPool::connect(target).await?)
@@ -51,7 +68,7 @@ impl Session {
             Driver::Mongo(client) => client.version().await?,
             Driver::Redis(client) => client.version().await?,
         };
-        Ok(Self { engine: target.engine, driver, version, schema: RwLock::new(None) })
+        Ok(Self { engine: target.engine, driver, version, schema: RwLock::new(None), tunnel })
     }
 
     pub(crate) fn dialect(&self) -> Option<Dialect> {
@@ -130,7 +147,8 @@ impl Session {
         match &self.driver {
             Driver::Sql(pool) => pool.run(sql, read_only).await,
             Driver::ClickHouse(client) => client.run(sql, read_only).await,
-            Driver::Mongo(_) | Driver::Redis(_) => {
+            Driver::Mongo(client) => client.run(sql, read_only).await,
+            Driver::Redis(_) => {
                 Err(Error::Unsupported(format!("{:?} doesn't run SQL", self.engine)))
             }
         }
@@ -157,6 +175,9 @@ impl Session {
                 SqlPool::MySql(pool) => pool.close().await,
                 SqlPool::Sqlite(pool) => pool.close().await,
             }
+        }
+        if let Some(tunnel) = &self.tunnel {
+            tunnel.close();
         }
     }
 }

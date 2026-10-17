@@ -10,3 +10,5 @@ apps/desktop/src-tauri/gen/
 coverage/
 .claude/worktrees/
 .claude/scheduled_tasks.lock
+apps/desktop/src-tauri/resources/tools/*
+!apps/desktop/src-tauri/resources/tools/README.md

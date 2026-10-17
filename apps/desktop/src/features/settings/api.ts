@@ -1,5 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
+import {
+  isPermissionGranted,
+  requestPermission,
+  sendNotification,
+} from "@tauri-apps/plugin-notification";
 import { toast } from "sonner";
 
 import { commands, type Preferences } from "@/lib/ipc/bindings";
@@ -49,4 +55,22 @@ export function useLaunchAtLogin() {
       toast.error("Launch at login didn't change", { description: errorMessage(error) }),
   });
   return { enabled: query.data ?? false, set: mutation.mutate };
+}
+
+/** Asks macOS to allow notifications, when a notification switch is turned on. */
+export async function allowNotifications() {
+  if (!(await isPermissionGranted())) {
+    await requestPermission();
+  }
+}
+
+/** Tells someone working in another app that a pull, build or Compose run ended. */
+export async function notifyWhenAway(title: string, body: string | null) {
+  const [focused, preferences] = await Promise.all([
+    getCurrentWindow().isFocused(),
+    commands.preferencesGet(),
+  ]);
+  if (!focused && preferences.notifyOn.includes("finished")) {
+    sendNotification(body === null ? { title } : { title, body });
+  }
 }

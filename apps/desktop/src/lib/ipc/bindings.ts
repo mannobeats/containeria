@@ -14,6 +14,8 @@ export const commands = {
 	engineStop: (progress: Channel<LogLine>) => __TAURI_INVOKE<null>("engine_stop", { progress }),
 	engineRestart: (progress: Channel<LogLine>) => __TAURI_INVOKE<null>("engine_restart", { progress }),
 	engineSaveConfig: (config: EngineConfig) => __TAURI_INVOKE<null>("engine_save_config", { config }),
+	/**  Deletes the engine's VM, and with `machines` the Linux machines VM too. Settings stay. */
+	engineReset: (machines: boolean) => __TAURI_INVOKE<null>("engine_reset", { machines }),
 	/**  The last sample, so a view can draw before the next `MetricsUpdated` event. */
 	metricsLatest: () => __TAURI_INVOKE<{
 	sampledAtMs: number | null,
@@ -27,6 +29,13 @@ export const commands = {
 	/**  The Mac's chip, cores and memory, to size the engine's limits. */
 	hostInfo: () => __TAURI_INVOKE<Host>("host_info"),
 	about: () => __TAURI_INVOKE<About>("about"),
+	/**  The tools Containeria can install, and whether each one is. */
+	cliTools: () => __TAURI_INVOKE<CliTool[]>("cli_tools"),
+	/**
+	 *  Links every missing tool into `/usr/local` after the macOS administrator prompt. Tools already
+	 *  there from somewhere else are left alone.
+	 */
+	cliToolsInstall: () => __TAURI_INVOKE<null>("cli_tools_install"),
 	/**
 	 *  Writes a `.tar.gz` of what helps someone else find a problem: versions, engine and machine
 	 *  status, container names and states, engine settings and the VMs' logs.
@@ -60,12 +69,16 @@ export const commands = {
 	containersPrune: () => __TAURI_INVOKE<PruneReport>("containers_prune"),
 	/**  Deletes the build cache no build is using. */
 	buildCachePrune: () => __TAURI_INVOKE<PruneReport>("build_cache_prune"),
-	dockerDesktopDetect: () => __TAURI_INVOKE<DockerDesktop>("docker_desktop_detect"),
+	/**  Whether Docker Desktop and `OrbStack` are installed and running. */
+	migrationSources: () => __TAURI_INVOKE<SourceStatus[]>("migration_sources"),
+	/**  What the source has to bring over. Reading changes nothing there. */
+	migrationInventory: (source: MigrationSource) => __TAURI_INVOKE<Inventory>("migration_inventory", { source }),
 	/**
-	 *  Copies images from Docker Desktop into Containeria's engine, one at a time, reporting each.
-	 *  A failed image is reported and skipped; the rest still copy.
+	 *  Brings images, then volumes, then containers over, one at a time, reporting each. A failed
+	 *  item is reported and skipped; the rest still copy. The source isn't changed, apart from the
+	 *  short-lived helper containers that read its volumes.
 	 */
-	dockerDesktopImportImages: (references: string[], progress: Channel<ImportProgress>) => __TAURI_INVOKE<null>("docker_desktop_import_images", { references, progress }),
+	migrationImport: (source: MigrationSource, plan: MigrationPlan, progress: Channel<ImportProgress>) => __TAURI_INVOKE<null>("migration_import", { source, plan, progress }),
 	containersList: () => __TAURI_INVOKE<ContainerSummary[]>("containers_list"),
 	containerAct: (id: string, action: ContainerAction) => __TAURI_INVOKE<null>("container_act", { id, action }),
 	/**  Streams stats readings into `channel` until cancelled with `stream_cancel`. */
@@ -145,6 +158,21 @@ export const commands = {
 	machineShell: (name: string, cols: number, rows: number, output: Channel<string>) => __TAURI_INVOKE<number>("machine_shell", { name, cols, rows, output }),
 	machineShellInput: (id: number, data: string) => __TAURI_INVOKE<null>("machine_shell_input", { id, data }),
 	machineShellResize: (id: number, cols: number, rows: number) => __TAURI_INVOKE<null>("machine_shell_resize", { id, cols, rows }),
+	machineSnapshots: (name: string) => __TAURI_INVOKE<MachineSnapshot[]>("machine_snapshots", { name }),
+	machineSnapshotCreate: (name: string, snapshot: string) => __TAURI_INVOKE<null>("machine_snapshot_create", { name, snapshot }),
+	/**  Puts the machine back as it was in `snapshot`; everything since is lost. */
+	machineSnapshotRestore: (name: string, snapshot: string) => __TAURI_INVOKE<null>("machine_snapshot_restore", { name, snapshot }),
+	machineSnapshotDelete: (name: string, snapshot: string) => __TAURI_INVOKE<null>("machine_snapshot_delete", { name, snapshot }),
+	/**  Copies the machine to a new, stopped machine named `to`. */
+	machineClone: (name: string, to: string) => __TAURI_INVOKE<null>("machine_clone", { name, to }),
+	/**  Writes the machine to `destination`, a `.tar.gz` path the user picked on the Mac. */
+	machineExport: (name: string, destination: string) => __TAURI_INVOKE<null>("machine_export", { name, destination }),
+	/**  Creates a stopped machine named `name` from `source`, a `.tar.gz` that `machine_export` wrote. */
+	machineImport: (source: string, name: string) => __TAURI_INVOKE<null>("machine_import", { source, name }),
+	/**  The command that opens the machine's root shell from a Mac terminal. */
+	machineShellCommand: (name: string) => __TAURI_INVOKE<string>("machine_shell_command", { name }),
+	/**  Opens the machine's root shell in a Terminal window. */
+	machineOpenTerminal: (name: string) => __TAURI_INVOKE<null>("machine_open_terminal", { name }),
 	imagesList: () => __TAURI_INVOKE<ImageSummary[]>("images_list"),
 	imageDetail: (id: string) => __TAURI_INVOKE<ImageDetail>("image_detail", { id }),
 	/**  Pulls `reference`, streaming progress into `channel`. Cancel with `stream_cancel`. */
@@ -225,6 +253,10 @@ export const commands = {
 	dataRemoveConnection: (id: string) => __TAURI_INVOKE<null>("data_remove_connection", { id }),
 	/**  Dials the connection described in the sheet; returns the server's version. */
 	dataTestConnection: (input: ConnectionInput) => __TAURI_INVOKE<string>("data_test_connection", { input }),
+	/**  The host key an SSH server offers, so the user can check its fingerprint before trusting it. */
+	dataSshHostKey: (ssh: SshTunnel) => __TAURI_INVOKE<HostKey>("data_ssh_host_key", { ssh }),
+	/**  Trusts an SSH server's key in Containeria's own known hosts; `~/.ssh` is never changed. */
+	dataTrustHostKey: (key: HostKey) => __TAURI_INVOKE<null>("data_trust_host_key", { key }),
 	dataConnect: (id: string) => __TAURI_INVOKE<ServerInfo>("data_connect", { id }),
 	dataDisconnect: (id: string) => __TAURI_INVOKE<null>("data_disconnect", { id }),
 	dataSchema: (id: string, refresh: boolean) => __TAURI_INVOKE<Namespace[]>("data_schema", { id, refresh }),
@@ -301,7 +333,9 @@ export type BuildSpec = {
 
 /**  What the UI may offer for an engine. */
 export type Capabilities = {
-	/**  Runs SQL in the editor. */
+	/**  Has query tabs: SQL when `sql`, otherwise MongoDB `find` and `aggregate` written as JSON. */
+	query: boolean,
+	/**  The query tabs and the grid's review speak SQL. */
 	sql: boolean,
 	/**  Rows can be edited, added and deleted from the grid. */
 	editRows: boolean,
@@ -324,6 +358,12 @@ export type ChangeSet = {
 	inserts: Cell[][],
 	/**  Primary keys of rows to delete. */
 	deletes: Cell[][],
+};
+
+export type CliTool = {
+	name: string,
+	target: string,
+	state: ToolState,
 };
 
 /**  Everything the Kubernetes view shows, read in one pass. */
@@ -427,9 +467,13 @@ export type Connection = {
 	tls: boolean,
 	environment: Environment,
 	hasPassword: boolean,
+	/**  Reached through this SSH server, when set. */
+	ssh?: SshTunnel | null,
+	/**  The SSH password or key passphrase is in the Keychain. */
+	hasSshSecret?: boolean,
 };
 
-/**  What the connection sheet sends. `password: None` keeps the saved one. */
+/**  What the connection sheet sends. `password: None` and `ssh_secret: None` keep the saved ones. */
 export type ConnectionInput = {
 	id: string | null,
 	name: string,
@@ -442,6 +486,9 @@ export type ConnectionInput = {
 	tls: boolean,
 	environment: Environment,
 	password: string | null,
+	ssh: SshTunnel | null,
+	/**  The SSH password, or the key file's passphrase. */
+	sshSecret: string | null,
 };
 
 /**  What the user can do to a container from the list. */
@@ -576,19 +623,15 @@ export type Distro = {
 /**  Something in Docker changed; refetch lists of that kind. */
 export type DockerChanged = DockerEvent;
 
-/**  What first launch can bring over from Docker Desktop. */
-export type DockerDesktop = {
-	installed: boolean,
-	/**  Its engine answers, so its images can be copied. */
-	running: boolean,
-	images: string[],
-};
-
 /**  Something changed in the engine; the UI refetches what it shows of that kind. */
 export type DockerEvent = {
 	kind: ObjectKind,
 	action: string,
 	id: string,
+	/**  The container, image or network name Docker reports, or the id when it reports none. */
+	name: string,
+	/**  How a container's process ended; only `die` carries it. */
+	exitCode: number | null,
 };
 
 export type DomainPorts = {
@@ -692,7 +735,11 @@ export type ErrorKind = "engineMissing" | "engineStopped" |
 /**  A database said no, or couldn't be reached. */
 "database" | 
 /**  A production database is in safe mode; the UI offers to allow writes. */
-"readOnly";
+"readOnly" | 
+/**  The SSH tunnel to a database didn't open; the database itself wasn't reached. */
+"ssh" | 
+/**  The SSH server's key isn't trusted yet; the UI shows its fingerprint and offers to trust it. */
+"unknownHostKey";
 
 export type ExportFormat = "csv" | "json" | "sql";
 
@@ -755,6 +802,17 @@ export type Host = {
 	chip: string,
 	cores: number,
 	memoryBytes: number,
+};
+
+/**  An SSH server's host key, shown so the user can compare its fingerprint before trusting it. */
+export type HostKey = {
+	host: string,
+	port: number,
+	algorithm: string,
+	/**  `SHA256:…`, as `ssh` prints it. */
+	fingerprint: string,
+	/**  The key in OpenSSH format; trusting sends it back unchanged. */
+	key: string,
 };
 
 /**  A Docker Hub search result for the pull sheet. */
@@ -826,8 +884,10 @@ export type ImportPreview = {
 	delimiter: Delimiter,
 };
 
+/**  One item's progress: `item` is the reference, name or ID it was asked for by. */
 export type ImportProgress = {
-	reference: string,
+	kind: ItemKind,
+	item: string,
 	state: ImportState,
 	message: string | null,
 };
@@ -882,6 +942,16 @@ export type Instance = {
 };
 
 export type InstanceStatus = "running" | "stopped" | "broken" | "unknown";
+
+/**  What another engine has. */
+export type Inventory = {
+	images: string[],
+	/**  Named volumes; anonymous ones travel with the container that uses them. */
+	volumes: string[],
+	containers: MovableContainer[],
+};
+
+export type ItemKind = "image" | "volume" | "container";
 
 /**  How TypeScript sees a JSON cell. Only describes the shape; values are `serde_json::Value`. */
 export type JsonDocument = { [key in string]: unknown } | unknown[];
@@ -974,6 +1044,12 @@ export type MachineKind =
 /**  A full VM with its own kernel. Needs nested virtualization (M3 or newer). */
 "vm";
 
+/**  A saved state of a machine's disk that it can go back to. */
+export type MachineSnapshot = {
+	name: string,
+	createdAt: string,
+};
+
 export type MachineState = "running" | "stopped" | "frozen" | "error" | "busy";
 
 /**  The machines VM or a machine changed; refetch machines. */
@@ -1007,6 +1083,18 @@ export type MetricsPoint = {
 /**  A fresh CPU and memory sample, about every two seconds while the engine runs. */
 export type MetricsUpdated = Metrics;
 
+/**  What to bring over, by image reference, volume name and container ID. */
+export type MigrationPlan = {
+	images: string[],
+	volumes: string[],
+	containers: string[],
+	/**  Start the containers that were running there. */
+	start: boolean,
+};
+
+/**  Another container app on the Mac whose images, volumes and containers can be brought over. */
+export type MigrationSource = "dockerDesktop" | "orbStack";
+
 export type Mount = {
 	kind: MountKind,
 	/**  The volume name for volumes, the Mac or VM path for binds. */
@@ -1016,6 +1104,15 @@ export type Mount = {
 };
 
 export type MountKind = "volume" | "bind" | "tmpfs" | "other";
+
+/**  A container another engine runs that can be created again here. */
+export type MovableContainer = {
+	id: string,
+	name: string,
+	image: string,
+	project: string | null,
+	running: boolean,
+};
 
 /**  What a move reports, ending with `done` or `failed`. */
 export type MoveEvent = { kind: "stopping" } | { kind: "copying"; progress: MoveProgress } | { kind: "starting" } | 
@@ -1081,6 +1178,16 @@ export type NetworkSummary = {
 	containers: string[],
 };
 
+export type NotifyOn = 
+/**  A container exits with an error nobody asked for. */
+"crash" | 
+/**  A container's health check starts failing. */
+"unhealthy" | 
+/**  A pull, build or Compose run ends while Containeria isn't the frontmost app. */
+"finished" | 
+/**  The engine uses more than 90% of its memory. */
+"lowMemory";
+
 export type ObjectKind = "container" | "image" | "volume" | "network";
 
 /**
@@ -1137,6 +1244,8 @@ export type Preferences = {
 	memoryInMenuBar: boolean,
 	/**  First launch was finished or skipped. */
 	onboarded: boolean,
+	/**  What Containeria tells you about in Notification Center. */
+	notifyOn: NotifyOn[],
 };
 
 /**  A hosted service on top of an engine, for its logo and its defaults. */
@@ -1218,7 +1327,9 @@ export type RouteDown =
 /**  The container runs but doesn't publish the port to the Mac. */
 "notPublished";
 
-export type RouteKind = "container" | "custom";
+export type RouteKind = "container" | "custom" | 
+/**  A Kubernetes service reachable from the Mac. */
+"service";
 
 /**  One page of a table. */
 export type RowPage = {
@@ -1311,7 +1422,7 @@ export type ServiceSummary = {
 };
 
 /**  A tab in the Settings window's toolbar. */
-export type SettingsPane = "general" | "engine" | "storage" | "kubernetes" | "docker" | "about";
+export type SettingsPane = "general" | "engine" | "storage" | "kubernetes" | "docker" | "advanced" | "about";
 
 /**  Switches the open Settings window to a pane. */
 export type SettingsPaneShown = SettingsPane;
@@ -1324,6 +1435,35 @@ export type ShellEvent = { kind: "output"; text: string } | { kind: "closed" };
 export type Sort = {
 	column: string,
 	descending: boolean,
+};
+
+export type SourceStatus = {
+	source: MigrationSource,
+	installed: boolean,
+	/**  Its engine answers, so there's something to read. */
+	running: boolean,
+};
+
+/**  How Containeria proves who it is to the SSH server. */
+export type SshAuth = 
+/**  The keys loaded in ssh-agent, through `SSH_AUTH_SOCK`. */
+"agent" | 
+/**  A private key file; its passphrase, if any, is in the Keychain. */
+"key" | 
+/**  A password, kept in the Keychain. */
+"password";
+
+/**
+ *  The SSH server a connection reaches its database through. The database host and port are
+ *  dialled from that server, so `localhost` there means the server itself.
+ */
+export type SshTunnel = {
+	host: string,
+	port: number,
+	user: string,
+	auth: SshAuth,
+	/**  The private key, for `SshAuth::Key`. A leading `~/` means the home folder. */
+	keyFile: string | null,
 };
 
 /**  One stats reading, already turned into the numbers the UI draws. */
@@ -1362,6 +1502,12 @@ export type TableRef = {
 	schema: string | null,
 	name: string,
 };
+
+export type ToolState = 
+/**  Linked to Containeria's copy. */
+"installed" | "missing" | 
+/**  Something else is there, such as Homebrew's or Docker Desktop's; Containeria leaves it. */
+"other";
 
 /**  One kind of thing taking space in the engine. */
 export type UsageGroup = {

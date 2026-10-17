@@ -13,12 +13,14 @@ import {
   type ConnectionInput,
   commands,
   type ExportFormat,
+  type HostKey,
   type ImportedRows,
   type ImportOptions,
   type ImportRequest,
   type RowsRequest,
   type SavedQuery,
   type ServerInfo,
+  type SshTunnel,
   type TableRef,
 } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
@@ -35,6 +37,7 @@ export const dataKeys = {
   importPreview: (path: string, options: ImportOptions) => ["data", "import", path, options],
   redisKeys: (id: string, pattern: string) => ["data", "redis", id, pattern],
   redisValue: (id: string, key: string) => ["data", "redis-value", id, key],
+  hostKey: (ssh: SshTunnel) => ["data", "host-key", ssh],
 } as const;
 
 export function useConnections() {
@@ -117,6 +120,25 @@ export function useRemoveConnection() {
 export function useTestConnection() {
   return useMutation({
     mutationFn: (input: ConnectionInput) => commands.dataTestConnection(input),
+  });
+}
+
+/** The key an SSH server offers, read fresh each time so a stale fingerprint is never trusted. */
+export function useSshHostKey(ssh: SshTunnel) {
+  return useQuery({
+    queryKey: dataKeys.hostKey(ssh),
+    queryFn: () => commands.dataSshHostKey(ssh),
+    gcTime: 0,
+  });
+}
+
+export function useTrustHostKey() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (key: HostKey) => commands.dataTrustHostKey(key),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["data", "host-key"] }),
+    onError: (error) =>
+      toast.error("The SSH key wasn't trusted", { description: errorMessage(error) }),
   });
 }
 

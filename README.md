@@ -30,7 +30,13 @@ pnpm install
 pnpm dev                     # runs the app with its own engine in ~/.containeria
 CONTAINERIA_DOCKER_SOCKET=/var/run/docker.sock pnpm dev   # or against any running Docker engine
 pnpm check                   # the full quality gate
+sh scripts/fetch-tools.sh    # pinned Colima, Lima, Docker CLI, Compose, Buildx, kubectl, Incus
+pnpm build                   # the .app and .dmg, with those tools inside
 ```
+
+A tagged commit (`v*`) builds and publishes the Apple silicon disk image through
+`.github/workflows/release.yml`. It isn't signed with a Developer ID yet, so macOS asks to confirm
+the first launch (right-click → Open).
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
 

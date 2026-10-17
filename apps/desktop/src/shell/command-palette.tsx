@@ -107,6 +107,11 @@ export function CommandPalette() {
                 />
                 <Item
                   icon="container"
+                  label="Import from Docker Desktop or OrbStack…"
+                  onSelect={run(() => navigate({ to: "/import" }))}
+                />
+                <Item
+                  icon="container"
                   label="Open Compose file…"
                   hint={<Kbd>⌘O</Kbd>}
                   onSelect={run(chooseComposeFile)}

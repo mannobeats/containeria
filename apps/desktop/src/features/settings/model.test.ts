@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { engineFixture } from "@/test/fixtures";
+import { engineFixture, preferencesFixture } from "@/test/fixtures";
 
-import { describeChanges, linesOf, sizeOutOfDate } from "./model";
+import { describeChanges, linesOf, sizeOutOfDate, withNotification } from "./model";
 
 const saved = engineFixture().config;
 
@@ -57,5 +57,14 @@ describe("linesOf", () => {
       "https://a.example",
       "localhost:5000",
     ]);
+  });
+});
+
+describe("withNotification", () => {
+  it("switches one kind on or off and lists it once", () => {
+    const off = withNotification(preferencesFixture(), "crash", false);
+    expect(off.notifyOn).toEqual(["unhealthy", "finished", "lowMemory"]);
+    expect(withNotification(off, "crash", true).notifyOn).toContain("crash");
+    expect(withNotification(off, "unhealthy", true).notifyOn).toEqual(off.notifyOn);
   });
 });

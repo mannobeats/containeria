@@ -12,7 +12,10 @@ export function routeUrl(route: DomainRoute, ports: DomainPorts | null): string 
 
 export type RouteGroup = { kind: RouteKind; label: string; routes: DomainRoute[] };
 
-/** The user's routes first, then one per container. Empty groups are left out. */
+/**
+ * The user's routes first, then one per container, then Kubernetes services. Empty groups are left
+ * out.
+ */
 export function groupRoutes(routes: DomainRoute[]): RouteGroup[] {
   const groups: RouteGroup[] = [
     {
@@ -24,6 +27,11 @@ export function groupRoutes(routes: DomainRoute[]): RouteGroup[] {
       kind: "container",
       label: "Containers",
       routes: routes.filter((route) => route.kind === "container"),
+    },
+    {
+      kind: "service",
+      label: "Kubernetes services",
+      routes: routes.filter((route) => route.kind === "service"),
     },
   ];
   return groups.filter((group) => group.routes.length > 0);

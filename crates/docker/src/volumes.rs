@@ -115,7 +115,7 @@ fn parse_listing(output: &str) -> Vec<VolumeFile> {
     entries
 }
 
-const MOUNT: &str = "/v";
+pub(crate) const MOUNT: &str = "/v";
 
 impl Docker {
     /// Every volume with its size and the containers that mount it.

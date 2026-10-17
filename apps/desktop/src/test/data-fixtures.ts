@@ -15,7 +15,7 @@ export function infoFixture(overrides: Partial<ServerInfo> = {}): ServerInfo {
     engine: "postgres",
     provider: null,
     version: "PostgreSQL 18.0",
-    capabilities: { sql: true, editRows: true, tables: true, keys: false },
+    capabilities: { query: true, sql: true, editRows: true, tables: true, keys: false },
     environment: "local",
     readOnly: false,
     writableUntilMs: null,

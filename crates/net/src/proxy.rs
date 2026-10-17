@@ -250,7 +250,13 @@ mod tests {
             port: 8080,
             https: true,
         }];
-        Arc::new(RwLock::new(RouteTable::build("containeria.local", &[container], &custom, true)))
+        Arc::new(RwLock::new(RouteTable::build(
+            "containeria.local",
+            &[container],
+            &[],
+            &custom,
+            true,
+        )))
     }
 
     async fn get<S: AsyncRead + AsyncWrite + Unpin>(mut stream: S, host: &str) -> String {

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { queryKeys } from "@/app/query-keys";
 import { isServing, useEngineStatus } from "@/features/engine/api";
+import { notifyWhenAway } from "@/features/settings/api";
 import { formatBytes } from "@/lib/format";
 import { commands, type PullEvent } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
@@ -90,6 +91,8 @@ export function usePull(onFinished: (outcome: PullOutcome) => void) {
     setState(null);
     invalidate();
     onFinished({ reference, failure });
+    const title = failure === null ? `Pulled ${reference}` : `Couldn't pull ${reference}`;
+    notifyWhenAway(title, failure).catch(() => undefined);
   };
   const onEvent = (reference: string, event: PullEvent) => {
     if (event.kind === "progress") {

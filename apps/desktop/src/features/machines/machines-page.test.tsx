@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { EnginePhase, Machine } from "@/lib/ipc/bindings";
 import { mockCommands, renderWithApp } from "@/test/harness";
@@ -8,6 +8,11 @@ import { mockCommands, renderWithApp } from "@/test/harness";
 import { distrosFixture, machineFixture, machinesStatusFixture } from "./fixtures";
 import { MachinesPage } from "./machines-page";
 import { useNewMachineSheet } from "./new-machine-store";
+
+vi.mock("@tauri-apps/plugin-dialog", () => ({
+  open: () => Promise.resolve("/Users/ada/Desktop/ubuntu-dev.tar.gz"),
+  save: () => Promise.resolve("/Users/ada/Desktop/ubuntu-dev.tar.gz"),
+}));
 
 beforeEach(() => useNewMachineSheet.setState({ open: false }));
 
@@ -20,6 +25,7 @@ function setup(
     machinesStatus: () => machinesStatusFixture({ phase, supportsVms }),
     machinesList: () => machines,
     machineDistros: () => distrosFixture,
+    machineShellCommand: () => "INCUS_CONF='/c' 'incus' exec containeria:ubuntu-dev -- su -l",
   });
   renderWithApp(<MachinesPage />);
   return calls;
@@ -87,6 +93,64 @@ describe("MachinesPage", () => {
     await userEvent.click(within(sheet).getByRole("button", { name: "Delete machine" }));
     await waitFor(() =>
       expect(calls).toContainEqual({ command: "machineDelete", args: { name: "ubuntu-dev" } }),
+    );
+  });
+});
+
+describe("machine menu", () => {
+  async function choose(item: string) {
+    await userEvent.click(await screen.findByRole("button", { name: "More for ubuntu-dev" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: item }));
+  }
+
+  it("clones a machine under a free name", async () => {
+    const calls = setup("running", [machineFixture(), machineFixture({ name: "ubuntu-dev-copy" })]);
+    await choose("Clone…");
+    const sheet = await screen.findByRole("dialog", { name: "Clone ubuntu-dev" });
+    expect(within(sheet).getByLabelText("Name")).toHaveProperty("value", "ubuntu-dev-copy-2");
+    await userEvent.click(within(sheet).getByRole("button", { name: "Clone" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        command: "machineClone",
+        args: { name: "ubuntu-dev", to: "ubuntu-dev-copy-2" },
+      }),
+    );
+  });
+
+  it("exports a machine to the file picked in the save panel", async () => {
+    const calls = setup();
+    await choose("Export…");
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        command: "machineExport",
+        args: { name: "ubuntu-dev", destination: "/Users/ada/Desktop/ubuntu-dev.tar.gz" },
+      }),
+    );
+  });
+
+  it("opens the machine in Terminal and copies the command", async () => {
+    const calls = setup();
+    await choose("Open in Terminal App");
+    await choose("Copy Shell Command");
+    await waitFor(() =>
+      expect(calls.map((call) => call.command)).toEqual(
+        expect.arrayContaining(["machineOpenTerminal", "machineShellCommand"]),
+      ),
+    );
+    expect(calls).toContainEqual({ command: "machineOpenTerminal", args: { name: "ubuntu-dev" } });
+  });
+
+  it("imports an exported machine under a free name", async () => {
+    const calls = setup();
+    await userEvent.click(await screen.findByRole("button", { name: "Import…" }));
+    const sheet = await screen.findByRole("dialog", { name: "Import a machine" });
+    expect(within(sheet).getByLabelText("Name")).toHaveProperty("value", "ubuntu-dev-2");
+    await userEvent.click(within(sheet).getByRole("button", { name: "Import" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        command: "machineImport",
+        args: { source: "/Users/ada/Desktop/ubuntu-dev.tar.gz", name: "ubuntu-dev-2" },
+      }),
     );
   });
 });

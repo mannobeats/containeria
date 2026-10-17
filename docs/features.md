@@ -85,7 +85,7 @@ the user installed:
 | Local HTTPS with a trusted certificate | our local CA (rcgen), trusted in the login keychain once | Built | Leaf certificates issued per host on first use, valid 397 days (Apple's limit is 825). Proxy on 80/443 when free, else 7080/7443. |
 | Custom routes like `shop.test` | same proxy | Built | Saved in `~/.containeria/net/settings.json`. |
 | Direct container IP from the Mac | `network.address: true` + a route to the bridge | Limited | Needs admin. Off by default, as in the prototype. |
-| `*.k8s.containeria.local` for services | proxy reads k3s services | We build | |
+| `*.k8s.containeria.local` for services | proxy reads k3s services | Built | `<service>.<namespace>.k8s.containeria.local` for LoadBalancer and NodePort services, through the port Lima forwards to the Mac. ClusterIP-only services aren't reachable from the Mac. |
 
 ## Images, volumes, networks
 
@@ -121,6 +121,10 @@ the user installed:
 | Ubuntu, Debian, Fedora, Arch, Alpine, NixOS, openSUSE, Rocky, Kali | Incus system containers in the `containeria-machines` profile | Colima | Incus images server. |
 | Full VMs instead of system containers | Incus VMs | Limited | M3 or newer only. |
 | Terminal and files | `incus exec`, `incus file` | We build | |
+| Open in Terminal App, Copy Shell Command | the `incus` client next to Colima, with its own config in `~/.containeria/incus` | Built | Opens a `.command` file from `~/.containeria/terminal`, so macOS asks for no Automation permission. |
+| Snapshots: take, restore, delete | Incus snapshots | Built | Restoring a running machine restarts it. |
+| Clone | Incus instance copy, without snapshots | Built | The copy is stopped. Running system containers copy as they are on disk. |
+| Export and import | Incus backups (`.tar.gz`, without snapshots) | Built | Streams to and from the file. An import gets new MAC addresses, so it runs beside its original. |
 | `ssh name@containeria` | small SSH gateway in our Rust core | We build | |
 | Mac home folder inside the machine | Incus disk device of the virtiofs mount | We build | |
 | amd64 machines | Rosetta or binfmt | Limited | Same rules as containers. |
@@ -138,7 +142,7 @@ None of this depends on the engine. It runs in the app's Rust core.
 | SQLite, Turso (libSQL) | `rusqlite`, `libsql` | We build |
 | ClickHouse | `clickhouse` crate | We build |
 | SQL Server | `tiberius` | We build |
-| MongoDB | `mongodb` crate | We build |
+| MongoDB | `mongodb` crate | Built: browse, `find` and `aggregate` query tabs in Extended JSON, grid edits as `updateOne`/`deleteOne`/`insertOne`. |
 | Redis | `redis` crate | We build |
 | DynamoDB | AWS SDK for Rust | We build |
 | Grid, inline edits, pending changes, commit | our code | We build |
@@ -148,7 +152,7 @@ None of this depends on the engine. It runs in the app's Rust core.
 | Import and export CSV, JSON, SQL, Parquet | our code (Arrow for Parquet) | Built: CSV and JSON import (streamed, one transaction), CSV/JSON/SQL export. Parquet not yet. Truncate and drop with confirmation. |
 | Passwords in the macOS Keychain | `keyring` crate | We build |
 | Read-only safe mode for production | our code | We build |
-| SSH tunnels | `russh` | We build |
+| SSH tunnels | `russh` | Built: agent, Ed25519/ECDSA key or password; host keys checked against `~/.ssh/known_hosts` and the app's own list. RSA key files aren't supported (the `rsa` crate has an open advisory). |
 
 ## The app around it
 
@@ -161,9 +165,11 @@ None of this depends on the engine. It runs in the app's Rust core.
 | ⌘K command palette, shortcuts | our UI | We build | |
 | Settings | colima.yaml + our own settings | We build | |
 | Launch at login, auto-update | Tauri plugins | We build | |
-| First launch and import from Docker Desktop | `docker save`/`load`, volume tar copy, recreate from inspect | We build | |
-| `docker`, `docker compose`, `kubectl` on the PATH | bundled CLIs, Docker context set by Colima | Colima | `autoActivate: true`. |
+| First launch and import from Docker Desktop or OrbStack | `docker save`/`load`, volume tar copy, recreate from inspect | Built | Images, named volumes with their files, and containers with ports, settings, networks and Compose labels. Also File → Import. The source only gets short-lived helper containers to read volumes. |
+| `docker`, `docker compose`, `kubectl` on the PATH | bundled CLIs, Docker context set by Colima | Built | `scripts/fetch-tools.sh` bundles pinned Colima, Lima, Docker CLI, Compose, Buildx, kubectl and Incus; Settings → Advanced links the missing ones (and `cx`) into /usr/local, never over the user's own. |
 | `cx` command-line tool | `crates/cli` | Built | `cx ps`, `start`, `stop`, `restart`, `logs -f`, `open`, `engine start\|stop\|status`, `data`. Works without the app. |
+| Native notifications | `tauri-plugin-notification` | Built | Crashes, failing health checks, low memory, and finished pulls, builds and Compose runs while in the background. Settings → General. |
+| Reset the engine | `colima delete` | Built | Settings → Advanced, typed confirmation, optionally the machines VM too. |
 | Collect diagnostics | Colima and Lima logs + our logs | Built | Help → Collect Diagnostics…: versions, engine and machine status, container names and states, engine settings, the tail of each VM's logs. No container settings, so no secrets. |
 
 ## Decisions this map forces

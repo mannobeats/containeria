@@ -21,6 +21,7 @@ import { Tip } from "@/ui/tooltip";
 
 import { engineLogo } from "./engines";
 import { compactCount, tableKey } from "./model";
+import { mongoQuery } from "./query/mongo-query";
 import { tableTab, useOpenTab } from "./tabs";
 import { useOpenQuery } from "./use-open-query";
 import { useTableActions } from "./use-table-actions";
@@ -138,11 +139,17 @@ export function SchemaTree({ info, namespaces, active }: SchemaTreeProps) {
   const menu = (table: Table): MenuEntry[] => [
     { label: "Open", onSelect: () => openAs(table, false) },
     { label: "Open Structure", onSelect: () => openAs(table, true) },
-    ...(info.capabilities.sql
+    ...(info.capabilities.query
       ? [
           {
             label: "New Query",
-            onSelect: () => openQuery(info.id, `select * from ${tableKey(table)} limit 100;`),
+            onSelect: () =>
+              openQuery(
+                info.id,
+                info.capabilities.sql
+                  ? `select * from ${tableKey(table)} limit 100;`
+                  : mongoQuery(table),
+              ),
           },
         ]
       : []),
@@ -182,7 +189,7 @@ export function SchemaTree({ info, namespaces, active }: SchemaTreeProps) {
         ))}
       </nav>
       <div className="shrink-0 border-t-[0.5px] border-line px-2 pt-1.5 pb-2.5">
-        {info.capabilities.sql ? (
+        {info.capabilities.query ? (
           <button type="button" className={rowClass} onClick={() => open(nextQueryTab(tabs ?? []))}>
             <IconSql aria-hidden />
             New query

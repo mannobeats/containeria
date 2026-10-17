@@ -51,3 +51,16 @@ pub(crate) async fn engine_save_config(
 ) -> Result<()> {
     state.engine.save_config(&config)
 }
+
+/// Deletes the engine's VM, and with `machines` the Linux machines VM too. Settings stay.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn engine_reset(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    machines: bool,
+) -> Result<()> {
+    let engine = state.engine.delete(&app).await;
+    let machines = if machines { state.machines.delete(&app).await } else { Ok(()) };
+    engine.and(machines)
+}

@@ -1,13 +1,20 @@
 import { emit } from "@tauri-apps/api/event";
+import { requestPermission } from "@tauri-apps/plugin-notification";
 import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { EnginePhase, SettingsPane } from "@/lib/ipc/bindings";
 import { engineFixture, preferencesFixture } from "@/test/fixtures";
 import { mockCommands, renderWithApp } from "@/test/harness";
 
 import { SettingsWindow } from "./settings-window";
+
+vi.mock("@tauri-apps/plugin-notification", () => ({
+  isPermissionGranted: vi.fn(() => Promise.resolve(false)),
+  requestPermission: vi.fn(() => Promise.resolve("granted")),
+  sendNotification: vi.fn(),
+}));
 
 function renderSection(section: SettingsPane, phase: EnginePhase = "running") {
   const calls = mockCommands({
@@ -71,6 +78,34 @@ describe("SettingsWindow", () => {
         args: { preferences: preferencesFixture({ memoryInMenuBar: false }) },
       }),
     );
+  });
+
+  it("turns notifications off, and asks macOS for permission when one is turned on", async () => {
+    const calls = mockCommands({
+      settingsPane: () => "general",
+      preferencesGet: () => preferencesFixture({ notifyOn: ["crash", "unhealthy", "finished"] }),
+    });
+    renderWithApp(<SettingsWindow />);
+    const crash = await screen.findByRole("switch", { name: "A container crashes" });
+    for (const name of [
+      "A container crashes",
+      "A health check fails",
+      "A pull, build or Compose run finishes",
+    ]) {
+      expect(screen.getByRole("switch", { name }).getAttribute("aria-checked")).toBe("true");
+    }
+    await userEvent.click(crash);
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        command: "preferencesSet",
+        args: {
+          preferences: preferencesFixture({ notifyOn: ["unhealthy", "finished"] }),
+        },
+      }),
+    );
+    expect(requestPermission).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("switch", { name: "Memory runs low" }));
+    await waitFor(() => expect(requestPermission).toHaveBeenCalledOnce());
   });
 
   it("saves engine changes and offers a restart", async () => {

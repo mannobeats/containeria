@@ -161,6 +161,8 @@ pub(crate) fn target(detected: &Detected, env: &HashMap<String, String>) -> Opti
         database: credentials.database,
         file: None,
         tls: false,
+        ssh: None,
+        ssh_secret: None,
     })
 }
 

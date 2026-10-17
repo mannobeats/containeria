@@ -22,8 +22,14 @@
         "transparent": true,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
-        "trafficLightPosition": { "x": 18, "y": 22 },
-        "windowEffects": { "effects": ["sidebar"], "state": "followsWindowActiveState" }
+        "trafficLightPosition": {
+          "x": 18,
+          "y": 22
+        },
+        "windowEffects": {
+          "effects": ["sidebar"],
+          "state": "followsWindowActiveState"
+        }
       }
     ],
     "security": {
@@ -51,6 +57,9 @@
     ],
     "macOS": {
       "minimumSystemVersion": "13.0"
+    },
+    "resources": {
+      "resources/tools/": "tools/"
     }
   }
 }

@@ -261,6 +261,7 @@ export function TableView({ info, table }: { info: ServerInfo; table: Table }) {
       )}
       <ReviewSheet
         sql={edits.review}
+        documents={!info.capabilities.sql}
         onClose={edits.closeReview}
         onCommit={edits.commit}
         committing={edits.committing}

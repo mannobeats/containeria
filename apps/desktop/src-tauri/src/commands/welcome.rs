@@ -1,21 +1,109 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-use containeria_docker::Docker;
-use serde::Serialize;
+use containeria_docker::{Docker, Inventory};
+use serde::{Deserialize, Serialize};
 use tauri::State;
 use tauri::ipc::Channel;
 
 use crate::error::{CommandError, ErrorKind, Result};
 use crate::state::AppState;
 
-/// What first launch can bring over from Docker Desktop.
+/// Another container app on the Mac whose images, volumes and containers can be brought over.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum MigrationSource {
+    DockerDesktop,
+    OrbStack,
+}
+
+impl MigrationSource {
+    const ALL: [Self; 2] = [Self::DockerDesktop, Self::OrbStack];
+
+    const fn app(self) -> &'static str {
+        match self {
+            Self::DockerDesktop => "/Applications/Docker.app",
+            Self::OrbStack => "/Applications/OrbStack.app",
+        }
+    }
+
+    /// Where its engine listens, under the home folder.
+    const fn socket(self) -> &'static str {
+        match self {
+            Self::DockerDesktop => ".docker/run/docker.sock",
+            Self::OrbStack => ".orbstack/run/docker.sock",
+        }
+    }
+
+    const fn label(self) -> &'static str {
+        match self {
+            Self::DockerDesktop => "Docker Desktop",
+            Self::OrbStack => "OrbStack",
+        }
+    }
+
+    async fn connect(self) -> Option<Docker> {
+        let socket = std::env::home_dir()?.join(self.socket());
+        let docker = Docker::connect(&socket).ok()?;
+        docker.ping().await.ok()?;
+        Some(docker)
+    }
+
+    async fn require(self) -> Result<Docker> {
+        self.connect().await.ok_or_else(|| {
+            CommandError::new(
+                ErrorKind::NotFound,
+                format!("{} isn't running. Open it, then try again.", self.label()),
+            )
+        })
+    }
+}
+
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct DockerDesktop {
+pub(crate) struct SourceStatus {
+    pub(crate) source: MigrationSource,
     pub(crate) installed: bool,
-    /// Its engine answers, so its images can be copied.
+    /// Its engine answers, so there's something to read.
     pub(crate) running: bool,
+}
+
+/// Whether Docker Desktop and `OrbStack` are installed and running.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn migration_sources() -> Result<Vec<SourceStatus>> {
+    let mut sources = Vec::new();
+    for source in MigrationSource::ALL {
+        let running = source.connect().await.is_some();
+        let installed = running || Path::new(source.app()).exists();
+        sources.push(SourceStatus { source, installed, running });
+    }
+    Ok(sources)
+}
+
+/// What the source has to bring over. Reading changes nothing there.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn migration_inventory(source: MigrationSource) -> Result<Inventory> {
+    Ok(source.require().await?.inventory().await?)
+}
+
+/// What to bring over, by image reference, volume name and container ID.
+#[derive(Debug, Clone, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct MigrationPlan {
     pub(crate) images: Vec<String>,
+    pub(crate) volumes: Vec<String>,
+    pub(crate) containers: Vec<String>,
+    /// Start the containers that were running there.
+    pub(crate) start: bool,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum ItemKind {
+    Image,
+    Volume,
+    Container,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, specta::Type)]
@@ -26,65 +114,48 @@ pub(crate) enum ImportState {
     Failed,
 }
 
+/// One item's progress: `item` is the reference, name or ID it was asked for by.
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ImportProgress {
-    pub(crate) reference: String,
+    pub(crate) kind: ItemKind,
+    pub(crate) item: String,
     pub(crate) state: ImportState,
     pub(crate) message: Option<String>,
 }
 
-const APP: &str = "/Applications/Docker.app";
-
-fn socket() -> Option<PathBuf> {
-    std::env::home_dir().map(|home| home.join(".docker/run/docker.sock"))
-}
-
-async fn connect(socket: &Path) -> Option<Docker> {
-    let docker = Docker::connect(socket).ok()?;
-    docker.ping().await.ok()?;
-    Some(docker)
-}
-
+/// Brings images, then volumes, then containers over, one at a time, reporting each. A failed
+/// item is reported and skipped; the rest still copy. The source isn't changed, apart from the
+/// short-lived helper containers that read its volumes.
 #[tauri::command]
 #[specta::specta]
-pub(crate) async fn docker_desktop_detect() -> Result<DockerDesktop> {
-    let installed = Path::new(APP).exists();
-    let docker = match socket() {
-        Some(socket) => connect(&socket).await,
-        None => None,
-    };
-    let images = match &docker {
-        Some(docker) => docker.image_references().await.unwrap_or_default(),
-        None => Vec::new(),
-    };
-    Ok(DockerDesktop { installed, running: docker.is_some(), images })
-}
-
-/// Copies images from Docker Desktop into Containeria's engine, one at a time, reporting each.
-/// A failed image is reported and skipped; the rest still copy.
-#[tauri::command]
-#[specta::specta]
-pub(crate) async fn docker_desktop_import_images(
+pub(crate) async fn migration_import(
     state: State<'_, AppState>,
-    references: Vec<String>,
+    source: MigrationSource,
+    plan: MigrationPlan,
     progress: Channel<ImportProgress>,
 ) -> Result<()> {
-    let source = match socket() {
-        Some(socket) => connect(&socket).await,
-        None => None,
+    let from = source.require().await?;
+    let to = state.engine.docker().await?;
+    let report = |kind, item: &str, state, message: Option<String>| {
+        let _ = progress.send(ImportProgress { kind, item: item.to_owned(), state, message });
+    };
+    let finish = |kind, item: &str, result: containeria_docker::Result<()>| match result {
+        Ok(()) => report(kind, item, ImportState::Done, None),
+        Err(error) => report(kind, item, ImportState::Failed, Some(error.to_string())),
+    };
+    for reference in &plan.images {
+        report(ItemKind::Image, reference, ImportState::Copying, None);
+        finish(ItemKind::Image, reference, from.copy_image_to(&to, reference).await);
     }
-    .ok_or_else(|| CommandError::new(ErrorKind::NotFound, "Docker Desktop isn't running."))?;
-    let target = state.engine.docker().await?;
-    for reference in references {
-        let report = |state, message| {
-            let _ = progress.send(ImportProgress { reference: reference.clone(), state, message });
-        };
-        report(ImportState::Copying, None);
-        match source.copy_image_to(&target, &reference).await {
-            Ok(()) => report(ImportState::Done, None),
-            Err(error) => report(ImportState::Failed, Some(error.to_string())),
-        }
+    for volume in &plan.volumes {
+        report(ItemKind::Volume, volume, ImportState::Copying, None);
+        finish(ItemKind::Volume, volume, from.copy_volume_to(&to, volume).await);
+    }
+    for id in &plan.containers {
+        report(ItemKind::Container, id, ImportState::Copying, None);
+        let copied = from.copy_container_to(&to, id, plan.start).await.map(drop);
+        finish(ItemKind::Container, id, copied);
     }
     Ok(())
 }

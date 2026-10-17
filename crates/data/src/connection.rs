@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::engine::{Engine, Provider};
 use crate::error::{Error, Result};
+use crate::tunnel::SshTunnel;
 
 /// Production connections open read-only until the user allows writes for a while.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
@@ -32,9 +33,15 @@ pub struct Connection {
     pub tls: bool,
     pub environment: Environment,
     pub has_password: bool,
+    /// Reached through this SSH server, when set.
+    #[serde(default)]
+    pub ssh: Option<SshTunnel>,
+    /// The SSH password or key passphrase is in the Keychain.
+    #[serde(default)]
+    pub has_ssh_secret: bool,
 }
 
-/// What the connection sheet sends. `password: None` keeps the saved one.
+/// What the connection sheet sends. `password: None` and `ssh_secret: None` keep the saved ones.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionInput {
@@ -49,6 +56,9 @@ pub struct ConnectionInput {
     pub tls: bool,
     pub environment: Environment,
     pub password: Option<String>,
+    pub ssh: Option<SshTunnel>,
+    /// The SSH password, or the key file's passphrase.
+    pub ssh_secret: Option<String>,
 }
 
 impl ConnectionInput {
@@ -74,11 +84,17 @@ impl ConnectionInput {
                 "Enter only the host name, without a scheme, user or path.".into(),
             ));
         }
-        Ok(())
+        self.ssh.as_ref().map_or(Ok(()), SshTunnel::validate)
     }
 
     #[must_use]
-    pub fn into_connection(self, id: String, has_password: bool) -> Connection {
+    pub fn into_connection(
+        self,
+        id: String,
+        has_password: bool,
+        has_ssh_secret: bool,
+    ) -> Connection {
+        let ssh = self.ssh.filter(|_| self.engine != Engine::Sqlite).map(SshTunnel::normalized);
         let provider = Provider::from_host(&self.host);
         Connection {
             tls: self.tls || provider.is_some_and(Provider::requires_tls),
@@ -93,6 +109,8 @@ impl ConnectionInput {
             file: self.file,
             environment: self.environment,
             has_password,
+            has_ssh_secret: has_ssh_secret && ssh.is_some(),
+            ssh,
         }
     }
 }
@@ -108,6 +126,8 @@ pub(crate) struct Target {
     pub database: Option<String>,
     pub file: Option<String>,
     pub tls: bool,
+    pub ssh: Option<SshTunnel>,
+    pub ssh_secret: Option<String>,
 }
 
 impl std::fmt::Debug for Target {
@@ -120,13 +140,18 @@ impl std::fmt::Debug for Target {
             .field("user", &self.user)
             .field("password", &self.password.as_ref().map(|_| "••••"))
             .field("database", &self.database)
+            .field("ssh", &self.ssh)
             .finish_non_exhaustive()
     }
 }
 
 impl Target {
     #[must_use]
-    pub(crate) fn from_connection(connection: &Connection, password: Option<String>) -> Self {
+    pub(crate) fn from_connection(
+        connection: &Connection,
+        password: Option<String>,
+        ssh_secret: Option<String>,
+    ) -> Self {
         Self {
             engine: connection.engine,
             host: connection.host.clone(),
@@ -136,6 +161,8 @@ impl Target {
             database: connection.database.clone(),
             file: connection.file.clone(),
             tls: connection.tls,
+            ssh: connection.ssh.clone(),
+            ssh_secret,
         }
     }
 }
@@ -196,6 +223,12 @@ pub(crate) struct Keychain;
 impl Keychain {
     const SERVICE: &'static str = "dev.containeria.app.database";
 
+    /// The Keychain account holding a connection's SSH password or key passphrase.
+    #[must_use]
+    pub(crate) fn ssh(id: &str) -> String {
+        format!("{id}.ssh")
+    }
+
     fn entry(id: &str) -> Result<keyring::Entry> {
         keyring::Entry::new(Self::SERVICE, id).map_err(|error| Error::Keychain(error.to_string()))
     }
@@ -245,12 +278,14 @@ mod tests {
             tls: false,
             environment: Environment::Production,
             password: Some("secret".into()),
+            ssh: None,
+            ssh_secret: None,
         }
     }
 
     #[test]
     fn fills_defaults_and_forces_tls_for_hosted_services() {
-        let connection = input().into_connection("billing".into(), true);
+        let connection = input().into_connection("billing".into(), true, false);
         assert_eq!(connection.name, "billing-prod");
         assert_eq!(connection.port, Some(5432));
         assert_eq!(connection.provider, Some(Provider::Neon));
@@ -272,10 +307,12 @@ mod tests {
     #[test]
     fn never_prints_the_password() {
         let target = Target::from_connection(
-            &input().into_connection("x".into(), true),
+            &input().into_connection("x".into(), true, false),
             Some("hunter2".into()),
+            Some("opensesame".into()),
         );
-        assert!(!format!("{target:?}").contains("hunter2"));
+        let printed = format!("{target:?}");
+        assert!(!printed.contains("hunter2") && !printed.contains("opensesame"));
     }
 
     #[test]
@@ -283,8 +320,8 @@ mod tests {
         let folder = tempfile::tempdir().unwrap();
         let store = ConnectionStore::new(folder.path());
         assert!(store.list().unwrap().is_empty());
-        store.put(input().into_connection("a".into(), false)).unwrap();
-        let mut renamed = input().into_connection("a".into(), false);
+        store.put(input().into_connection("a".into(), false, false)).unwrap();
+        let mut renamed = input().into_connection("a".into(), false, false);
         renamed.name = "renamed".into();
         store.put(renamed).unwrap();
         assert_eq!(store.get("a").unwrap().name, "renamed");
@@ -292,5 +329,30 @@ mod tests {
         assert!(matches!(store.get("a"), Err(Error::UnknownConnection(_))));
         let saved = std::fs::read_to_string(folder.path().join("connections.json")).unwrap();
         assert!(!saved.contains("secret"));
+    }
+
+    #[test]
+    fn keeps_an_ssh_tunnel_for_server_engines_only() {
+        let mut tunneled = input();
+        tunneled.ssh = Some(SshTunnel {
+            host: " bastion.example.com ".into(),
+            port: 22,
+            user: "deploy".into(),
+            auth: crate::tunnel::SshAuth::Agent,
+            key_file: Some("~/.ssh/id_ed25519".into()),
+        });
+        let connection = tunneled.clone().into_connection("a".into(), false, true);
+        let ssh = connection.ssh.unwrap();
+        assert_eq!((ssh.host.as_str(), ssh.key_file), ("bastion.example.com", None));
+        assert!(connection.has_ssh_secret);
+        tunneled.engine = Engine::Sqlite;
+        assert_eq!(tunneled.into_connection("a".into(), false, true).ssh, None);
+    }
+
+    #[test]
+    fn reads_connections_saved_before_ssh_tunnels() {
+        let old = r#"{"id":"a","name":"a","engine":"postgres","provider":null,"host":"h","port":5432,"user":null,"database":null,"file":null,"tls":false,"environment":"local","hasPassword":false}"#;
+        let connection: Connection = serde_json::from_str(old).unwrap();
+        assert_eq!((connection.ssh, connection.has_ssh_secret), (None, false));
     }
 }

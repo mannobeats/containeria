@@ -22,6 +22,25 @@ pub fn validate_name(name: &str) -> Result<()> {
     problem.map_or(Ok(()), |message| Err(Error::Invalid(message.to_owned())))
 }
 
+/// Snapshot names end up in URL paths: letters, digits, dots, dashes and underscores, starting with
+/// a letter or digit, at most 63 characters.
+///
+/// # Errors
+/// Returns a sentence saying what's wrong with the name.
+pub(crate) fn validate_snapshot_name(name: &str) -> Result<()> {
+    let allowed = |c: char| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_');
+    let problem = if name.is_empty() {
+        Some("Give the snapshot a name.")
+    } else if name.len() > 63 {
+        Some("Use at most 63 characters.")
+    } else if !name.starts_with(|c: char| c.is_ascii_alphanumeric()) || !name.chars().all(allowed) {
+        Some("Use letters, numbers, dots, dashes and underscores.")
+    } else {
+        None
+    };
+    problem.map_or(Ok(()), |message| Err(Error::Invalid(message.to_owned())))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -37,6 +56,16 @@ mod tests {
     fn rejects_what_incus_or_dns_would() {
         for name in ["", "2dev", "Dev", "dev-", "dev_box", "dev.box", &"a".repeat(64)] {
             assert!(validate_name(name).is_err(), "{name}");
+        }
+    }
+
+    #[test]
+    fn accepts_snapshot_names_that_fit_a_url_path() {
+        for name in ["2026-10-17-1530", "before_upgrade", "v1.2"] {
+            assert!(validate_snapshot_name(name).is_ok(), "{name}");
+        }
+        for name in ["", "a/b", ".hidden", "with space", &"a".repeat(64)] {
+            assert!(validate_snapshot_name(name).is_err(), "{name}");
         }
     }
 }

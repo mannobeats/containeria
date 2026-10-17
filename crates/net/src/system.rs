@@ -74,7 +74,11 @@ async fn run(action: &'static str, program: &str, args: &[&str]) -> Result<()> {
     Err(Error::Command { action, message })
 }
 
-async fn privileged(action: &'static str, shell: &str, prompt: &str) -> Result<()> {
+/// Runs `shell` as root after the user approves the macOS administrator prompt showing `prompt`.
+///
+/// # Errors
+/// Fails with `Cancelled` when the user dismisses the prompt, or with the command's error.
+pub async fn privileged(action: &'static str, shell: &str, prompt: &str) -> Result<()> {
     run(action, "/usr/bin/osascript", &["-e", &privileged_script(shell, prompt)]).await
 }
 

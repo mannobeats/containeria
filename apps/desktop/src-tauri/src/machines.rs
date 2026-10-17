@@ -1,9 +1,10 @@
 use std::collections::HashMap;
+use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
 
 use containeria_engine::{Colima, EngineConfig, Home, Instance, LogLine, Profile};
-use containeria_machines::{Incus, Shell, ShellInput};
+use containeria_machines::{Incus, Shell, ShellInput, client_config, shell_command};
 use futures::StreamExt;
 use serde::Serialize;
 use tauri::AppHandle;
@@ -88,6 +89,13 @@ impl MachinesEngine {
             .await
     }
 
+    /// Deletes the machines VM and every machine in it.
+    pub(crate) async fn delete(&self, app: &AppHandle) -> Result<()> {
+        let colima = self.colima()?;
+        self.transition_while(app, EnginePhase::Stopping, colima.delete(Profile::Machines, |_| {}))
+            .await
+    }
+
     async fn transition_while(
         &self,
         app: &AppHandle,
@@ -112,6 +120,40 @@ impl MachinesEngine {
             CommandError::new(ErrorKind::EngineStopped, "Linux machines aren't running.")
         })?;
         Ok(incus)
+    }
+
+    /// The command that opens the machine's root shell from a Mac terminal, writing the `incus`
+    /// client config it reads.
+    pub(crate) async fn shell_command(&self, name: &str) -> Result<String> {
+        let incus = self.colima()?.tool("incus").ok_or_else(|| {
+            CommandError::new(ErrorKind::EngineMissing, "The incus client isn't installed.")
+        })?;
+        let config_dir = self.home.root().join("incus");
+        write(&config_dir.join("config.yml"), &client_config(&self.home.incus_socket())).await?;
+        Ok(shell_command(&incus, &config_dir, name)?)
+    }
+
+    /// Opens a Terminal window with the machine's root shell, through a `.command` file so macOS
+    /// asks for no Automation permission.
+    pub(crate) async fn open_terminal(&self, name: &str) -> Result<()> {
+        let command = self.shell_command(name).await?;
+        let script = self.home.root().join("terminal").join(format!("{name}.command"));
+        write(&script, &format!("#!/bin/sh\nexec {command}\n")).await?;
+        tokio::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755))
+            .await
+            .map_err(|error| file_error(&script, &error))?;
+        let opened = tokio::process::Command::new("/usr/bin/open")
+            .args(["-a", "Terminal"])
+            .arg(&script)
+            .kill_on_drop(true)
+            .status()
+            .await
+            .map_err(|error| CommandError::new(ErrorKind::Internal, error.to_string()))?;
+        if opened.success() {
+            Ok(())
+        } else {
+            Err(CommandError::new(ErrorKind::Internal, "Terminal didn't open."))
+        }
     }
 
     fn colima(&self) -> Result<&Colima> {
@@ -154,6 +196,21 @@ impl MachinesEngine {
             let _ = sender.send(input).await;
         }
     }
+}
+
+fn file_error(path: &Path, error: &std::io::Error) -> CommandError {
+    CommandError::new(
+        ErrorKind::Internal,
+        format!("{} couldn't be written: {error}", path.display()),
+    )
+}
+
+/// Writes a file, making its folder first.
+async fn write(path: &Path, contents: &str) -> Result<()> {
+    if let Some(folder) = path.parent() {
+        tokio::fs::create_dir_all(folder).await.map_err(|error| file_error(folder, &error))?;
+    }
+    tokio::fs::write(path, contents).await.map_err(|error| file_error(path, &error))
 }
 
 /// Forgets a shell's input when its output stream ends or is cancelled, which closes the shell.

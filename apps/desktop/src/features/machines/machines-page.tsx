@@ -1,4 +1,4 @@
-import { IconPlus } from "@tabler/icons-react";
+import { IconFileImport, IconPlus } from "@tabler/icons-react";
 import { useState } from "react";
 
 import { formatMemory, plural } from "@/lib/format";
@@ -7,11 +7,20 @@ import { Crumb, Page } from "@/shell/page";
 import { Button } from "@/ui/button";
 import { Skeleton } from "@/ui/progress";
 
-import { useMachineAction, useMachines, useMachinesStatus } from "./api";
-import { DeleteMachineSheet } from "./delete-machine-sheet";
+import { PromptSheet } from "@/ui/prompt-sheet";
+
+import {
+  pickExport,
+  useImportMachine,
+  useMachineAction,
+  useMachines,
+  useMachinesStatus,
+} from "./api";
 import { MachineCard } from "./machine-card";
+import { MachineDialogs } from "./machine-dialogs";
+import type { MachineDialog } from "./machine-menu";
 import { MachinesIntro } from "./machines-intro";
-import { isRunning, type ListedMachine, type MachineList } from "./model";
+import { importName, isRunning, type ListedMachine, type MachineList, nameProblem } from "./model";
 import { NewMachineSheet } from "./new-machine-sheet";
 import { useNewMachineSheet } from "./new-machine-store";
 
@@ -43,9 +52,11 @@ function NewCard({ onNew }: { onNew: () => void }) {
   );
 }
 
+type Picked = { machine: Machine; dialog: MachineDialog };
+
 function MachineGrid({ list, onNew }: { list: MachineList | undefined; onNew: () => void }) {
   const action = useMachineAction();
-  const [removing, setRemoving] = useState<Machine | null>(null);
+  const [picked, setPicked] = useState<Picked | null>(null);
   return (
     <>
       <h1 className="m-0 px-5 pt-[18px] pb-2.5 text-20 font-semibold tracking-[-0.012em] text-ink">
@@ -58,12 +69,17 @@ function MachineGrid({ list, onNew }: { list: MachineList | undefined; onNew: ()
             key={machine.name}
             machine={machine}
             act={(name, verb) => action.mutate({ name, action: verb })}
-            remove={() => setRemoving(machine)}
+            onDialog={(dialog) => setPicked({ machine, dialog })}
           />
         ))}
         <NewCard onNew={onNew} />
       </div>
-      <DeleteMachineSheet machine={removing} onClose={() => setRemoving(null)} />
+      <MachineDialogs
+        machine={picked?.machine ?? null}
+        dialog={picked?.dialog ?? null}
+        taken={list?.machines.map((machine) => machine.name) ?? []}
+        onClose={() => setPicked(null)}
+      />
     </>
   );
 }
@@ -82,6 +98,40 @@ function introPhase(
   return list?.machines.length === 0 ? "notCreated" : null;
 }
 
+/** Import… from the header: pick an exported `.tar.gz`, then name the new machine. */
+function ImportButton({ taken }: { taken: string[] }) {
+  const [source, setSource] = useState<string | null>(null);
+  const importMachine = useImportMachine();
+  const choose = () =>
+    pickExport()
+      .then(setSource)
+      .catch(() => undefined);
+  return (
+    <>
+      <Button onClick={choose}>
+        <IconFileImport />
+        Import…
+      </Button>
+      <PromptSheet
+        key={source ?? "none"}
+        open={source !== null}
+        onOpenChange={(open) => (open ? undefined : setSource(null))}
+        title="Import a machine"
+        label="Name"
+        initial={source ? importName(source, taken) : ""}
+        hint={`From ${source?.split("/").at(-1) ?? ""}`}
+        action="Import"
+        validate={(name) => nameProblem(name, taken) ?? undefined}
+        onSubmit={(name) => {
+          if (source) {
+            importMachine.mutate({ source, name });
+          }
+        }}
+      />
+    </>
+  );
+}
+
 export function MachinesPage() {
   const { data: status } = useMachinesStatus();
   const { data: list } = useMachines();
@@ -89,21 +139,28 @@ export function MachinesPage() {
   const setCreating = useNewMachineSheet((state) => state.setOpen);
   const intro = introPhase(status?.phase, list);
   const showGrid = status?.phase === "running" && intro === null;
-  const newButton = (
-    <Button variant="brand" onClick={() => setCreating(true)}>
-      <IconPlus />
-      New machine
-    </Button>
-  );
+  const taken = list?.machines.map((machine) => machine.name) ?? [];
+  const tools =
+    status?.phase === "running" ? (
+      <>
+        <ImportButton taken={taken} />
+        {showGrid ? (
+          <Button variant="brand" onClick={() => setCreating(true)}>
+            <IconPlus />
+            New machine
+          </Button>
+        ) : null}
+      </>
+    ) : null;
   return (
-    <Page crumbs={<Crumb>Linux machines</Crumb>} tools={showGrid ? newButton : null}>
+    <Page crumbs={<Crumb>Linux machines</Crumb>} tools={tools}>
       {intro ? <MachinesIntro phase={intro} onNew={() => setCreating(true)} /> : null}
       {showGrid ? <MachineGrid list={list} onNew={() => setCreating(true)} /> : null}
       <NewMachineSheet
         open={creating}
         onOpenChange={setCreating}
         supportsVms={status?.supportsVms ?? false}
-        taken={list?.machines.map((machine) => machine.name) ?? []}
+        taken={taken}
       />
     </Page>
   );

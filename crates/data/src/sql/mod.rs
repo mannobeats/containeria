@@ -474,6 +474,8 @@ mod tests {
             database: None,
             file: Some(file.to_string_lossy().into_owned()),
             tls: false,
+            ssh: None,
+            ssh_secret: None,
         };
         let pool = SqlPool::connect(&target).await.unwrap();
         (folder, pool)

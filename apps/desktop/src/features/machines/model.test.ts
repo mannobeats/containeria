@@ -3,9 +3,13 @@ import { describe, expect, it } from "vitest";
 import { machineFixture } from "./fixtures";
 import {
   cpuPercent,
+  freeName,
+  importName,
   kindLabel,
   limitLabel,
   nameProblem,
+  snapshotName,
+  snapshotProblem,
   stateLabel,
   suggestName,
   withCpu,
@@ -68,5 +72,28 @@ describe("withCpu", () => {
     );
     expect(second.machines[0]?.cpuPercent).toBeCloseTo(10);
     expect(second.machines[1]?.cpuPercent).toBeNull();
+  });
+});
+
+describe("names for copies, imports and snapshots", () => {
+  it("numbers a copy's name until it's free", () => {
+    expect(freeName("dev-copy", ["dev", "dev-copy", "dev-copy-2"])).toBe("dev-copy-3");
+  });
+
+  it("turns an exported file's name into a machine name", () => {
+    expect(importName("/Users/ada/Desktop/Ubuntu Dev.tar.gz", [])).toBe("ubuntu-dev");
+    expect(importName("/Users/ada/2026_backup.tgz", [])).toBe("backup");
+    expect(importName("/Users/ada/ubuntu-dev.tar.gz", ["ubuntu-dev"])).toBe("ubuntu-dev-2");
+    expect(importName("/Users/ada/123.tar.gz", [])).toBe("machine");
+  });
+
+  it("names a snapshot after the local time and checks names", () => {
+    expect(snapshotName(new Date(2026, 9, 7, 9, 5))).toBe("2026-10-07-0905");
+    expect(snapshotProblem("before-upgrade", [])).toBeNull();
+    expect(snapshotProblem("before-upgrade", ["before-upgrade"])).toBe(
+      "A snapshot with this name exists.",
+    );
+    expect(snapshotProblem("a/b", [])).toBe("Use letters, numbers, dots, dashes and underscores.");
+    expect(snapshotProblem("", [])).toBe("Give the snapshot a name.");
   });
 });

@@ -18,6 +18,31 @@ pub struct CustomRoute {
 pub enum RouteKind {
     Container,
     Custom,
+    /// A Kubernetes service reachable from the Mac.
+    Service,
+}
+
+/// A Kubernetes service the Mac reaches on `mac_port` of 127.0.0.1.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClusterService {
+    pub namespace: String,
+    pub name: String,
+    pub port: u16,
+    pub mac_port: u16,
+}
+
+/// `web` in `shop` → `web.shop.k8s.containeria.local`.
+fn service_route(service: &ClusterService, tld: &str, https: bool) -> Option<DomainRoute> {
+    let host = normalize(&format!("{}.{}.k8s.{tld}", service.name, service.namespace))?;
+    Some(DomainRoute {
+        host,
+        kind: RouteKind::Service,
+        container: format!("{}/{}", service.namespace, service.name),
+        port: Some(service.port),
+        upstream: Some(service.mac_port),
+        https,
+        down: None,
+    })
 }
 
 /// Why a route can't be reached right now.
@@ -124,11 +149,13 @@ fn custom_route(custom: &CustomRoute, containers: &[ContainerSummary]) -> Domain
 }
 
 impl RouteTable {
-    /// Routes for every container (Kubernetes pods excluded) plus the user's own, custom ones first.
+    /// Routes for every container (Kubernetes pods excluded) and Kubernetes service reachable from
+    /// the Mac, plus the user's own, custom ones first.
     #[must_use]
     pub(crate) fn build(
         tld: &str,
         containers: &[ContainerSummary],
+        services: &[ClusterService],
         custom: &[CustomRoute],
         https: bool,
     ) -> Self {
@@ -140,6 +167,7 @@ impl RouteTable {
                 .filter(|container| container.pod.is_none())
                 .filter_map(|container| container_route(container, tld, https)),
         );
+        routes.extend(services.iter().filter_map(|service| service_route(service, tld, https)));
         Self { tld: tld.to_owned(), routes }
     }
 
@@ -213,7 +241,23 @@ mod tests {
             port: 8080,
             https: true,
         }];
-        RouteTable::build("containeria.local", &containers, &custom, true)
+        RouteTable::build("containeria.local", &containers, &[], &custom, true)
+    }
+
+    #[test]
+    fn names_kubernetes_services_by_namespace() {
+        let service = ClusterService {
+            namespace: "shop".into(),
+            name: "web".into(),
+            port: 80,
+            mac_port: 30080,
+        };
+        let table = RouteTable::build("containeria.local", &[], &[service], &[], true);
+        let route = &table.routes()[0];
+        assert_eq!(route.host, "web.shop.k8s.containeria.local");
+        assert_eq!(route.kind, RouteKind::Service);
+        assert_eq!(route.upstream, Some(30080));
+        assert!(table.resolves("web.shop.k8s.containeria.local"));
     }
 
     #[test]
@@ -252,7 +296,7 @@ mod tests {
             port: 80,
             https: false,
         }];
-        let table = RouteTable::build("containeria.local", &[stopped], &custom, true);
+        let table = RouteTable::build("containeria.local", &[stopped], &[], &custom, true);
         assert_eq!(table.find("blog.test").unwrap().down, Some(RouteDown::Stopped));
     }
 

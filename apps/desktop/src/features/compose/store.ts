@@ -5,6 +5,7 @@ import { create } from "zustand";
 
 import { queryClient } from "@/app/query-client";
 import { queryKeys } from "@/app/query-keys";
+import { notifyWhenAway } from "@/features/settings/api";
 import { commands, type OutputEvent } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
 
@@ -62,6 +63,10 @@ function finish(failure: string | null) {
   update(() => ({ status: failure === null ? "done" : "failed", message: failure }));
   queryClient.invalidateQueries({ queryKey: queryKeys.containers }).catch(() => undefined);
   queryClient.invalidateQueries({ queryKey: queryKeys.images }).catch(() => undefined);
+  if (run) {
+    const title = failure === null ? run.done : `${run.title} failed`;
+    notifyWhenAway(title, failure).catch(() => undefined);
+  }
   if (run && !runVisible) {
     if (failure === null) {
       toast.success(run.done);

@@ -18,7 +18,9 @@ pub enum Engine {
 #[serde(rename_all = "camelCase")]
 #[expect(clippy::struct_excessive_bools, reason = "independent capability flags")]
 pub struct Capabilities {
-    /// Runs SQL in the editor.
+    /// Has query tabs: SQL when `sql`, otherwise MongoDB `find` and `aggregate` written as JSON.
+    pub query: bool,
+    /// The query tabs and the grid's review speak SQL.
     pub sql: bool,
     /// Rows can be edited, added and deleted from the grid.
     pub edit_rows: bool,
@@ -45,15 +47,21 @@ impl Engine {
     pub const fn capabilities(self) -> Capabilities {
         match self {
             Self::Postgres | Self::MySql | Self::MariaDb | Self::Sqlite => {
-                Capabilities { sql: true, edit_rows: true, tables: true, keys: false }
+                Capabilities { query: true, sql: true, edit_rows: true, tables: true, keys: false }
             }
             Self::ClickHouse => {
-                Capabilities { sql: true, edit_rows: false, tables: true, keys: false }
+                Capabilities { query: true, sql: true, edit_rows: false, tables: true, keys: false }
             }
             Self::MongoDb => {
-                Capabilities { sql: false, edit_rows: false, tables: true, keys: false }
+                Capabilities { query: true, sql: false, edit_rows: true, tables: true, keys: false }
             }
-            Self::Redis => Capabilities { sql: false, edit_rows: false, tables: false, keys: true },
+            Self::Redis => Capabilities {
+                query: false,
+                sql: false,
+                edit_rows: false,
+                tables: false,
+                keys: true,
+            },
         }
     }
 
@@ -115,9 +123,12 @@ mod tests {
     }
 
     #[test]
-    fn only_sql_engines_edit_rows() {
+    fn says_which_engines_edit_rows_and_query() {
         assert!(Engine::Postgres.capabilities().edit_rows);
         assert!(!Engine::ClickHouse.capabilities().edit_rows);
+        let mongo = Engine::MongoDb.capabilities();
+        assert!(mongo.edit_rows && mongo.query && !mongo.sql);
+        assert!(!Engine::Redis.capabilities().query);
         assert!(Engine::Redis.capabilities().keys);
         assert_eq!(Engine::MariaDb.default_port(), Some(3306));
     }

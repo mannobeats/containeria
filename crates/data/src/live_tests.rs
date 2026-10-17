@@ -175,9 +175,12 @@ async fn refuses_writes_in_safe_mode(container: &str) {
         .find(|found| found.container_name == container)
         .unwrap();
     let env = docker.container_env(&detected.container_id).await.unwrap();
-    let session = crate::session::Session::open(&crate::detect::target(&detected, &env).unwrap())
-        .await
-        .unwrap();
+    let session = crate::session::Session::open(
+        &crate::detect::target(&detected, &env).unwrap(),
+        crate::tunnel::KnownHosts::new(data.folder()),
+    )
+    .await
+    .unwrap();
     let error =
         session.run("DELETE FROM customers", true).await.unwrap_err().to_string().to_lowercase();
     assert!(error.contains("read-only") || error.contains("read only"), "{error}");

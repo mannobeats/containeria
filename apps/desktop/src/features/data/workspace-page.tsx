@@ -2,7 +2,7 @@ import { IconAlertCircle, IconRefresh } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getRouteApi, Link } from "@tanstack/react-router";
 import type { Namespace, ServerInfo } from "@/lib/ipc/bindings";
-import { errorMessage } from "@/lib/ipc/errors";
+import { errorMessage, isCommandError } from "@/lib/ipc/errors";
 import { Crumb, Page } from "@/shell/page";
 import { ParentCrumb } from "@/shell/parent-crumb";
 import { Button } from "@/ui/button";
@@ -11,7 +11,7 @@ import { EmptyState } from "@/ui/empty-state";
 import { Skeleton } from "@/ui/progress";
 import { Tile } from "@/ui/tile";
 
-import { dataKeys, useSchema, useSession } from "./api";
+import { dataKeys, useConnections, useSchema, useSession } from "./api";
 import { DiagramView } from "./diagram/diagram-view";
 import { HistoryView } from "./history-view";
 import { findTable, tableKey } from "./model";
@@ -19,6 +19,7 @@ import { QueryView } from "./query/query-view";
 import { RedisView } from "./redis/redis-view";
 import { SafeBanner } from "./safe-banner";
 import { SchemaTree } from "./schema-tree";
+import { HostKeyPrompt } from "./ssh-host-key";
 import { TableActionSheets } from "./table/table-action-sheets";
 import { TableView } from "./table/table-view";
 import { tabFromKey } from "./tabs";
@@ -46,17 +47,29 @@ function Connecting() {
 
 function CouldNotConnect({ id, error }: { id: string; error: unknown }) {
   const client = useQueryClient();
+  const { data: connections } = useConnections();
+  const ssh = connections?.find((connection) => connection.id === id)?.ssh;
+  const kind = isCommandError(error) ? error.kind : null;
+  const retry = () => client.resetQueries({ queryKey: dataKeys.session(id) });
+  if (kind === "unknownHostKey" && ssh) {
+    return (
+      <EmptyState
+        art={<Tile icon="data" size="xl" />}
+        title="Trust this SSH server?"
+        className="h-full"
+      >
+        <HostKeyPrompt ssh={ssh} onTrusted={retry} className="max-w-[560px] text-left" />
+      </EmptyState>
+    );
+  }
   return (
     <EmptyState
       art={<Tile icon="data" size="xl" state="bad" />}
-      title="Couldn't connect"
+      title={kind === "ssh" ? "Couldn't open the SSH tunnel" : "Couldn't connect"}
       className="h-full"
       actions={
         <>
-          <Button
-            variant="brand"
-            onClick={() => client.resetQueries({ queryKey: dataKeys.session(id) })}
-          >
+          <Button variant="brand" onClick={retry}>
             <IconRefresh />
             Try again
           </Button>

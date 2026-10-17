@@ -1,5 +1,6 @@
 import {
   IconAdjustments,
+  IconAdjustmentsHorizontal,
   IconBrandDocker,
   IconCpu,
   IconDatabase,
@@ -19,6 +20,7 @@ import { CxIcon } from "@/ui/cx-icon";
 import { Toaster } from "@/ui/toaster";
 
 import { AboutPane } from "./about-pane";
+import { AdvancedPane } from "./advanced-pane";
 import { DockerPane } from "./docker-pane";
 import { EnginePane } from "./engine-pane";
 import { GeneralPane } from "./general-pane";
@@ -41,6 +43,7 @@ const PANES: Pane[] = [
   { id: "storage", label: "Storage", icon: IconDatabase, component: StoragePane },
   { id: "kubernetes", label: "Kubernetes", icon: KubeIcon, component: KubernetesPane },
   { id: "docker", label: "Docker", icon: IconBrandDocker, component: DockerPane },
+  { id: "advanced", label: "Advanced", icon: IconAdjustmentsHorizontal, component: AdvancedPane },
   { id: "about", label: "About", icon: IconInfoCircle, component: AboutPane },
 ];
 

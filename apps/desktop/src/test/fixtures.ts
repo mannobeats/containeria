@@ -62,7 +62,13 @@ export function metricsFixture(overrides: Partial<Metrics> = {}): Metrics {
 }
 
 export function preferencesFixture(overrides: Partial<Preferences> = {}): Preferences {
-  return { keepRunningInMenuBar: true, memoryInMenuBar: true, onboarded: true, ...overrides };
+  return {
+    keepRunningInMenuBar: true,
+    memoryInMenuBar: true,
+    onboarded: true,
+    notifyOn: ["crash", "unhealthy", "finished", "lowMemory"],
+    ...overrides,
+  };
 }
 
 export function imageFixture(overrides: Partial<ImageSummary> = {}): ImageSummary {

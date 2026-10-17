@@ -2,6 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import { blankForm, formFromConnection, formProblem, toInput } from "./connection-form";
 
+const viaSsh = {
+  ...blankForm("postgres"),
+  name: "billing",
+  ssh: true,
+  sshHost: " bastion ",
+  sshUser: "deploy",
+};
+
 describe("connection form", () => {
   it("starts from the engine's defaults", () => {
     const neon = blankForm("neon");
@@ -41,5 +49,28 @@ describe("connection form", () => {
     expect(toInput(form).password).toBeNull();
     expect(toInput({ ...form, password: "new", passwordChanged: true }).password).toBe("new");
     expect(toInput({ ...form, port: "" }).port).toBeNull();
+  });
+
+  it("sends an SSH tunnel only when it is on, and only the secret its login needs", () => {
+    expect(toInput(blankForm("postgres")).ssh).toBeNull();
+    expect(toInput(viaSsh).ssh).toEqual({
+      host: "bastion",
+      port: 22,
+      user: "deploy",
+      auth: "agent",
+      keyFile: null,
+    });
+    expect(toInput({ ...viaSsh, sshSecret: "left over" }).sshSecret).toBeNull();
+    expect(toInput({ ...viaSsh, sshAuth: "password", sshSecret: "pw" }).sshSecret).toBe("pw");
+    expect(toInput({ ...viaSsh, engine: "sqlite", file: "a.db" }).ssh).toBeNull();
+  });
+
+  it("names the first missing SSH field", () => {
+    expect(formProblem({ ...viaSsh, sshHost: "" })).toBe("Enter the SSH host.");
+    expect(formProblem({ ...viaSsh, sshPort: "70000" })).toBe(
+      "The SSH port is a number up to 65535.",
+    );
+    expect(formProblem({ ...viaSsh, sshAuth: "key" })).toBe("Choose the SSH private key file.");
+    expect(formProblem(viaSsh)).toBeNull();
   });
 });

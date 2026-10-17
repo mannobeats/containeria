@@ -15,13 +15,13 @@ import { Button } from "@/ui/button";
 import { ContextMenu, Menu } from "@/ui/menu";
 import { Tile } from "@/ui/tile";
 
-import { machineMenu } from "./machine-menu";
+import { type MachineDialog, machineMenu } from "./machine-menu";
 import { isRunning, kindLabel, type ListedMachine, stateLabel } from "./model";
 
 type MachineCardProps = {
   machine: ListedMachine;
   act: (name: string, action: MachineAction) => void;
-  remove: () => void;
+  onDialog: (dialog: MachineDialog) => void;
 };
 
 function Details({ machine }: { machine: ListedMachine }) {
@@ -53,12 +53,16 @@ function Details({ machine }: { machine: ListedMachine }) {
 }
 
 /** One machine as an object you can pick up: who it is, how it's doing, the next thing to do. */
-export function MachineCard({ machine, act, remove }: MachineCardProps) {
+export function MachineCard({ machine, act, onDialog }: MachineCardProps) {
   const navigate = useNavigate();
   const running = isRunning(machine);
   const open = (tab?: string) =>
     navigate({ to: "/machines/$name", params: { name: machine.name }, search: tab ? { tab } : {} });
-  const menu = machineMenu(machine, { open, act: (action) => act(machine.name, action), remove });
+  const menu = machineMenu(machine, {
+    open,
+    act: (action) => act(machine.name, action),
+    dialog: onDialog,
+  });
   return (
     <ContextMenu entries={menu}>
       <article className="relative flex flex-col gap-3.5 rounded-lg bg-surface p-3.5 shadow-1 transition-shadow duration-220 hover:shadow-2">

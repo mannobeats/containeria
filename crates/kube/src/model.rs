@@ -221,6 +221,20 @@ impl From<&Deployment> for DeploymentSummary {
     }
 }
 
+impl ServiceSummary {
+    /// The port on the Mac that reaches the service: a `LoadBalancer` port k3s binds in the VM,
+    /// or a `NodePort`, both forwarded by Lima. `ClusterIP` services aren't reachable from the Mac.
+    #[must_use]
+    pub fn mac_port(&self) -> Option<u16> {
+        let mut tcp = self.ports.iter().filter(|port| port.protocol == "TCP");
+        match self.kind.as_str() {
+            "LoadBalancer" => tcp.map(|port| port.port).next(),
+            "NodePort" => tcp.find_map(|port| port.node_port),
+            _ => None,
+        }
+    }
+}
+
 impl From<&Service> for ServiceSummary {
     fn from(service: &Service) -> Self {
         let (namespace, name) = names(&service.metadata);
@@ -357,6 +371,27 @@ mod tests {
 
     fn pod(json: &str) -> PodSummary {
         PodSummary::from(&serde_json::from_str::<Pod>(json).unwrap())
+    }
+
+    #[test]
+    fn reaches_load_balancer_and_node_port_services_from_the_mac() {
+        let port = |port, node_port| ServicePort {
+            port,
+            target: port.to_string(),
+            protocol: "TCP".into(),
+            node_port,
+        };
+        let service = |kind: &str, ports| ServiceSummary {
+            namespace: "shop".into(),
+            name: "web".into(),
+            kind: kind.into(),
+            cluster_ip: None,
+            ports,
+            from_mac: None,
+        };
+        assert_eq!(service("LoadBalancer", vec![port(8080, Some(31000))]).mac_port(), Some(8080));
+        assert_eq!(service("NodePort", vec![port(80, Some(30080))]).mac_port(), Some(30080));
+        assert_eq!(service("ClusterIP", vec![port(80, None)]).mac_port(), None);
     }
 
     #[test]

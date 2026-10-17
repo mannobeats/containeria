@@ -1,6 +1,7 @@
 //! Containeria's database browser: saved and detected connections, schemas, table pages with
 //! filters pushed into SQL, staged edits committed in one transaction, the SQL editor, history and
-//! import and export, for Postgres, MySQL, MariaDB, SQLite, ClickHouse, MongoDB and Redis.
+//! import and export, for Postgres, MySQL, MariaDB, SQLite, ClickHouse, MongoDB and Redis, directly
+//! or through an SSH tunnel.
 
 mod changes;
 mod clickhouse;
@@ -23,6 +24,7 @@ mod schema;
 mod service;
 mod session;
 mod sql;
+mod tunnel;
 mod value;
 
 pub use changes::{Cell, ChangeSet, RowUpdate};
@@ -41,4 +43,5 @@ pub use redis::{RedisKey, RedisKeyPage, RedisValue};
 pub use result::{QueryResult, ResultColumn, RowPage};
 pub use schema::{Column, Enum, ForeignKey, Index, Namespace, Table, TableKind, TableRef};
 pub use service::{Data, ServerInfo};
+pub use tunnel::{HostKey, SshAuth, SshTunnel};
 pub use value::{Value, ValueKind};

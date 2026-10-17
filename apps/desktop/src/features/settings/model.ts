@@ -1,4 +1,4 @@
-import type { EngineConfig, EngineStatus } from "@/lib/ipc/bindings";
+import type { EngineConfig, EngineStatus, NotifyOn, Preferences } from "@/lib/ipc/bindings";
 
 const GIB = 1024 ** 3;
 
@@ -65,4 +65,19 @@ export function linesOf(text: string): string[] {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
+}
+
+/** Preferences with one kind of notification switched on or off. */
+export function withNotification(
+  preferences: Preferences,
+  kind: NotifyOn,
+  on: boolean,
+): Preferences {
+  if (preferences.notifyOn.includes(kind) === on) {
+    return preferences;
+  }
+  const notifyOn = on
+    ? [...preferences.notifyOn, kind]
+    : preferences.notifyOn.filter((other) => other !== kind);
+  return { ...preferences, notifyOn };
 }

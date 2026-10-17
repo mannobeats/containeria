@@ -18,11 +18,13 @@ use crate::error::{Error, Result};
 use crate::export::{ExportFormat, Writer};
 use crate::history::{HistoryEntry, HistoryStore, SavedQuery};
 use crate::import::{self, ImportOptions, ImportPreview, ImportRequest, ImportedRows, Plan};
+use crate::mongo;
 use crate::query::{MAX_PAGE, RowsRequest, Statement};
 use crate::redis::{RedisKeyPage, RedisValue};
 use crate::result::{QueryResult, RowPage};
 use crate::schema::{Namespace, Table, TableKind, TableRef};
-use crate::session::{COUNT_CAP, Session};
+use crate::session::{COUNT_CAP, Driver, Session};
+use crate::tunnel::{self, HostKey, KnownHosts, SshAuth, SshTunnel};
 
 /// An open connection, as the workspace header and the safe-mode banner show it.
 #[derive(Debug, Clone, PartialEq, Serialize, specta::Type)]
@@ -124,20 +126,41 @@ impl Data {
             .clone()
             .filter(|id| !id.is_empty())
             .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
-        let has_password = match &input.password {
-            Some(password) if !password.is_empty() => {
-                Keychain::save(&id, password)?;
-                true
-            }
-            Some(_) => {
-                Keychain::forget(&id)?;
-                false
-            }
-            None => self.connections.get(&id).is_ok_and(|saved| saved.has_password),
+        let saved = self.connections.get(&id).ok();
+        let has_password = Self::keep_secret(
+            &id,
+            input.password.as_deref(),
+            saved.as_ref().is_some_and(|saved| saved.has_password),
+        )?;
+        let ssh_secret = match &input.ssh {
+            Some(ssh) if ssh.auth != SshAuth::Agent => input.ssh_secret.as_deref(),
+            _ => Some(""),
         };
-        let connection = input.into_connection(id, has_password);
+        let has_ssh_secret = Self::keep_secret(
+            &Keychain::ssh(&id),
+            ssh_secret,
+            saved.as_ref().is_some_and(|saved| saved.has_ssh_secret),
+        )?;
+        let connection = input.into_connection(id, has_password, has_ssh_secret);
         self.connections.put(connection.clone())?;
         Ok(connection)
+    }
+
+    /// Saves, forgets or keeps one Keychain secret; `None` keeps what was there.
+    fn keep_secret(account: &str, secret: Option<&str>, had: bool) -> Result<bool> {
+        match secret {
+            Some(secret) if !secret.is_empty() => {
+                Keychain::save(account, secret)?;
+                Ok(true)
+            }
+            Some(_) => {
+                if had {
+                    Keychain::forget(account)?;
+                }
+                Ok(false)
+            }
+            None => Ok(had),
+        }
     }
 
     /// Forgets a connection, its password and any open session. The database isn't touched.
@@ -147,25 +170,55 @@ impl Data {
     pub async fn remove(&self, id: &str) -> Result<()> {
         self.disconnect(id).await;
         Keychain::forget(id)?;
+        Keychain::forget(&Keychain::ssh(id))?;
         self.connections.remove(id)
     }
 
-    /// Dials the database the sheet describes without saving anything.
+    fn known_hosts(&self) -> KnownHosts {
+        KnownHosts::new(&self.folder)
+    }
+
+    /// Dials the database the sheet describes without saving anything, through its SSH tunnel
+    /// when it has one.
     ///
     /// # Errors
-    /// Fails with the database's own message when it can't connect.
+    /// Fails with `Error::Ssh`, `UnknownHostKey` or `HostKeyChanged` when the tunnel can't open,
+    /// otherwise with the database's own message when it can't connect.
     pub async fn test(&self, input: ConnectionInput) -> Result<String> {
         input.validate()?;
-        let password = match (&input.password, &input.id) {
+        let saved = input.id.as_deref().filter(|id| !id.is_empty());
+        let password = match (&input.password, saved) {
             (Some(password), _) => Some(password.clone()),
             (None, Some(id)) => Keychain::read(id)?,
             (None, None) => None,
         };
-        let connection = input.into_connection(String::new(), false);
-        let session = Session::open(&Target::from_connection(&connection, password)).await?;
+        let ssh_secret = match (&input.ssh_secret, saved) {
+            (Some(secret), _) => Some(secret.clone()),
+            (None, Some(id)) if input.ssh.is_some() => Keychain::read(&Keychain::ssh(id))?,
+            _ => None,
+        };
+        let connection = input.into_connection(String::new(), false, false);
+        let target = Target::from_connection(&connection, password, ssh_secret);
+        let session = Session::open(&target, self.known_hosts()).await?;
         let version = session.version.clone();
         session.close().await;
         Ok(version)
+    }
+
+    /// The host key an SSH server offers, for the user to compare before trusting it.
+    ///
+    /// # Errors
+    /// Fails when the SSH server can't be reached.
+    pub async fn ssh_host_key(&self, ssh: &SshTunnel) -> Result<HostKey> {
+        tunnel::host_key(&ssh.clone().normalized(), self.known_hosts()).await
+    }
+
+    /// Trusts an SSH server's key in Containeria's own `known_hosts`; `~/.ssh` is never written.
+    ///
+    /// # Errors
+    /// Fails when the key can't be parsed or the file can't be written.
+    pub fn trust_host_key(&self, key: &HostKey) -> Result<()> {
+        self.known_hosts().trust(key)
     }
 
     async fn target(&self, id: &str, docker: Option<&Docker>) -> Result<Target> {
@@ -184,7 +237,9 @@ impl Data {
         }
         let connection = self.connections.get(id)?;
         let password = if connection.has_password { Keychain::read(id)? } else { None };
-        Ok(Target::from_connection(&connection, password))
+        let ssh_secret =
+            if connection.has_ssh_secret { Keychain::read(&Keychain::ssh(id))? } else { None };
+        Ok(Target::from_connection(&connection, password, ssh_secret))
     }
 
     fn writes_blocked(&self, id: &str, environment: Environment) -> (bool, Option<f64>) {
@@ -230,7 +285,7 @@ impl Data {
             return self.info(id, &session);
         }
         let target = self.target(id, docker).await?;
-        let session = Arc::new(Session::open(&target).await?);
+        let session = Arc::new(Session::open(&target, self.known_hosts()).await?);
         self.sessions.write().await.insert(id.to_owned(), Arc::clone(&session));
         self.info(id, &session)
     }
@@ -298,13 +353,17 @@ impl Data {
     pub async fn preview(&self, id: &str, changes: &ChangeSet) -> Result<String> {
         let session = self.session(id).await?;
         let table = session.table(&changes.table).await?;
+        if let Driver::Mongo(_) = &session.driver {
+            return Ok(mongo::preview(&table, &mongo::changes(&table, changes)?));
+        }
         let dialect = session
             .dialect()
             .ok_or_else(|| Error::Unsupported("This database isn't edited with SQL.".into()))?;
         Ok(changes::preview(dialect, &changes::statements(dialect, &table, changes)?))
     }
 
-    /// Commits staged edits in one transaction. Refused in safe mode.
+    /// Commits staged edits in one transaction. Refused in safe mode. MongoDB without a replica
+    /// set has no transactions: its writes run in order and stop at the first that fails.
     ///
     /// # Errors
     /// Fails, changing nothing, when safe mode is on, a row moved, or the database refuses.
@@ -312,6 +371,12 @@ impl Data {
         let session = self.session(id).await?;
         self.guard_writes(id, &session)?;
         let table = session.table(&changes.table).await?;
+        if let Driver::Mongo(client) = &session.driver {
+            if let Some(reason) = changes::not_editable_because(&table) {
+                return Err(Error::Unsupported(reason));
+            }
+            return client.apply(&table, &mongo::changes(&table, changes)?).await;
+        }
         let pool = session.sql()?;
         let affected = pool.apply(&changes::statements(pool.dialect(), &table, changes)?).await?;
         Ok(affected)

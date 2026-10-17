@@ -11,6 +11,7 @@ mod kubernetes;
 mod machines;
 mod menu;
 mod metrics;
+mod notifications;
 mod preferences;
 mod settings_window;
 mod shells;
@@ -52,6 +53,7 @@ pub fn run() -> tauri::Result<()> {
         .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .invoke_handler(ipc.invoke_handler())
@@ -67,6 +69,7 @@ pub fn run() -> tauri::Result<()> {
             app.manage(settings_window::ShownPane::default());
             background.spawn(app.handle());
             tray::install(app.handle())?;
+            notifications::open_on_click(app.handle());
             Ok(())
         })
         .build(tauri::generate_context!())?
@@ -75,10 +78,10 @@ pub fn run() -> tauri::Result<()> {
 }
 
 fn app_state(app: &AppHandle) -> Result<AppState, Box<dyn std::error::Error>> {
-    let bundled_bin = app.path().resource_dir().ok().map(|dir| dir.join("bin"));
+    let tools = app.path().resource_dir().ok().map(|dir| dir.join("tools"));
     let home = Home::from_env()?;
-    let engine = Arc::new(Engine::new(bundled_bin.as_deref())?);
-    let bundled_colima = bundled_bin.map(|dir| dir.join("colima"));
+    let engine = Arc::new(Engine::new(tools.as_deref())?);
+    let bundled_colima = tools.map(|dir| dir.join("bin/colima"));
     Ok(AppState {
         data: Arc::new(DataState::new(&home.root().join("data"))),
         machines: MachinesEngine::new(home.clone(), bundled_colima.as_deref()),
@@ -119,8 +122,9 @@ impl Background {
         let (sampled, handle) = (Arc::clone(&engine), app.clone());
         tauri::async_runtime::spawn(async move { metrics.run(sampled, handle).await });
         let (for_kube, handle) = (Arc::clone(&engine), app.clone());
+        let for_domains = Arc::clone(&kubernetes);
         tauri::async_runtime::spawn(async move { kubernetes.watch(&for_kube, handle).await });
-        tauri::async_runtime::spawn(domains::supervise(domains, engine));
+        tauri::async_runtime::spawn(domains::supervise(domains, engine, for_domains));
     }
 }
 

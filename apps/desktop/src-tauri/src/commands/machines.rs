@@ -1,6 +1,9 @@
 use containeria_engine::LogLine;
+use std::path::Path;
+
 use containeria_machines::{
-    CreateMachine, DISTROS, Distro, Machine, MachineAction, MachineFile, ShellInput,
+    CreateMachine, DISTROS, Distro, Machine, MachineAction, MachineFile, MachineSnapshot,
+    ShellInput,
 };
 use tauri::ipc::Channel;
 use tauri::{AppHandle, State};
@@ -142,7 +145,7 @@ pub(crate) async fn machine_file_upload(
     source: String,
     directory: String,
 ) -> Result<()> {
-    let file_name = std::path::Path::new(&source)
+    let file_name = Path::new(&source)
         .file_name()
         .map(|file| file.to_string_lossy().into_owned())
         .ok_or_else(|| CommandError::new(ErrorKind::Internal, format!("{source} isn't a file.")))?;
@@ -190,4 +193,103 @@ pub(crate) async fn machine_shell_resize(
 ) -> Result<()> {
     state.machines.send(id, ShellInput::Resize { cols, rows }).await;
     Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn machine_snapshots(
+    state: State<'_, AppState>,
+    name: String,
+) -> Result<Vec<MachineSnapshot>> {
+    Ok(state.machines.incus().await?.snapshots(&name).await?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn machine_snapshot_create(
+    state: State<'_, AppState>,
+    name: String,
+    snapshot: String,
+) -> Result<()> {
+    Ok(state.machines.incus().await?.snapshot(&name, &snapshot).await?)
+}
+
+/// Puts the machine back as it was in `snapshot`; everything since is lost.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn machine_snapshot_restore(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    name: String,
+    snapshot: String,
+) -> Result<()> {
+    let result = state.machines.incus().await?.restore(&name, &snapshot).await;
+    MachinesChanged.emit(&app)?;
+    Ok(result?)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn machine_snapshot_delete(
+    state: State<'_, AppState>,
+    name: String,
+    snapshot: String,
+) -> Result<()> {
+    Ok(state.machines.incus().await?.delete_snapshot(&name, &snapshot).await?)
+}
+
+/// Copies the machine to a new, stopped machine named `to`.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn machine_clone(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    name: String,
+    to: String,
+) -> Result<()> {
+    let result = state.machines.incus().await?.copy(&name, &to).await;
+    MachinesChanged.emit(&app)?;
+    Ok(result?)
+}
+
+/// Writes the machine to `destination`, a `.tar.gz` path the user picked on the Mac.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn machine_export(
+    state: State<'_, AppState>,
+    name: String,
+    destination: String,
+) -> Result<()> {
+    Ok(state.machines.incus().await?.export(&name, Path::new(&destination)).await?)
+}
+
+/// Creates a stopped machine named `name` from `source`, a `.tar.gz` that `machine_export` wrote.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn machine_import(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    source: String,
+    name: String,
+) -> Result<()> {
+    let result = state.machines.incus().await?.import(&name, Path::new(&source)).await;
+    MachinesChanged.emit(&app)?;
+    Ok(result?)
+}
+
+/// The command that opens the machine's root shell from a Mac terminal.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn machine_shell_command(
+    state: State<'_, AppState>,
+    name: String,
+) -> Result<String> {
+    state.machines.shell_command(&name).await
+}
+
+/// Opens the machine's root shell in a Terminal window.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn machine_open_terminal(state: State<'_, AppState>, name: String) -> Result<()> {
+    state.machines.open_terminal(&name).await
 }

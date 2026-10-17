@@ -5,6 +5,8 @@ import { EmptyState } from "@/ui/empty-state";
 import { DomainRow } from "./domain-row";
 import { groupRoutes, routeUrl } from "./model";
 
+const GROUP_ICONS = { custom: "domain", container: "container", service: "kube" } as const;
+
 type RouteTableProps = {
   status: DomainsStatus;
   onEdit: (route: DomainRoute) => void;
@@ -48,10 +50,7 @@ export function RouteTable({ status, onEdit, onRemove }: RouteTableProps) {
           <tr className="h-[34px] [&>td]:border-b-[0.5px] [&>td]:border-line">
             <td colSpan={5} className="pt-2.5 pl-5 text-12 font-semibold text-ink-2">
               <span className="flex items-center gap-2">
-                <CxIcon
-                  name={group.kind === "custom" ? "domain" : "container"}
-                  className="size-3.5 text-ink-3"
-                />
+                <CxIcon name={GROUP_ICONS[group.kind]} className="size-3.5 text-ink-3" />
                 {group.label}
                 <span className="font-[450] text-ink-3 tabular">{group.routes.length}</span>
               </span>
