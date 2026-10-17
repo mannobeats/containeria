@@ -8,7 +8,7 @@ import type { ContainerSummary, ImageSummary } from "@/lib/ipc/bindings";
 import { logoFor } from "@/lib/logos";
 import { Button } from "@/ui/button";
 import { Chip } from "@/ui/chip";
-import { cellAbove, stretchedLink } from "@/ui/classes";
+import { rowLink } from "@/ui/classes";
 import { Dash } from "@/ui/dash";
 import { FaceStack } from "@/ui/face-stack";
 import { IconAction } from "@/ui/icon-action";
@@ -67,7 +67,7 @@ export function ImageRow({ image, users, onTag, onDelete }: ImageRowProps) {
     <ContextMenu entries={menu}>
       <Row dim={image.dangling}>
         <td className="max-w-0">
-          <Link to="/images/$id" params={{ id: image.id }} className={stretchedLink}>
+          <Link to="/images/$id" params={{ id: image.id }} className={rowLink} data-row-link>
             <Tile
               logo={image.dangling ? undefined : logoFor(image.repository)}
               icon={image.dangling ? "layer" : "image"}
@@ -89,7 +89,7 @@ export function ImageRow({ image, users, onTag, onDelete }: ImageRowProps) {
         <td className="font-mono text-mono-12 text-ink-3">{shortId(image.id)}</td>
         <td className="text-right tabular">{formatBytes(image.sizeBytes)}</td>
         <td className="text-ink-3">{formatRelative(image.createdAt)}</td>
-        <td className={`max-w-0 ${cellAbove}`}>
+        <td className="max-w-0">
           <UsedBy image={image} users={users} />
         </td>
         <RowActions>

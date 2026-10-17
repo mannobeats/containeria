@@ -5,7 +5,7 @@ import { formatBytes, formatRelative } from "@/lib/format";
 import type { VolumeSummary } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
 import { Chip } from "@/ui/chip";
-import { cellAbove, stretchedLink } from "@/ui/classes";
+import { rowLink } from "@/ui/classes";
 import { Dash } from "@/ui/dash";
 import { FaceStack } from "@/ui/face-stack";
 import { IconAction } from "@/ui/icon-action";
@@ -49,7 +49,12 @@ export function VolumeRow({
     <ContextMenu entries={menu}>
       <Row dim={faces.length === 0}>
         <td className="max-w-0">
-          <Link to="/volumes/$name" params={{ name: volume.name }} className={stretchedLink}>
+          <Link
+            to="/volumes/$name"
+            params={{ name: volume.name }}
+            className={rowLink}
+            data-row-link
+          >
             <Tile icon="volume" />
             <span
               className={
@@ -64,7 +69,7 @@ export function VolumeRow({
           </Link>
         </td>
         <td>{volume.project ? <Chip>{volume.project}</Chip> : <Dash />}</td>
-        <td className={`max-w-0 ${cellAbove}`}>
+        <td className="max-w-0">
           <FaceStack faces={faces} />
         </td>
         <td className="max-w-0 truncate font-mono text-mono-12 text-ink-3">

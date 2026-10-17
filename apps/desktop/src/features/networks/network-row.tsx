@@ -7,7 +7,7 @@ import type { ContainerSummary, NetworkSummary } from "@/lib/ipc/bindings";
 import { logoFor } from "@/lib/logos";
 import { Button } from "@/ui/button";
 import { Chip } from "@/ui/chip";
-import { cellAbove, stretchedLink } from "@/ui/classes";
+import { rowLink } from "@/ui/classes";
 import { Dash } from "@/ui/dash";
 import { FaceStack } from "@/ui/face-stack";
 import { ContextMenu, Menu, type MenuEntry } from "@/ui/menu";
@@ -57,7 +57,7 @@ export function NetworkRow({ network, containers, onDelete }: NetworkRowProps) {
     <ContextMenu entries={menu}>
       <Row>
         <td className="max-w-0">
-          <Link to="/networks/$id" params={{ id: network.id }} className={stretchedLink}>
+          <Link to="/networks/$id" params={{ id: network.id }} className={rowLink} data-row-link>
             <Tile icon="network" state={network.builtIn ? "off" : "on"} />
             <span className="truncate font-medium text-ink">{network.name}</span>
             {network.builtIn ? <Chip>Built in</Chip> : null}
@@ -67,7 +67,7 @@ export function NetworkRow({ network, containers, onDelete }: NetworkRowProps) {
         <td>{network.driver}</td>
         <td className="font-mono text-mono-12">{subnet ?? <Dash />}</td>
         <td className="font-mono text-mono-12 text-ink-3">{network.gateway ?? <Dash />}</td>
-        <td className={`max-w-0 ${cellAbove}`}>
+        <td className="max-w-0">
           <FaceStack faces={faces} max={5} empty="None" />
         </td>
         <RowActions>

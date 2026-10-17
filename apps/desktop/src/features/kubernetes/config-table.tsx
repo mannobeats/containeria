@@ -20,7 +20,8 @@ export function ConfigTable({
         <button
           type="button"
           onClick={() => open({ kind: "config", config: item })}
-          className="flex min-w-0 items-center gap-2 text-left after:absolute after:inset-0"
+          className="flex min-w-0 items-center gap-2 text-left"
+          data-row-link
         >
           <Tile icon={item.kind === "secret" ? "settings" : "data"} />
           <span className="truncate font-medium text-ink">{item.name}</span>

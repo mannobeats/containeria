@@ -5,6 +5,7 @@ import { formatMemory, formatPercent } from "@/lib/format";
 import type { ContainerSummary, ContainerUsage } from "@/lib/ipc/bindings";
 import { logoFor } from "@/lib/logos";
 import { Checkbox } from "@/ui/checkbox";
+import { rowLink } from "@/ui/classes";
 import { Dash } from "@/ui/dash";
 import { ContextMenu } from "@/ui/menu";
 import { Tile } from "@/ui/tile";
@@ -53,12 +54,12 @@ export function ContainerRow({
     <ContextMenu entries={menu}>
       <tr
         className={clsx(
-          "group/row relative h-9 transition-colors duration-140 hover:bg-hover [&>td]:border-b-[0.5px] [&>td]:border-line",
+          "group/row h-9 transition-colors duration-140 hover:bg-hover [&>td]:border-b-[0.5px] [&>td]:border-line",
           selected && "bg-select",
           !running && "[&>td]:text-ink-3",
         )}
       >
-        <td className="relative z-[1] w-11 pl-5">
+        <td className="w-11 pl-5">
           <Checkbox
             checked={selected}
             onCheckedChange={onSelect}
@@ -73,7 +74,8 @@ export function ContainerRow({
           <Link
             to="/containers/$id"
             params={{ id: container.id }}
-            className="flex min-w-0 items-center gap-2 text-inherit no-underline outline-none after:absolute after:inset-0 focus-visible:after:shadow-focus"
+            className={rowLink}
+            data-row-link
           >
             <Tile logo={logoFor(container.image)} state={tileState(container)} />
             <span
@@ -93,7 +95,7 @@ export function ContainerRow({
             </span>
           </td>
         ) : null}
-        <td className="relative z-[1] px-2.5">
+        <td className="px-2.5">
           <PortChips ports={container.ports} />
         </td>
         <td className="px-2.5 text-right tabular">
@@ -105,7 +107,7 @@ export function ContainerRow({
         <td className="max-w-0 px-2.5">
           <ContainerStatus container={container} />
         </td>
-        <td className="relative z-[1] pr-5 text-right">
+        <td className="pr-5 text-right">
           <RowActions
             container={container}
             menu={menu}

@@ -6,7 +6,7 @@ import type { NetworkDetail, NetworkEndpoint } from "@/lib/ipc/bindings";
 import { Crumb, Page } from "@/shell/page";
 import { ParentCrumb } from "@/shell/parent-crumb";
 import { Button } from "@/ui/button";
-import { stretchedLink } from "@/ui/classes";
+import { rowLink } from "@/ui/classes";
 import { Dash } from "@/ui/dash";
 import { EmptyState } from "@/ui/empty-state";
 import { IconAction } from "@/ui/icon-action";
@@ -61,7 +61,8 @@ function Endpoints({ detail }: { detail: NetworkDetail }) {
               <Link
                 to="/containers/$id"
                 params={{ id: endpoint.containerId }}
-                className={stretchedLink}
+                className={rowLink}
+                data-row-link
               >
                 <Tile />
                 <span className="truncate text-ink">{endpoint.container}</span>

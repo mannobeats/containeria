@@ -1,6 +1,7 @@
 import type { ContainerSummary, ContainerUsage } from "@/lib/ipc/bindings";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { Checkbox } from "@/ui/checkbox";
+import { openRowOnClick } from "@/ui/row-click";
 
 import type { ContainerCallbacks } from "./container-callbacks";
 import { ContainerRow } from "./container-row";
@@ -46,7 +47,10 @@ export function ContainerTable({
   const wide = useMediaQuery(WIDE);
   const all = groups.flatMap((group) => group.containers);
   return (
-    <table className="w-full table-fixed border-separate border-spacing-0 text-13">
+    <table
+      ref={openRowOnClick}
+      className="w-full table-fixed border-separate border-spacing-0 text-13"
+    >
       <colgroup>
         <col className="w-11" />
         <col />

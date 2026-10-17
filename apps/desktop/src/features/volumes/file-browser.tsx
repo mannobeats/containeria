@@ -71,7 +71,8 @@ function EntryRow({
           <button
             type="button"
             onClick={onOpen}
-            className="flex min-w-0 items-center gap-2 text-ink after:absolute after:inset-0"
+            className="flex min-w-0 items-center gap-2 text-ink"
+            data-row-link
           >
             <Icon className="text-ink-3" aria-hidden />
             <span className="truncate">{entry.name}</span>
