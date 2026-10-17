@@ -14,14 +14,13 @@ import { useState } from "react";
 import { formatBytes, formatRelative } from "@/lib/format";
 import type { FileEntry } from "@/lib/ipc/bindings";
 import { useTauriEvent } from "@/lib/ipc/use-tauri-event";
+import { childPath, pathSteps } from "@/lib/paths";
 import { Banner } from "@/ui/banner";
 import { Button } from "@/ui/button";
 import { EmptyState } from "@/ui/empty-state";
 import { IconAction } from "@/ui/icon-action";
 import { Skeleton } from "@/ui/progress";
-
 import { useDownload, useFiles, useUpload } from "./api";
-import { childPath, pathSteps } from "./detail-model";
 
 /** Files dragged onto the window from Finder. Tauri reports them for the whole webview. */
 const dragDrop = {

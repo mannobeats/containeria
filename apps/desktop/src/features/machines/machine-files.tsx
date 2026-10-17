@@ -13,12 +13,11 @@ import { toast } from "sonner";
 import { formatBytes } from "@/lib/format";
 import { commands, type MachineFile } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
+import { pathSteps } from "@/lib/paths";
 import { Button } from "@/ui/button";
 import { EmptyState } from "@/ui/empty-state";
 import { IconAction } from "@/ui/icon-action";
-
 import { machineKeys, useMachineFiles } from "./api";
-import { pathSteps } from "./model";
 
 async function download(machine: string, entry: MachineFile) {
   const destination = await save({ defaultPath: entry.name });

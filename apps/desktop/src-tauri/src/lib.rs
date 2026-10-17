@@ -1,6 +1,7 @@
 //! The Containeria desktop app: the window, the menu bar item and the commands the UI calls.
 
 mod commands;
+mod data;
 mod domains;
 mod engine;
 mod error;
@@ -22,6 +23,7 @@ use containeria_engine::Home;
 use containeria_net::Domains;
 use tauri::{AppHandle, Manager, RunEvent, Window, WindowEvent};
 
+use crate::data::DataState;
 use crate::engine::Engine;
 use crate::kubernetes::Kubernetes;
 use crate::machines::MachinesEngine;
@@ -75,6 +77,7 @@ fn app_state(app: &AppHandle) -> Result<AppState, Box<dyn std::error::Error>> {
     let home = Home::from_env()?;
     let engine = Arc::new(Engine::new(bundled.as_deref())?);
     Ok(AppState {
+        data: Arc::new(DataState::new(&home.root().join("data"))),
         machines: MachinesEngine::new(home.clone(), bundled.as_deref()),
         domains: Arc::new(Domains::open(&home.root().join("net"))?),
         kubernetes: Arc::new(Kubernetes::default()),

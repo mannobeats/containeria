@@ -1,3 +1,5 @@
+import type { Extension } from "@codemirror/state";
+
 /** The languages `CodeEditor` can highlight. Add one by adding its loader below. */
 export type Language = "yaml";
 
@@ -11,9 +13,13 @@ type Options = {
   parent: HTMLElement;
   doc: string;
   language: Language | undefined;
+  /** Language, highlighting or completion the caller builds itself, such as SQL with a schema. */
+  extensions: Extension[];
   readOnly: boolean;
   label: string;
   onChange: (value: string) => void;
+  /** ⌘↵: gets the selection when there is one, otherwise everything. */
+  onRun: ((code: string) => void) | undefined;
 };
 
 /** Builds a CodeMirror editor, importing CodeMirror only now. Syntax colours are design tokens. */
@@ -21,18 +27,22 @@ export async function createEditor({
   parent,
   doc,
   language,
+  extensions,
   readOnly,
   label,
   onChange,
+  onRun,
 }: Options): Promise<Editor> {
   const [
     { EditorView, basicSetup },
-    { EditorState },
+    { EditorState, Prec },
+    { keymap },
     { HighlightStyle, syntaxHighlighting },
     { tags },
   ] = await Promise.all([
     import("codemirror"),
     import("@codemirror/state"),
+    import("@codemirror/view"),
     import("@codemirror/language"),
     import("@lezer/highlight"),
   ]);
@@ -62,14 +72,39 @@ export async function createEditor({
     "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": {
       backgroundColor: "var(--select)",
     },
+    ".cm-tooltip": {
+      border: "0",
+      borderRadius: "9px",
+      boxShadow: "var(--shadow-3)",
+      backgroundColor: "var(--raised)",
+      overflow: "hidden",
+    },
+    ".cm-tooltip-autocomplete > ul > li": { padding: "3px 8px", fontFamily: "var(--font-mono)" },
+    ".cm-tooltip-autocomplete > ul > li[aria-selected]": {
+      backgroundColor: "var(--brand-600)",
+      color: "white",
+    },
+    ".cm-matchingBracket": { backgroundColor: "var(--brand-soft)", outline: "none" },
   });
+  const run = keymap.of([
+    {
+      key: "Mod-Enter",
+      run: (target) => {
+        const { from, to } = target.state.selection.main;
+        onRun?.(from === to ? target.state.doc.toString() : target.state.sliceDoc(from, to));
+        return onRun !== undefined;
+      },
+    },
+  ]);
   const view = new EditorView({
     parent,
     state: EditorState.create({
       doc,
       extensions: [
+        Prec.highest(run),
         basicSetup,
         grammar,
+        ...extensions,
         theme,
         syntaxHighlighting(highlight),
         EditorState.readOnly.of(readOnly),

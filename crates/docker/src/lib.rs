@@ -3,6 +3,7 @@
 
 mod containers;
 mod details;
+mod environment;
 mod events;
 mod files;
 mod helper;

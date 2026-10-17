@@ -6,7 +6,6 @@ import {
   kindLabel,
   limitLabel,
   nameProblem,
-  pathSteps,
   stateLabel,
   suggestName,
   withCpu,
@@ -69,16 +68,5 @@ describe("withCpu", () => {
     );
     expect(second.machines[0]?.cpuPercent).toBeCloseTo(10);
     expect(second.machines[1]?.cpuPercent).toBeNull();
-  });
-});
-
-describe("pathSteps", () => {
-  it("lists each folder on the way", () => {
-    expect(pathSteps("/root/notes/")).toEqual([
-      { label: "/", path: "/" },
-      { label: "root", path: "/root" },
-      { label: "notes", path: "/root/notes" },
-    ]);
-    expect(pathSteps("/")).toEqual([{ label: "/", path: "/" }]);
   });
 });

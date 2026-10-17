@@ -11,11 +11,16 @@ pub(crate) enum ErrorKind {
     /// Kubernetes is off, still starting, or its API server doesn't answer.
     KubernetesUnavailable,
     NotFound,
-    /// The user dismissed a macOS permission prompt; nothing to report.
+    /// The user stopped it: dismissed a macOS permission prompt or cancelled a running query.
     Cancelled,
+    /// What was asked doesn't fit, such as a missing field or a bad host name; the message says which.
     InvalidInput,
     Engine,
     Internal,
+    /// A database said no, or couldn't be reached.
+    Database,
+    /// A production database is in safe mode; the UI offers to allow writes.
+    ReadOnly,
 }
 
 /// The one error shape every command rejects with.
@@ -34,6 +39,21 @@ impl CommandError {
 
     pub(crate) fn engine_stopped() -> Self {
         Self::new(ErrorKind::EngineStopped, "The engine isn't running.")
+    }
+}
+
+impl From<containeria_data::Error> for CommandError {
+    fn from(error: containeria_data::Error) -> Self {
+        use containeria_data::Error as Data;
+        let kind = match &error {
+            Data::UnknownConnection(_) => ErrorKind::NotFound,
+            Data::ReadOnly(_) => ErrorKind::ReadOnly,
+            Data::Invalid(_) | Data::Unsupported(_) => ErrorKind::InvalidInput,
+            Data::Docker(containeria_docker::Error::Unreachable(_)) => ErrorKind::EngineStopped,
+            Data::NotConnected(_) | Data::Database(_) | Data::Docker(_) => ErrorKind::Database,
+            Data::Keychain(_) | Data::Json(_) | Data::Io(_) => ErrorKind::Internal,
+        };
+        Self::new(kind, error.to_string())
     }
 }
 

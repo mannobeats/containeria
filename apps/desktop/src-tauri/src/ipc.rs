@@ -2,8 +2,8 @@ use tauri::Wry;
 use tauri_specta::{Builder, Commands, ErrorHandlingMode, collect_commands, collect_events};
 
 use crate::commands::{
-    container_detail, containers, domains, engine, images, kubernetes, machines, metrics, networks,
-    run, settings, shell, streams, volumes, welcome,
+    container_detail, containers, data, domains, engine, images, kubernetes, machines, metrics,
+    networks, run, settings, shell, streams, volumes, welcome,
 };
 use crate::events::{
     DockerChanged, EngineChanged, KubeChanged, MachinesChanged, MetricsUpdated, Navigate,
@@ -26,6 +26,10 @@ pub(crate) fn builder() -> Builder<Wry> {
 }
 
 /// One entry per command, grouped by area. Tauri Specta takes them in a single list.
+#[expect(
+    clippy::too_many_lines,
+    reason = "a flat list of command paths; tauri-specta needs them in one `collect_commands!`"
+)]
 fn commands() -> Commands<Wry> {
     collect_commands![
         streams::stream_cancel,
@@ -119,6 +123,30 @@ fn commands() -> Commands<Wry> {
         kubernetes::kubernetes_port_forward,
         kubernetes::kubernetes_forwards,
         kubernetes::kubernetes_stop_forward,
+        data::data_connections,
+        data::data_detected,
+        data::data_save_connection,
+        data::data_remove_connection,
+        data::data_test_connection,
+        data::data_connect,
+        data::data_disconnect,
+        data::data_schema,
+        data::data_rows,
+        data::data_preview_changes,
+        data::data_commit,
+        data::data_run,
+        data::data_cancel,
+        data::data_allow_writes,
+        data::data_safe_mode,
+        data::data_history,
+        data::data_saved_queries,
+        data::data_save_query,
+        data::data_delete_query,
+        data::data_export,
+        data::data_redis_keys,
+        data::data_redis_value,
+        data::data_redis_set,
+        data::data_redis_delete,
     ]
 }
 

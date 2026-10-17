@@ -10,6 +10,7 @@ import { Sidebar } from "./sidebar";
 function renderSidebar(phase: "running" | "stopped" = "running") {
   const calls = mockCommands({
     engineStatus: () => engineFixture({ phase }),
+    dataConnections: () => [],
     containersList: () => [
       containerFixture({ id: "a", name: "api" }),
       containerFixture({ id: "b", name: "worker", state: "exited", status: "Exited (2) now" }),

@@ -3,7 +3,9 @@
 - **Rust**: unit tests in `#[cfg(test)] mod tests` beside the code. Test parsing of engine output
   with real samples (Colima JSON, Docker stats), conversions, and decisions (ledger grouping). Tests
   must not need a running engine; anything that does goes behind `#[ignore = "needs a Docker engine"]`
-  and runs with `cargo test -- --ignored` locally.
+  and runs with `cargo test -- --ignored` locally. The database tests in
+  `crates/data/src/live_tests.rs` list the throwaway `containeria-test-*` containers they need
+  and the command that removes them afterwards.
 - **TypeScript**: Vitest with happy-dom. Test `model.ts` logic and `lib/` helpers as plain
   functions; test a component with Testing Library only when it holds logic a user would notice
   breaking. Files sit next to the code as `*.test.ts(x)`.

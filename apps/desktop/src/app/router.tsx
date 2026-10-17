@@ -98,11 +98,22 @@ const machineDetail = createRoute({
   ),
 });
 
+const dataWorkspace = createRoute({
+  getParentRoute: () => root,
+  path: "data/$connection",
+  staticData: { needsEngine: false, title: "Data" },
+  validateSearch: tabSearch,
+  component: lazyRouteComponent(() =>
+    import("@/features/data/workspace-page").then((module) => ({ default: module.WorkspacePage })),
+  ),
+});
+
 const routeTree = root.addChildren([
   index,
   containers,
   containerDetail,
   machineDetail,
+  dataWorkspace,
   page("images", "Images", () =>
     import("@/features/images/images-page").then((module) => ({ default: module.ImagesPage })),
   ),

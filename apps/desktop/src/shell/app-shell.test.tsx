@@ -17,6 +17,7 @@ import { AppShell } from "./app-shell";
 function renderShell(phase: EnginePhase, onboarded = true) {
   const calls = mockCommands({
     engineStatus: () => engineFixture({ phase }),
+    dataConnections: () => [],
     containersList: () => [containerFixture({ name: "shop-db-1" })],
     metricsLatest: () => metricsFixture(),
     preferencesGet: () => preferencesFixture({ onboarded }),

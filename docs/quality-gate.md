@@ -30,6 +30,7 @@ Each one is a configuration decision with a reason, not a way around a finding.
 | `biome.json` | `design/`, `src/assets/logos`, `bindings.ts` ignored | Archived prototype, third-party brand files, generated code. |
 | `.fallowrc.json` | same paths ignored | Same reasons. |
 | `deny.toml` | `RUSTSEC-2024-0436` ignored | `paste` is unmaintained but only a compile-time proc-macro inside specta; no vulnerability. |
+| `src-tauri/src/ipc.rs` | `too_many_lines` expected on `commands()` | It is the list of every IPC command, one path per line, and tauri-specta only accepts them in a single `collect_commands!`. |
 | Rust | `#[expect(lint, reason)]` on single items | Documented where the lint is wrong for that item, e.g. a struct mirroring Colima's config. |
 
 Adding to this table needs a reason a reviewer would accept. Prefer changing the code.

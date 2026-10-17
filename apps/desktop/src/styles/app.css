@@ -52,6 +52,13 @@
   --color-s6: var(--s6);
   --color-term-bg: var(--term-bg);
   --color-term-fg: var(--term-fg);
+  --color-sx-kw: var(--sx-kw);
+  --color-sx-str: var(--sx-str);
+  --color-sx-num: var(--sx-num);
+  --color-sx-fn: var(--sx-fn);
+  --color-sx-col: var(--sx-col);
+  --color-sx-com: var(--sx-com);
+  --color-sx-op: var(--sx-op);
 
   --font-sans: "Geist Variable", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, monospace;

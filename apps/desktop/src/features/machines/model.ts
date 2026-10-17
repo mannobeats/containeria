@@ -93,15 +93,3 @@ export function withCpu(
     })),
   };
 }
-
-/** "/root/notes/" → ["/", "/root", "/root/notes"], for breadcrumbs. */
-export function pathSteps(path: string): { label: string; path: string }[] {
-  const parts = path.split("/").filter(Boolean);
-  return [
-    { label: "/", path: "/" },
-    ...parts.map((part, index) => ({
-      label: part,
-      path: `/${parts.slice(0, index + 1).join("/")}`,
-    })),
-  ];
-}

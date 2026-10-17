@@ -26,22 +26,6 @@ export function isDatabase(details: Pick<ContainerDetails, "image">): boolean {
   return logo !== undefined && DATABASES.has(logo);
 }
 
-/** `/a/b/c` → `["/", "/a", "/a/b", "/a/b/c"]`, for a breadcrumb. */
-export function pathSteps(path: string): { label: string; path: string }[] {
-  const parts = path.split("/").filter(Boolean);
-  return [
-    { label: "/", path: "/" },
-    ...parts.map((part, index) => ({
-      label: part,
-      path: `/${parts.slice(0, index + 1).join("/")}`,
-    })),
-  ];
-}
-
-export function childPath(directory: string, name: string): string {
-  return directory === "/" ? `/${name}` : `${directory}/${name}`;
-}
-
 /** A piece of `docker inspect` JSON to tint. `at` is its offset, a stable key for rendering. */
 export type JsonToken = { kind: "key" | "string" | "number" | "plain"; text: string; at: number };
 

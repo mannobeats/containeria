@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { childPath, isDatabase, isSecret, pathSteps, tokenizeJson } from "./detail-model";
+import { isDatabase, isSecret, tokenizeJson } from "./detail-model";
 
 describe("isSecret", () => {
   it("hides credentials by name or inside a connection string", () => {
@@ -16,19 +16,6 @@ describe("isDatabase", () => {
   it("recognises database images", () => {
     expect(isDatabase({ image: "postgres:18" })).toBe(true);
     expect(isDatabase({ image: "nginx:1.29" })).toBe(false);
-  });
-});
-
-describe("paths", () => {
-  it("builds a breadcrumb and joins child paths", () => {
-    expect(pathSteps("/var/lib")).toEqual([
-      { label: "/", path: "/" },
-      { label: "var", path: "/var" },
-      { label: "lib", path: "/var/lib" },
-    ]);
-    expect(pathSteps("/")).toEqual([{ label: "/", path: "/" }]);
-    expect(childPath("/", "etc")).toBe("/etc");
-    expect(childPath("/etc", "hosts")).toBe("/etc/hosts");
   });
 });
 
