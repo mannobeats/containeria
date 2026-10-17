@@ -9,6 +9,9 @@ pub(crate) enum ErrorKind {
     EngineMissing,
     EngineStopped,
     NotFound,
+    /// The user dismissed a macOS permission prompt; nothing to report.
+    Cancelled,
+    InvalidInput,
     Engine,
     Internal,
 }
@@ -49,6 +52,19 @@ impl From<containeria_docker::Error> for CommandError {
             containeria_docker::Error::Unreachable(_) => ErrorKind::EngineStopped,
             containeria_docker::Error::NotFound(_) => ErrorKind::NotFound,
             containeria_docker::Error::Engine(_) => ErrorKind::Engine,
+        };
+        Self::new(kind, error.to_string())
+    }
+}
+
+impl From<containeria_net::Error> for CommandError {
+    fn from(error: containeria_net::Error) -> Self {
+        use containeria_net::Error as Net;
+        let kind = match error {
+            Net::Cancelled => ErrorKind::Cancelled,
+            Net::InvalidHost(_) => ErrorKind::InvalidInput,
+            Net::UnknownRoute(_) => ErrorKind::NotFound,
+            _ => ErrorKind::Internal,
         };
         Self::new(kind, error.to_string())
     }

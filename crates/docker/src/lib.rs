@@ -3,6 +3,7 @@
 
 mod containers;
 mod events;
+mod logs;
 mod stats;
 
 use std::path::Path;
@@ -11,6 +12,7 @@ use bollard::API_DEFAULT_VERSION;
 
 pub use containers::{ContainerAction, ContainerState, ContainerSummary, Port, PortProtocol};
 pub use events::{DockerEvent, ObjectKind};
+pub use logs::{LogChunk, LogStream};
 pub use stats::{CpuCounters, StatsSample, Usage};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

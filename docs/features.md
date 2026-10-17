@@ -77,10 +77,10 @@ the user installed:
 
 | Feature | Source | Status | Notes |
 |---|---|---|---|
-| `name.project.containeria.local` for every container | our DNS server + `/etc/resolver/containeria.local` | We build | Colima's `dnsHosts` only resolves inside the VM, so Mac-side names are ours. Admin password once. |
-| Reaching containers with no published port | a routing proxy container inside the VM, joined to every network, reached through one forwarded port | We build | Routes by host name. |
-| Local HTTPS with a trusted certificate | our local CA, trusted in the Keychain once | We build | |
-| Custom routes like `shop.test` | same proxy | We build | |
+| `name.project.containeria.local` for every container | our DNS server (127.0.0.1:15353) + `/etc/resolver/containeria.local` | Built | `crates/net`. Colima's `dnsHosts` only resolves inside the VM, so Mac-side names are ours. Admin password once, through a macOS prompt the user starts. |
+| Reaching containers with no published port | a routing proxy container inside the VM, joined to every network, reached through one forwarded port | Not yet | The proxy routes to published ports today; an unpublished one shows "Port not published". The in-VM routing container needs a running Colima engine to build and test. |
+| Local HTTPS with a trusted certificate | our local CA (rcgen), trusted in the login keychain once | Built | Leaf certificates issued per host on first use, valid 397 days (Apple's limit is 825). Proxy on 80/443 when free, else 7080/7443. |
+| Custom routes like `shop.test` | same proxy | Built | Saved in `~/.containeria/net/settings.json`. |
 | Direct container IP from the Mac | `network.address: true` + a route to the bridge | Limited | Needs admin. Off by default, as in the prototype. |
 | `*.k8s.containeria.local` for services | proxy reads k3s services | We build | |
 
@@ -160,7 +160,7 @@ None of this depends on the engine. It runs in the app's Rust core.
 | Launch at login, auto-update | Tauri plugins | We build | |
 | First launch and import from Docker Desktop | `docker save`/`load`, volume tar copy, recreate from inspect | We build | |
 | `docker`, `docker compose`, `kubectl` on the PATH | bundled CLIs, Docker context set by Colima | Colima | `autoActivate: true`. |
-| `cx` command-line tool | our code | We build | |
+| `cx` command-line tool | `crates/cli` | Built | `cx ps`, `start`, `stop`, `restart`, `logs -f`, `open`, `engine start\|stop\|status`, `data`. Works without the app. |
 | Collect diagnostics | Colima and Lima logs + our logs | We build | |
 
 ## Decisions this map forces
