@@ -1,0 +1,116 @@
+/* Design tokens. The contract is DESIGN.md; every colour, shadow and duration is one of these. */
+:root {
+  color-scheme: light dark;
+  --hue: 255;
+  --tint: 0.005;
+  --brand-h: 255;
+  --brand-c: 1;
+
+  /* neutrals */
+  --bg: light-dark(oklch(0.995 0 0), oklch(0.185 var(--tint) var(--hue)));
+  --panel: light-dark(
+    oklch(0.965 var(--tint) var(--hue) / 0.82),
+    oklch(0.215 var(--tint) var(--hue) / 0.78)
+  );
+  --panel-solid: light-dark(
+    oklch(0.965 var(--tint) var(--hue)),
+    oklch(0.215 var(--tint) var(--hue))
+  );
+  --surface: light-dark(oklch(1 0 0), oklch(0.235 var(--tint) var(--hue)));
+  --raised: light-dark(oklch(1 0 0), oklch(0.265 var(--tint) var(--hue)));
+  --fill: light-dark(oklch(0.955 var(--tint) var(--hue)), oklch(0.27 var(--tint) var(--hue)));
+  --hover: light-dark(oklch(0.94 var(--tint) var(--hue)), oklch(0.29 var(--tint) var(--hue)));
+  --press: light-dark(oklch(0.91 var(--tint) var(--hue)), oklch(0.33 var(--tint) var(--hue)));
+  --line: light-dark(oklch(0.915 var(--tint) var(--hue)), oklch(0.3 var(--tint) var(--hue)));
+  --line-strong: light-dark(oklch(0.85 var(--tint) var(--hue)), oklch(0.38 var(--tint) var(--hue)));
+  --ink: light-dark(oklch(0.21 var(--tint) var(--hue)), oklch(0.96 var(--tint) var(--hue)));
+  --ink-2: light-dark(oklch(0.33 var(--tint) var(--hue)), oklch(0.86 var(--tint) var(--hue)));
+  --ink-3: light-dark(oklch(0.5 var(--tint) var(--hue)), oklch(0.7 var(--tint) var(--hue)));
+  --ink-4: light-dark(oklch(0.7 var(--tint) var(--hue)), oklch(0.52 var(--tint) var(--hue)));
+  --strong: light-dark(oklch(0.24 var(--tint) var(--hue)), oklch(0.95 0 0));
+  --on-strong: light-dark(oklch(0.99 0 0), oklch(0.19 0 0));
+  --scrim: light-dark(oklch(0.2 0.01 255 / 0.18), oklch(0 0 0 / 0.45));
+  --sidebar-hover: light-dark(oklch(0 0 0 / 0.05), oklch(1 0 0 / 0.06));
+  --sidebar-active: light-dark(oklch(0 0 0 / 0.075), oklch(1 0 0 / 0.1));
+
+  /* brand: the macOS accent colour, read through WebKit's AccentColor; hue 255 where unsupported */
+  --brand-50: oklch(0.97 calc(0.018 * var(--brand-c)) var(--brand-h));
+  --brand-100: oklch(0.93 calc(0.045 * var(--brand-c)) var(--brand-h));
+  --brand-300: oklch(0.79 calc(0.12 * var(--brand-c)) var(--brand-h));
+  --brand-400: oklch(0.7 calc(0.16 * var(--brand-c)) var(--brand-h));
+  --brand-500: oklch(0.62 calc(0.19 * var(--brand-c)) var(--brand-h));
+  --brand-600: oklch(0.56 calc(0.2 * var(--brand-c)) var(--brand-h));
+  --brand-700: oklch(0.49 calc(0.18 * var(--brand-c)) var(--brand-h));
+  --brand: light-dark(var(--brand-600), var(--brand-500));
+  --brand-hover: light-dark(var(--brand-700), var(--brand-400));
+  --brand-ink: light-dark(var(--brand-700), var(--brand-300));
+  --brand-soft: light-dark(var(--brand-50), oklch(0.3 calc(0.06 * var(--brand-c)) var(--brand-h)));
+  --brand-line: light-dark(var(--brand-100), oklch(0.4 calc(0.1 * var(--brand-c)) var(--brand-h)));
+  --select: light-dark(
+    oklch(0.56 calc(0.2 * var(--brand-c)) var(--brand-h) / 0.1),
+    oklch(0.62 calc(0.19 * var(--brand-c)) var(--brand-h) / 0.2)
+  );
+  --focus: 0 0 0 3px
+    light-dark(oklch(0.56 0.2 var(--brand-h) / 0.28), oklch(0.62 0.19 var(--brand-h) / 0.45));
+
+  /* states */
+  --ok: light-dark(oklch(0.56 0.15 150), oklch(0.74 0.16 150));
+  --ok-soft: light-dark(oklch(0.96 0.03 150), oklch(0.28 0.04 150));
+  --ok-ink: light-dark(oklch(0.42 0.11 150), oklch(0.84 0.12 150));
+  --warn: light-dark(oklch(0.7 0.16 70), oklch(0.8 0.14 75));
+  --warn-soft: light-dark(oklch(0.965 0.035 80), oklch(0.29 0.04 70));
+  --warn-ink: light-dark(oklch(0.47 0.11 60), oklch(0.86 0.11 80));
+  --bad: light-dark(oklch(0.57 0.21 27), oklch(0.68 0.19 25));
+  --bad-soft: light-dark(oklch(0.965 0.02 25), oklch(0.28 0.045 25));
+  --bad-ink: light-dark(oklch(0.47 0.17 27), oklch(0.82 0.11 25));
+
+  /* ledger and chart series: equal lightness, stepped hues */
+  --s1: light-dark(oklch(0.62 0.15 255), oklch(0.7 0.14 255));
+  --s2: light-dark(oklch(0.64 0.12 200), oklch(0.74 0.11 200));
+  --s3: light-dark(oklch(0.62 0.13 300), oklch(0.72 0.12 300));
+  --s4: light-dark(oklch(0.64 0.12 165), oklch(0.74 0.11 165));
+  --s5: light-dark(oklch(0.63 0.14 335), oklch(0.72 0.13 335));
+  --s6: light-dark(oklch(0.68 0.12 85), oklch(0.78 0.11 85));
+
+  /* depth */
+  --ring: 0 0 0 0.5px light-dark(oklch(0 0 0 / 0.1), oklch(1 0 0 / 0.1));
+  --shadow-1: var(--ring), 0 1px 2px light-dark(oklch(0 0 0 / 0.05), oklch(0 0 0 / 0.3));
+  --shadow-2:
+    var(--ring), 0 4px 12px light-dark(oklch(0 0 0 / 0.08), oklch(0 0 0 / 0.35)),
+    0 12px 28px light-dark(oklch(0 0 0 / 0.06), oklch(0 0 0 / 0.3));
+  --shadow-3:
+    var(--ring), 0 8px 24px light-dark(oklch(0 0 0 / 0.12), oklch(0 0 0 / 0.45)),
+    0 32px 64px light-dark(oklch(0 0 0 / 0.14), oklch(0 0 0 / 0.5));
+  --shadow-win:
+    0 0 0 0.5px light-dark(oklch(0 0 0 / 0.18), oklch(1 0 0 / 0.14)),
+    0 18px 50px oklch(0 0 0 / 0.28), 0 50px 100px oklch(0 0 0 / 0.18);
+  --blur: saturate(180%) blur(24px);
+}
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+@supports (color: oklch(from AccentColor l c h)) {
+  :root {
+    --brand-50: oklch(from AccentColor 0.97 min(c, 0.018) h);
+    --brand-100: oklch(from AccentColor 0.93 min(c, 0.045) h);
+    --brand-300: oklch(from AccentColor 0.79 min(c, 0.12) h);
+    --brand-400: oklch(from AccentColor 0.7 min(c, 0.16) h);
+    --brand-500: oklch(from AccentColor 0.62 min(c, 0.19) h);
+    --brand-600: oklch(from AccentColor 0.56 min(c, 0.2) h);
+    --brand-700: oklch(from AccentColor 0.49 min(c, 0.18) h);
+  }
+}
+
+/* Unlayered, so it outranks every Tailwind utility without !important. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms;
+    transition-duration: 0.01ms;
+  }
+}

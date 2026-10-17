@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/fallow/schema.json",
+  "workspaces": {
+    "patterns": ["apps/*"]
+  },
+  "entry": ["apps/desktop/src/main.tsx"],
+  "ignorePatterns": [
+    "design/**",
+    "apps/desktop/src/lib/ipc/bindings.ts",
+    "apps/desktop/src-tauri/**"
+  ],
+  "rules": {
+    "unused-dev-dependencies": "error",
+    "unused-optional-dependencies": "error",
+    "unused-component-props": "error",
+    "unrendered-components": "error",
+    "unused-store-members": "error",
+    "css-token-drift": "error",
+    "css-duplicate-block": "error",
+    "css-dead-surface": "error",
+    "css-broken-reference": "error",
+    "stale-suppressions": "error",
+    "require-suppression-reason": "error"
+  }
+}

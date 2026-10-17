@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>Containeria</title>
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4f9bff"/>
+      <stop offset="1" stop-color="#1f5fe0"/>
+    </linearGradient>
+    <filter id="drop" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#000" flood-opacity=".28"/>
+    </filter>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#body)" filter="url(#drop)"/>
+  <rect x="292" y="300" width="440" height="112" rx="56" fill="#fff" opacity=".55"/>
+  <rect x="292" y="456" width="440" height="112" rx="56" fill="#fff" opacity=".78"/>
+  <rect x="292" y="612" width="440" height="112" rx="56" fill="#fff"/>
+</svg>

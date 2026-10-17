@@ -1,0 +1,139 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": [
+      "**",
+      "!design",
+      "!**/src/lib/ipc/bindings.ts",
+      "!**/src-tauri/gen",
+      "!**/src-tauri/target",
+      "!**/src/assets/logos"
+    ]
+  },
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "semicolons": "always",
+      "trailingCommas": "all"
+    }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on",
+        "useSortedKeys": "off"
+      }
+    }
+  },
+  "linter": {
+    "domains": {
+      "react": "all",
+      "project": "recommended",
+      "test": "all"
+    },
+    "rules": {
+      "preset": "recommended",
+      "a11y": "error",
+      "complexity": {
+        "preset": "recommended",
+        "noExcessiveCognitiveComplexity": {
+          "level": "error",
+          "options": {
+            "maxAllowedComplexity": 15
+          }
+        },
+        "useSimplifiedLogicExpression": "error"
+      },
+      "correctness": {
+        "preset": "recommended",
+        "noUnusedImports": "error",
+        "noUnusedVariables": "error",
+        "noUnusedFunctionParameters": "error",
+        "useExhaustiveDependencies": "error",
+        "useHookAtTopLevel": "error",
+        "noUnresolvedImports": "off"
+      },
+      "performance": {
+        "preset": "recommended",
+        "noBarrelFile": "error",
+        "noReExportAll": "error",
+        "noNamespaceImport": "error",
+        "noJsxPropsBind": "off"
+      },
+      "style": {
+        "preset": "recommended",
+        "noDefaultExport": "error",
+        "noNonNullAssertion": "error",
+        "noParameterAssign": "error",
+        "noNestedTernary": "error",
+        "noUselessElse": "error",
+        "useBlockStatements": "error",
+        "useConsistentArrayType": {
+          "level": "error",
+          "options": {
+            "syntax": "shorthand"
+          }
+        },
+        "useConst": "error",
+        "useFilenamingConvention": {
+          "level": "error",
+          "options": {
+            "filenameCases": ["kebab-case"]
+          }
+        },
+        "useForOf": "error",
+        "useImportType": "error",
+        "useExportType": "error",
+        "useNamingConvention": {
+          "level": "error",
+          "options": {
+            "strictCase": false,
+            "conventions": [
+              {
+                "selector": {
+                  "kind": "objectLiteralProperty"
+                },
+                "formats": ["camelCase", "CONSTANT_CASE", "PascalCase"]
+              }
+            ]
+          }
+        },
+        "useTemplate": "error"
+      },
+      "suspicious": {
+        "preset": "recommended",
+        "noConsole": "error",
+        "noExplicitAny": "error",
+        "noEmptyBlockStatements": "error",
+        "noEvolvingTypes": "error"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.config.ts", "**/doctor.config.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDefaultExport": "off"
+          }
+        }
+      }
+    }
+  ]
+}

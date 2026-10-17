@@ -1,1 +1,10 @@
 .DS_Store
+node_modules/
+dist/
+target/
+coverage/
+*.tsbuildinfo
+.fallow/
+.react-doctor/
+apps/desktop/src-tauri/gen/
+coverage/
