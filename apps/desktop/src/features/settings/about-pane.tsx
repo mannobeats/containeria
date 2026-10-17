@@ -1,6 +1,7 @@
 import { IconBrandGithub } from "@tabler/icons-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
+import { collectDiagnostics } from "@/lib/diagnostics";
 import { AppMark } from "@/ui/app-mark";
 import { Button } from "@/ui/button";
 import { Kv } from "@/ui/kv";
@@ -36,10 +37,15 @@ export function AboutPane() {
         <p className="m-0 text-12 text-ink-3">
           Version {about?.appVersion ?? "…"} · Free and open source under Apache-2.0
         </p>
-        <Button size="sm" className="mt-1" onClick={() => openUrl(SOURCE).catch(() => undefined)}>
-          <IconBrandGithub />
-          Source code ↗
-        </Button>
+        <span className="mt-1 flex gap-2">
+          <Button size="sm" onClick={() => openUrl(SOURCE).catch(() => undefined)}>
+            <IconBrandGithub />
+            Source code ↗
+          </Button>
+          <Button size="sm" onClick={collectDiagnostics}>
+            Collect Diagnostics…
+          </Button>
+        </span>
       </div>
       <SettingsSection title="Engine">
         <Kv

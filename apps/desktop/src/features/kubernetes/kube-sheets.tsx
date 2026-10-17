@@ -1,12 +1,20 @@
 import { plural } from "@/lib/format";
-import { type Cluster, commands } from "@/lib/ipc/bindings";
+import { type Cluster, commands, type DeploymentSummary } from "@/lib/ipc/bindings";
 import { ConfirmSheet } from "@/ui/confirm-sheet";
+import { PromptSheet } from "@/ui/prompt-sheet";
 
-import { useKubeAction, useResetCluster, useSetKubernetes } from "./api";
+import {
+  useCreateNamespace,
+  useKubeAction,
+  useResetCluster,
+  useSetKubernetes,
+  useYaml,
+} from "./api";
 import { ApplySheet } from "./apply-sheet";
 import { ConfigSheet } from "./config-sheet";
 import { ForwardSheet } from "./forward-sheet";
 import type { KubeSheet } from "./kube-sheet";
+import { namespaceProblem } from "./model";
 import { ScaleSheet } from "./scale-sheet";
 
 type Target = { namespace: string; name: string };
@@ -86,6 +94,40 @@ function ClusterSheet({
   );
 }
 
+function NamespaceSheet({ cluster, onClose }: { cluster: Cluster; onClose: () => void }) {
+  const create = useCreateNamespace();
+  return (
+    <PromptSheet
+      open
+      onOpenChange={(open) => (open ? undefined : onClose())}
+      title="New namespace"
+      label="Name"
+      initial=""
+      action="Create"
+      hint="Lowercase letters, digits and hyphens."
+      validate={(name) => namespaceProblem(name, cluster.namespaces)}
+      onSubmit={(name) => create.mutate(name)}
+    />
+  );
+}
+
+/** The apply sheet, prefilled with the deployment as it is now once its YAML arrives. */
+function EditYamlSheet({
+  deployment,
+  cluster,
+  onClose,
+}: {
+  deployment: DeploymentSummary;
+  cluster: Cluster;
+  onClose: () => void;
+}) {
+  const { data } = useYaml("deployment", deployment.namespace, deployment.name);
+  if (data === undefined) {
+    return null;
+  }
+  return <ApplySheet onClose={onClose} namespaces={cluster.namespaces} manifest={data} />;
+}
+
 export function KubeSheets({
   sheet,
   cluster,
@@ -104,6 +146,10 @@ export function KubeSheets({
           {...(sheet.manifest ? { manifest: sheet.manifest } : {})}
         />
       );
+    case "editYaml":
+      return <EditYamlSheet deployment={sheet.deployment} cluster={cluster} onClose={onClose} />;
+    case "newNamespace":
+      return <NamespaceSheet cluster={cluster} onClose={onClose} />;
     case "scale":
       return <ScaleSheet deployment={sheet.deployment} onClose={onClose} />;
     case "forward":

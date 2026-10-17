@@ -22,14 +22,16 @@ import { KubeSheets } from "./kube-sheets";
 import { podMenu, podTileState } from "./pod-actions";
 import { PodEvents } from "./pod-events";
 import { PodLogs } from "./pod-logs";
+import { PodTerminal } from "./pod-terminal";
 import { PodYaml } from "./pod-yaml";
 
 const route = getRouteApi("/kubernetes/pods/$namespace/$name");
 
-type PodTab = "logs" | "events" | "yaml";
+type PodTab = "logs" | "terminal" | "events" | "yaml";
 
 const POD_TABS: { value: PodTab; label: string }[] = [
   { value: "logs", label: "Logs" },
+  { value: "terminal", label: "Terminal" },
   { value: "events", label: "Events" },
   { value: "yaml", label: "YAML" },
 ];
@@ -79,7 +81,7 @@ function PodHeader({
 }: {
   pod: PodSummary;
   onForward: () => void;
-  menu: ReturnType<typeof podMenu>;
+  menu: MenuEntry[];
 }) {
   return (
     <header className="flex items-center gap-3.5 px-5 pt-[18px] pb-3.5">
@@ -117,20 +119,20 @@ function PodView({ cluster, pod }: { cluster: Cluster; pod: PodSummary }) {
   const navigate = useNavigate();
   const { sheet, open, close } = useKubeSheet();
   const container = pod.containers.length > 1 ? (pod.containers[0] ?? null) : null;
+  const show = (next: PodTab) => navigate({ to: ".", search: { tab: next } });
+  const menu: MenuEntry[] = [
+    { label: "Terminal", disabled: pod.status !== "Running", onSelect: () => show("terminal") },
+    ...podMenu(pod, open),
+  ];
   return (
     <>
-      <PodHeader
-        pod={pod}
-        onForward={() => open({ kind: "forward", pod })}
-        menu={podMenu(pod, open)}
-      />
-      <Tabs
-        tabs={POD_TABS}
-        value={asPodTab(tab)}
-        onChange={(next) => navigate({ to: ".", search: { tab: next } })}
-      >
+      <PodHeader pod={pod} onForward={() => open({ kind: "forward", pod })} menu={menu} />
+      <Tabs tabs={POD_TABS} value={asPodTab(tab)} onChange={show}>
         <TabPanel value="logs">
           <PodLogs pod={pod} container={container} />
+        </TabPanel>
+        <TabPanel value="terminal">
+          <PodTerminal pod={pod} />
         </TabPanel>
         <TabPanel value="events" className="overflow-auto">
           <PodEvents pod={pod} />

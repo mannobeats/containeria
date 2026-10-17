@@ -6,8 +6,10 @@ use futures::StreamExt;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, State};
 
-use crate::error::Result;
+use crate::commands::shell::{ShellEvent, attach};
+use crate::error::{CommandError, ErrorKind, Result};
 use crate::kubernetes::PortForward;
+use crate::shells::Resizer;
 use crate::state::AppState;
 
 async fn kube(state: &AppState) -> Result<Kube> {
@@ -44,6 +46,42 @@ pub(crate) async fn kubernetes_reset(
 ) -> Result<()> {
     state.kubernetes.forget().await;
     state.engine.reset_kubernetes(|line| drop(progress.send(line))).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn kubernetes_create_namespace(
+    state: State<'_, AppState>,
+    name: String,
+) -> Result<()> {
+    Ok(kube(&state).await?.create_namespace(&name).await?)
+}
+
+/// The kubeconfig file the app and `kubectl` read the cluster from.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn kubernetes_kubeconfig_path() -> Result<String> {
+    containeria_kube::kubeconfig_path()
+        .map(|path| path.display().to_string())
+        .ok_or_else(|| CommandError::new(ErrorKind::NotFound, "Your home folder can't be found."))
+}
+
+/// Opens a terminal in a pod's container (the first when `container` is `None`): bash when it has
+/// one, sh otherwise. Output streams into `channel`; type with `shell_input`, resize with
+/// `shell_resize`.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn kubernetes_shell(
+    state: State<'_, AppState>,
+    namespace: String,
+    pod: String,
+    container: Option<String>,
+    cols: u16,
+    rows: u16,
+    channel: Channel<ShellEvent>,
+) -> Result<u32> {
+    let shell = kube(&state).await?.shell(&namespace, &pod, container, cols, rows).await?;
+    Ok(attach(&state, shell.output, Resizer::Pod(shell.resize), shell.input, channel))
 }
 
 #[tauri::command]

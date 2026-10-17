@@ -129,6 +129,10 @@ export function CommandPalette() {
                 )}
                 <Item label="Restart engine" onSelect={run(() => control.mutate("restart"))} />
                 <Item
+                  label="Open engine shell"
+                  onSelect={run(() => navigate({ to: "/engine/shell" }))}
+                />
+                <Item
                   icon="settings"
                   label="Settings…"
                   hint={<Kbd>⌘,</Kbd>}

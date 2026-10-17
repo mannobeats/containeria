@@ -2,10 +2,12 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use containeria_data::{
-    ChangeSet, Connection, ConnectionInput, Detected, ExportFormat, HistoryEntry, Namespace,
-    QueryResult, RedisKeyPage, RedisValue, RowPage, RowsRequest, SavedQuery, ServerInfo,
+    ChangeSet, Connection, ConnectionInput, Detected, ExportFormat, HistoryEntry, ImportOptions,
+    ImportPreview, ImportRequest, ImportedRows, Namespace, QueryResult, RedisKeyPage, RedisValue,
+    RowPage, RowsRequest, SavedQuery, ServerInfo, TableRef,
 };
 use tauri::State;
+use tauri::ipc::Channel;
 
 use crate::error::Result;
 use crate::state::AppState;
@@ -188,6 +190,59 @@ pub(crate) async fn data_export(
     path: String,
 ) -> Result<u32> {
     Ok(count(state.data.data.export(&id, &request, format, &PathBuf::from(path)).await?))
+}
+
+/// The columns and first rows of a CSV or JSON file, for the import sheet.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn data_import_preview(
+    state: State<'_, AppState>,
+    path: String,
+    options: ImportOptions,
+) -> Result<ImportPreview> {
+    Ok(state.data.data.import_preview(&PathBuf::from(path), options)?)
+}
+
+/// Imports a file into a table in one transaction, sending progress after each batch; returns how
+/// many rows went in.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn data_import(
+    state: State<'_, AppState>,
+    id: String,
+    request: ImportRequest,
+    progress: Channel<ImportedRows>,
+) -> Result<u32> {
+    let imported = state
+        .data
+        .data
+        .import(&id, &request, |step| {
+            let _ = progress.send(step);
+        })
+        .await?;
+    Ok(count(imported))
+}
+
+/// Deletes every row of a table; returns the refreshed schema.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn data_truncate(
+    state: State<'_, AppState>,
+    id: String,
+    table: TableRef,
+) -> Result<Vec<Namespace>> {
+    Ok(state.data.data.truncate(&id, &table).await?)
+}
+
+/// Drops a table; returns the refreshed schema.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn data_drop_table(
+    state: State<'_, AppState>,
+    id: String,
+    table: TableRef,
+) -> Result<Vec<Namespace>> {
+    Ok(state.data.data.drop_table(&id, &table).await?)
 }
 
 #[tauri::command]

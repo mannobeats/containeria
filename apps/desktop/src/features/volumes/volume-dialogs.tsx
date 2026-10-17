@@ -5,12 +5,14 @@ import { ConfirmSheet } from "@/ui/confirm-sheet";
 import { useCloneVolume, useCreateVolume, usePruneVolumes, useRemoveVolume } from "./api";
 import { volumeName, volumeStats } from "./model";
 import { NameSheet } from "./name-sheet";
+import { RestoreSheet } from "./restore-sheet";
 
 export type VolumeDialog =
   | { kind: "new" }
   | { kind: "prune" }
   | { kind: "clone"; volume: VolumeSummary }
-  | { kind: "delete"; volume: VolumeSummary };
+  | { kind: "delete"; volume: VolumeSummary }
+  | { kind: "restore"; file: string; volume: string | null };
 
 type VolumeDialogsProps = {
   dialog: VolumeDialog | null;
@@ -56,7 +58,7 @@ function PruneVolumes({ volumes, onClose }: { volumes: VolumeSummary[]; onClose:
   );
 }
 
-/** The sheets the volume list opens: new, clone, delete and clean up. */
+/** The sheets the volume list opens: new, clone, restore, delete and clean up. */
 export function VolumeDialogs({ dialog, volumes, onClose }: VolumeDialogsProps) {
   const create = useCreateVolume();
   const clone = useCloneVolume();
@@ -95,6 +97,10 @@ export function VolumeDialogs({ dialog, volumes, onClose }: VolumeDialogsProps) 
       return <DeleteVolume volume={dialog.volume} onClose={onClose} />;
     case "prune":
       return <PruneVolumes volumes={volumes} onClose={onClose} />;
+    case "restore":
+      return (
+        <RestoreSheet file={dialog.file} volume={dialog.volume} taken={taken} onClose={onClose} />
+      );
     default:
       return null;
   }

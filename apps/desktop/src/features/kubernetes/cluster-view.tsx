@@ -50,10 +50,12 @@ function NamespaceMenu({
   cluster,
   value,
   onChange,
+  open,
 }: {
   cluster: Cluster;
   value: Namespace;
   onChange: (namespace: Namespace) => void;
+  open: (sheet: KubeSheet) => void;
 }) {
   const entries: MenuEntry[] = [
     { kind: "label", label: "Namespace" },
@@ -64,6 +66,8 @@ function NamespaceMenu({
       checked: value === namespace,
       onSelect: () => onChange(namespace),
     })),
+    { kind: "separator" },
+    { label: "New Namespace…", onSelect: () => open({ kind: "newNamespace" }) },
   ];
   return (
     <Menu entries={entries}>
@@ -141,7 +145,7 @@ export function ClusterView({ cluster, tab, onTab }: ClusterViewProps) {
         onChange={onTab}
       >
         <div className="flex items-center gap-2 px-5 pt-3 pb-3">
-          <NamespaceMenu cluster={cluster} value={namespace} onChange={setNamespace} />
+          <NamespaceMenu cluster={cluster} value={namespace} onChange={setNamespace} open={open} />
           <SearchField
             value={query}
             onChange={setQuery}

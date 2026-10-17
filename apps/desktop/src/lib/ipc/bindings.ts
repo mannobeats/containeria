@@ -27,6 +27,11 @@ export const commands = {
 	/**  The Mac's chip, cores and memory, to size the engine's limits. */
 	hostInfo: () => __TAURI_INVOKE<Host>("host_info"),
 	about: () => __TAURI_INVOKE<About>("about"),
+	/**
+	 *  Writes a `.tar.gz` of what helps someone else find a problem: versions, engine and machine
+	 *  status, container names and states, engine settings and the VMs' logs.
+	 */
+	diagnosticsCollect: (path: string) => __TAURI_INVOKE<null>("diagnostics_collect", { path }),
 	/**  Brings the main window forward, for the menu bar popover. */
 	windowShowMain: () => __TAURI_INVOKE<null>("window_show_main"),
 	/**  Sizes the calling window, the menu bar popover or Settings, to its content's height. */
@@ -87,6 +92,8 @@ export const commands = {
 	 *  Output streams into `channel`; type with `shell_input`, resize with `shell_resize`.
 	 */
 	containerShell: (id: string, debug: boolean, cols: number, rows: number, channel: Channel<ShellEvent>) => __TAURI_INVOKE<number>("container_shell", { id, debug, cols, rows, channel }),
+	/**  Opens a root shell in the engine's Linux VM, as `colima ssh` does. */
+	engineShell: (cols: number, rows: number, channel: Channel<ShellEvent>) => __TAURI_INVOKE<number>("engine_shell", { cols, rows, channel }),
 	/**  Types into an open terminal. */
 	shellInput: (stream: number, text: string) => __TAURI_INVOKE<null>("shell_input", { stream, text }),
 	shellResize: (stream: number, cols: number, rows: number) => __TAURI_INVOKE<null>("shell_resize", { stream, cols, rows }),
@@ -170,6 +177,11 @@ export const commands = {
 	/**  Saves the whole volume as a `.tar.gz` at `destination`. */
 	volumeBackup: (name: string, destination: string) => __TAURI_INVOKE<null>("volume_backup", { name, destination }),
 	volumeClone: (source: string, target: string) => __TAURI_INVOKE<null>("volume_clone", { source, target }),
+	/**
+	 *  Puts a backup's files into `name`, creating it when needed; with `replace`, its current files
+	 *  go first.
+	 */
+	volumeRestore: (name: string, source: string, replace: boolean) => __TAURI_INVOKE<null>("volume_restore", { name, source, replace }),
 	networksList: () => __TAURI_INVOKE<NetworkSummary[]>("networks_list"),
 	networkDetail: (id: string) => __TAURI_INVOKE<NetworkDetail>("network_detail", { id }),
 	networkCreate: (spec: NetworkSpec) => __TAURI_INVOKE<null>("network_create", { spec }),
@@ -197,6 +209,15 @@ export const commands = {
 	/**  Port forwards started in this session that are still running. */
 	kubernetesForwards: () => __TAURI_INVOKE<PortForward[]>("kubernetes_forwards"),
 	kubernetesStopForward: (stream: number) => __TAURI_INVOKE<null>("kubernetes_stop_forward", { stream }),
+	kubernetesCreateNamespace: (name: string) => __TAURI_INVOKE<null>("kubernetes_create_namespace", { name }),
+	/**  The kubeconfig file the app and `kubectl` read the cluster from. */
+	kubernetesKubeconfigPath: () => __TAURI_INVOKE<string>("kubernetes_kubeconfig_path"),
+	/**
+	 *  Opens a terminal in a pod's container (the first when `container` is `None`): bash when it has
+	 *  one, sh otherwise. Output streams into `channel`; type with `shell_input`, resize with
+	 *  `shell_resize`.
+	 */
+	kubernetesShell: (namespace: string, pod: string, container: string | null, cols: number, rows: number, channel: Channel<ShellEvent>) => __TAURI_INVOKE<number>("kubernetes_shell", { namespace, pod, container, cols, rows, channel }),
 	dataConnections: () => __TAURI_INVOKE<Connection[]>("data_connections"),
 	/**  Databases running in containers. Empty while the engine is stopped. */
 	dataDetected: () => __TAURI_INVOKE<Detected[]>("data_detected"),
@@ -225,6 +246,17 @@ export const commands = {
 	dataDeleteQuery: (id: string) => __TAURI_INVOKE<null>("data_delete_query", { id }),
 	/**  Writes every row matching the request's filters to `path`; returns how many. */
 	dataExport: (id: string, request: RowsRequest, format: ExportFormat, path: string) => __TAURI_INVOKE<number>("data_export", { id, request, format, path }),
+	/**  The columns and first rows of a CSV or JSON file, for the import sheet. */
+	dataImportPreview: (path: string, options: ImportOptions) => __TAURI_INVOKE<ImportPreview>("data_import_preview", { path, options }),
+	/**
+	 *  Imports a file into a table in one transaction, sending progress after each batch; returns how
+	 *  many rows went in.
+	 */
+	dataImport: (id: string, request: ImportRequest, progress: Channel<ImportedRows>) => __TAURI_INVOKE<number>("data_import", { id, request, progress }),
+	/**  Deletes every row of a table; returns the refreshed schema. */
+	dataTruncate: (id: string, table: TableRef) => __TAURI_INVOKE<Namespace[]>("data_truncate", { id, table }),
+	/**  Drops a table; returns the refreshed schema. */
+	dataDropTable: (id: string, table: TableRef) => __TAURI_INVOKE<Namespace[]>("data_drop_table", { id, table }),
 	dataRedisKeys: (id: string, pattern: string, cursor: string | null) => __TAURI_INVOKE<RedisKeyPage>("data_redis_keys", { id, pattern, cursor }),
 	dataRedisValue: (id: string, key: string) => __TAURI_INVOKE<RedisValue>("data_redis_value", { id, key }),
 	dataRedisSet: (id: string, key: string, value: string) => __TAURI_INVOKE<null>("data_redis_set", { id, key, value }),
@@ -314,6 +346,11 @@ export type Column = {
 	primaryKey: boolean,
 	references: ForeignKey | null,
 	default: string | null,
+};
+
+export type ColumnMapping = {
+	source: string,
+	column: string,
 };
 
 /**  The one error shape every command rejects with. */
@@ -489,6 +526,8 @@ export type DataLocation = {
 	/**  Space the disks really take, not the size they can grow to. */
 	sizeBytes: number,
 };
+
+export type Delimiter = "auto" | "comma" | "semicolon" | "tab";
 
 export type DeploymentSummary = {
 	namespace: string,
@@ -763,13 +802,54 @@ export type ImageSummary = {
 	dangling: boolean,
 };
 
+export type ImportFormat = "csv" | 
+/**  An array of objects, or one object per line (NDJSON). */
+"json";
+
+export type ImportOptions = {
+	format: ImportFormat,
+	/**  CSV: the first row names the columns. */
+	header: boolean,
+	/**  CSV only. */
+	delimiter: Delimiter,
+};
+
+/**  The file's columns and first rows, for the import sheet. */
+export type ImportPreview = {
+	/**
+	 *  Unique names: the CSV header (`column 1`, ... without one), or the keys of the first JSON
+	 *  objects. A mapping's `source` is one of these.
+	 */
+	columns: string[],
+	rows: ((string | null)[])[],
+	/**  The delimiter the file uses, once `auto` is resolved. */
+	delimiter: Delimiter,
+};
+
 export type ImportProgress = {
 	reference: string,
 	state: ImportState,
 	message: string | null,
 };
 
+export type ImportRequest = {
+	table: TableRef,
+	path: string,
+	options: ImportOptions,
+	/**  File columns left out are skipped; table columns left out take their default. */
+	mapping: ColumnMapping[],
+	/**  Deletes every row first, in the same transaction. */
+	emptyFirst: boolean,
+};
+
 export type ImportState = "copying" | "done" | "failed";
+
+/**  How far an import has got. */
+export type ImportedRows = {
+	rows: number,
+	bytesRead: number,
+	bytesTotal: number,
+};
 
 export type Index = {
 	name: string,
@@ -906,8 +986,8 @@ export type MachinesStatus = {
 	supportsVms: boolean,
 };
 
-/**  A File menu command the main window carries out, such as opening a sheet. */
-export type MenuCommand = "runContainer" | "newComposeProject" | "openComposeFile" | "pullImage" | "buildImage" | "newMachine" | "newConnection";
+/**  A menu bar command the main window carries out, such as opening a sheet. */
+export type MenuCommand = "runContainer" | "newComposeProject" | "openComposeFile" | "pullImage" | "buildImage" | "newMachine" | "newConnection" | "startEngine" | "stopEngine" | "restartEngine" | "openEngineShell" | "showShortcuts" | "collectDiagnostics";
 
 export type Metrics = {
 	sampledAtMs: number | null,

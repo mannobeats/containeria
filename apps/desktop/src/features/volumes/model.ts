@@ -57,3 +57,9 @@ export function joinPath(folder: string, entry: string): string {
 export function isFolder(entry: VolumeFile): boolean {
   return entry.kind === "directory";
 }
+
+/** `shop_pgdata-2026-10-17.tar.gz` → `shop_pgdata`: the name a backup was taken from. */
+export function volumeFromBackup(path: string): string {
+  const file = path.split("/").at(-1) ?? "";
+  return file.replace(/\.(tar\.gz|tgz|tar)$/i, "").replace(/-\d{4}-\d{2}-\d{2}$/, "");
+}

@@ -4,13 +4,21 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use containeria_docker::ShellTarget;
+use containeria_kube::PodResize;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 type Input = Arc<tokio::sync::Mutex<Pin<Box<dyn AsyncWrite + Send>>>>;
 
+/// Where a terminal's size changes go: the Docker API for a container, the exec stream for a pod.
+#[derive(Debug, Clone)]
+pub(crate) enum Resizer {
+    Container(ShellTarget),
+    Pod(PodResize),
+}
+
 /// The keyboard side of open terminals, keyed by the id of the stream carrying their output.
 #[derive(Clone, Default)]
-pub(crate) struct Shells(Arc<Mutex<HashMap<u32, (ShellTarget, Input)>>>);
+pub(crate) struct Shells(Arc<Mutex<HashMap<u32, (Resizer, Input)>>>);
 
 impl fmt::Debug for Shells {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -19,21 +27,16 @@ impl fmt::Debug for Shells {
 }
 
 impl Shells {
-    pub(crate) fn open(
-        &self,
-        id: u32,
-        target: ShellTarget,
-        input: Pin<Box<dyn AsyncWrite + Send>>,
-    ) {
-        self.lock().insert(id, (target, Arc::new(tokio::sync::Mutex::new(input))));
+    pub(crate) fn open(&self, id: u32, resizer: Resizer, input: Pin<Box<dyn AsyncWrite + Send>>) {
+        self.lock().insert(id, (resizer, Arc::new(tokio::sync::Mutex::new(input))));
     }
 
     pub(crate) fn close(&self, id: u32) {
         self.lock().remove(&id);
     }
 
-    pub(crate) fn target(&self, id: u32) -> Option<ShellTarget> {
-        self.lock().get(&id).map(|(target, _)| target.clone())
+    pub(crate) fn resizer(&self, id: u32) -> Option<Resizer> {
+        self.lock().get(&id).map(|(resizer, _)| resizer.clone())
     }
 
     /// Types `text` into the shell. Returns `false` when it has already closed.
@@ -47,7 +50,7 @@ impl Shells {
         Ok(true)
     }
 
-    fn lock(&self) -> MutexGuard<'_, HashMap<u32, (ShellTarget, Input)>> {
+    fn lock(&self) -> MutexGuard<'_, HashMap<u32, (Resizer, Input)>> {
         self.0.lock().unwrap_or_else(PoisonError::into_inner)
     }
 }

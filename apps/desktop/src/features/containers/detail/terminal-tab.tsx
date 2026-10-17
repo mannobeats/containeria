@@ -1,50 +1,17 @@
-import { IconCopy, IconRefresh } from "@tabler/icons-react";
+import { IconCopy } from "@tabler/icons-react";
 import { useState } from "react";
 
 import { copyText } from "@/lib/clipboard";
-import { Banner } from "@/ui/banner";
+import { connectShell, type TerminalStatus } from "@/lib/ipc/connect-shell";
 import { Button } from "@/ui/button";
 import { EmptyState } from "@/ui/empty-state";
 import { Switch } from "@/ui/switch";
+import { TerminalStatusLine } from "@/ui/terminal-status";
 import { TerminalView } from "@/ui/terminal-view";
 import { Tile } from "@/ui/tile";
 import { Tip } from "@/ui/tooltip";
 
-import { connectShell, type TerminalStatus } from "./use-terminal";
-
-function StatusLine({ status, onReconnect }: { status: TerminalStatus; onReconnect: () => void }) {
-  if (status.state === "failed") {
-    return (
-      <Banner
-        tone="bad"
-        className="mx-3 my-2"
-        action={
-          <Button size="sm" onClick={onReconnect}>
-            Try again
-          </Button>
-        }
-      >
-        {status.message} If the image has no shell, turn on the debug shell.
-      </Banner>
-    );
-  }
-  if (status.state === "closed") {
-    return (
-      <Banner
-        className="mx-3 my-2"
-        action={
-          <Button size="sm" onClick={onReconnect}>
-            <IconRefresh />
-            Reconnect
-          </Button>
-        }
-      >
-        The shell exited.
-      </Banner>
-    );
-  }
-  return null;
-}
+import { containerShell } from "./api";
 
 type LiveTerminalProps = {
   id: string;
@@ -77,10 +44,14 @@ function LiveTerminal({ id, name, debug, onDebug, onReconnect }: LiveTerminalPro
           Copy command
         </Button>
       </div>
-      <StatusLine status={status} onReconnect={onReconnect} />
+      <TerminalStatusLine
+        status={status}
+        onReconnect={onReconnect}
+        hint="If the image has no shell, turn on the debug shell."
+      />
       <TerminalView
         label={`Terminal in ${name}`}
-        connect={(terminal) => connectShell(terminal, id, debug, setStatus)}
+        connect={(terminal) => connectShell(terminal, containerShell(id, debug), setStatus)}
       />
     </div>
   );

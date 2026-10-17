@@ -84,3 +84,25 @@ export function tabCounts(cluster: Cluster, namespace: Namespace): Record<Tab, n
 export function k3sVersion(version: string): string {
   return version.replace(/^v/, "").replace(/\+.*$/, "");
 }
+
+/** The `kubectl` line that opens the same terminal from the Mac's own shell. */
+export function execCommand(pod: PodSummary, container: string | null): string {
+  const pick = container === null ? "" : ` -c ${container}`;
+  return `kubectl exec -it -n ${pod.namespace} ${pod.name}${pick} -- sh`;
+}
+
+const DNS_LABEL = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
+
+/** Why `name` can't be a namespace, if it can't: Kubernetes takes DNS-1123 labels only. */
+export function namespaceProblem(name: string, existing: string[]): string | undefined {
+  if (name === "") {
+    return "Enter a name.";
+  }
+  if (name.length > 63) {
+    return "Use 63 characters or fewer.";
+  }
+  if (!DNS_LABEL.test(name)) {
+    return "Use lowercase letters, digits and hyphens, starting and ending with a letter or digit.";
+  }
+  return existing.includes(name) ? `${name} already exists.` : undefined;
+}

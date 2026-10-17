@@ -1,8 +1,8 @@
 import { Channel } from "@tauri-apps/api/core";
 import type { Terminal } from "@xterm/xterm";
 
-import { commands, type ShellEvent } from "@/lib/ipc/bindings";
-import { errorMessage } from "@/lib/ipc/errors";
+import { commands, type ShellEvent } from "./bindings";
+import { errorMessage } from "./errors";
 
 export type TerminalStatus =
   | { state: "connecting" }
@@ -10,14 +10,20 @@ export type TerminalStatus =
   | { state: "closed" }
   | { state: "failed"; message: string };
 
+/** Starts a shell sized `cols` × `rows` that streams into `channel`; resolves to its stream id. */
+export type OpenShell = (
+  cols: number,
+  rows: number,
+  channel: Channel<ShellEvent>,
+) => Promise<number>;
+
 /**
- * Runs a shell in the container on `terminal`: output is drawn, keystrokes go to `shell_input`,
- * size changes to `shell_resize`. Returns what ends the shell.
+ * Runs the shell `open` starts on `terminal`: output is drawn, keystrokes go to `shell_input`, size
+ * changes to `shell_resize`. Returns what ends the shell.
  */
 export function connectShell(
   terminal: Terminal,
-  id: string,
-  debug: boolean,
+  open: OpenShell,
   onStatus: (status: TerminalStatus) => void,
 ): () => void {
   let stream: number | undefined;
@@ -29,8 +35,7 @@ export function connectShell(
       onStatus({ state: "closed" });
     }
   });
-  commands
-    .containerShell(id, debug, terminal.cols, terminal.rows, channel)
+  open(terminal.cols, terminal.rows, channel)
     .then((opened) => {
       stream = opened;
       if (!connected) {

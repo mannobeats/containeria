@@ -1,5 +1,5 @@
 import { IconAlertTriangle, IconLayoutSidebarLeftCollapse, IconSearch } from "@tabler/icons-react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import clsx from "clsx";
 import type { ReactNode } from "react";
@@ -93,6 +93,7 @@ function engineLabel(status: EngineStatus | undefined): string {
 }
 
 function EngineCard() {
+  const navigate = useNavigate();
   const { data: status, isError } = useEngineStatus();
   const control = useEngineControl();
   const phase = status?.phase;
@@ -119,6 +120,11 @@ function EngineCard() {
       disabled: phase !== "running",
     },
     { kind: "separator" },
+    {
+      label: "Open Engine Shell",
+      onSelect: () => navigate({ to: "/engine/shell" }).catch(() => undefined),
+      disabled: phase !== "running",
+    },
     {
       label: "Copy Docker Socket Path",
       onSelect: () => {

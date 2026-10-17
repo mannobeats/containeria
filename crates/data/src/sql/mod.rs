@@ -9,13 +9,16 @@ use futures::TryStreamExt;
 use sqlx::mysql::{MySqlConnectOptions, MySqlPoolOptions, MySqlSslMode};
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions, PgSslMode};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
-use sqlx::{AssertSqlSafe, Either, MySqlPool, PgPool, Row, SqlitePool};
+use sqlx::{Acquire, AssertSqlSafe, Either, MySqlPool, PgPool, Row, SqlitePool};
+use tokio::sync::mpsc;
+use tokio::task::JoinHandle;
 
 use crate::changes::Change;
 use crate::connection::Target;
 use crate::dialect::Dialect;
 use crate::engine::Engine;
 use crate::error::{Error, Result};
+use crate::import::Batch;
 use crate::query::Statement;
 use crate::result::{MAX_RESULT_ROWS, QueryResult};
 use crate::schema::{Namespace, Table};
@@ -228,6 +231,65 @@ impl SqlPool {
         })
     }
 
+    /// Runs one statement outside the editor, such as a `TRUNCATE` or `DROP TABLE`.
+    pub(crate) async fn execute(&self, statement: &Statement) -> Result<u64> {
+        Ok(match self {
+            Self::Postgres(pool) => bound!(statement).execute(pool).await?.rows_affected(),
+            Self::MySql(pool) => bound!(statement).execute(pool).await?.rows_affected(),
+            Self::Sqlite(pool) => bound!(statement).execute(pool).await?.rows_affected(),
+        })
+    }
+
+    /// Inserts batches as the reader sends them, all in one transaction that commits only once the
+    /// reader finished cleanly. When a batch fails, its rows are retried one by one to name the row
+    /// the database refused; nothing is kept.
+    pub(crate) async fn import(
+        &self,
+        clear: Option<&Statement>,
+        mut batches: mpsc::Receiver<Batch>,
+        reader: JoinHandle<Result<()>>,
+        insert: impl Fn(&[Vec<Option<String>>]) -> Statement,
+        progress: impl Fn(u64),
+    ) -> Result<u64> {
+        macro_rules! import {
+            ($pool:expr) => {{
+                let mut transaction = $pool.begin().await?;
+                if let Some(clear) = clear {
+                    bound!(clear).execute(&mut *transaction).await?;
+                }
+                let mut inserted = 0;
+                while let Some(batch) = batches.recv().await {
+                    let statement = insert(&batch.rows);
+                    let mut savepoint = (&mut transaction).begin().await?;
+                    if let Err(error) = bound!(&statement).execute(&mut *savepoint).await {
+                        savepoint.rollback().await?;
+                        for (row, values) in (batch.first_row..).zip(&batch.rows) {
+                            let single = insert(std::slice::from_ref(values));
+                            if let Err(error) = bound!(&single).execute(&mut *transaction).await {
+                                return Err(at_rows(error, row, row));
+                            }
+                        }
+                        let last = batch.first_row + batch.rows.len() as u64 - 1;
+                        return Err(at_rows(error, batch.first_row, last));
+                    }
+                    savepoint.commit().await?;
+                    inserted += batch.rows.len() as u64;
+                    progress(inserted);
+                }
+                reader
+                    .await
+                    .map_err(|_| Error::Invalid("The file stopped being read.".into()))??;
+                transaction.commit().await?;
+                inserted
+            }};
+        }
+        Ok(match self {
+            Self::Postgres(pool) => import!(pool),
+            Self::MySql(pool) => import!(pool),
+            Self::Sqlite(pool) => import!(pool),
+        })
+    }
+
     /// Runs SQL typed in the editor. Read-only mode is enforced by the database itself: a read-only
     /// transaction on Postgres and MySQL, `query_only` on SQLite.
     pub(crate) async fn run(&self, sql: &str, read_only: bool) -> Result<QueryResult> {
@@ -285,6 +347,16 @@ impl SqlPool {
         };
         result.elapsed_ms = elapsed_ms(started);
         Ok(result)
+    }
+}
+
+/// The database's refusal, with the rows of the file it was about.
+fn at_rows(error: sqlx::Error, first: u64, last: u64) -> Error {
+    let rows =
+        if first == last { format!("row {first}") } else { format!("rows {first}–{last}") };
+    match Error::from(error) {
+        Error::Database(message) => Error::Database(format!("{message} ({rows} of the file)")),
+        other => other,
     }
 }
 

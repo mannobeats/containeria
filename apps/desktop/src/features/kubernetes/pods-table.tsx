@@ -72,6 +72,11 @@ function rowMenu(pod: PodSummary, show: Show, open: Open): MenuEntry[] {
   return [
     { label: "Open", onSelect: () => show(pod) },
     { label: "Logs", onSelect: () => show(pod, "logs") },
+    {
+      label: "Terminal",
+      disabled: pod.status !== "Running",
+      onSelect: () => show(pod, "terminal"),
+    },
     { label: "Events", onSelect: () => show(pod, "events") },
     { kind: "separator" },
     ...podMenu(pod, open),

@@ -5,6 +5,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { Channel } from "@tauri-apps/api/core";
 import { toast } from "sonner";
 
 import {
@@ -12,9 +13,13 @@ import {
   type ConnectionInput,
   commands,
   type ExportFormat,
+  type ImportedRows,
+  type ImportOptions,
+  type ImportRequest,
   type RowsRequest,
   type SavedQuery,
   type ServerInfo,
+  type TableRef,
 } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
 
@@ -27,6 +32,7 @@ export const dataKeys = {
   session: (id: string) => ["data", "session", id],
   schema: (id: string) => ["data", "schema", id],
   rows: (id: string, request: RowsRequest) => ["data", "rows", id, request],
+  importPreview: (path: string, options: ImportOptions) => ["data", "import", path, options],
   redisKeys: (id: string, pattern: string) => ["data", "redis", id, pattern],
   redisValue: (id: string, key: string) => ["data", "redis-value", id, key],
 } as const;
@@ -199,6 +205,67 @@ export function useExport(id: string) {
     onSuccess: (rows, { path }) =>
       toast.success(`Exported ${rows.toLocaleString("en-US")} rows`, { description: path }),
     onError: (error) => toast.error("The export failed", { description: errorMessage(error) }),
+  });
+}
+
+/** The columns and first rows of a file about to be imported. */
+export function useImportPreview(path: string, options: ImportOptions) {
+  return useQuery({
+    queryKey: dataKeys.importPreview(path, options),
+    queryFn: () => commands.dataImportPreview(path, options),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** Imports a file into a table in one transaction, reporting each batch to `onProgress`. */
+export function useImport(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      request,
+      onProgress,
+    }: {
+      request: ImportRequest;
+      onProgress: (step: ImportedRows) => void;
+    }) => commands.dataImport(id, request, new Channel<ImportedRows>(onProgress)),
+    onSuccess: (rows, { request }) => {
+      toast.success(`Imported ${rows.toLocaleString("en-US")} rows into ${request.table.name}`);
+      return commands
+        .dataSchema(id, true)
+        .then((schema) => {
+          client.setQueryData(dataKeys.schema(id), schema);
+          return client.invalidateQueries({ queryKey: ["data", "rows", id] });
+        })
+        .catch(() => undefined);
+    },
+  });
+}
+
+export function useTruncateTable(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (table: TableRef) => commands.dataTruncate(id, table),
+    onSuccess: (schema, table) => {
+      toast.success(`Emptied ${table.name}`);
+      client.setQueryData(dataKeys.schema(id), schema);
+      return client.invalidateQueries({ queryKey: ["data", "rows", id] });
+    },
+    onError: (error) =>
+      toast.error("The table wasn't emptied", { description: errorMessage(error) }),
+  });
+}
+
+export function useDropTable(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (table: TableRef) => commands.dataDropTable(id, table),
+    onSuccess: (schema, table) => {
+      toast.success(`Dropped ${table.name}`);
+      client.setQueryData(dataKeys.schema(id), schema);
+      return client.invalidateQueries({ queryKey: ["data", "rows", id] });
+    },
+    onError: (error) =>
+      toast.error("The table wasn't dropped", { description: errorMessage(error) }),
   });
 }
 

@@ -102,15 +102,53 @@ impl Docker {
     /// # Errors
     /// Fails when the container isn't running or busybox can't be pulled.
     pub async fn debug_shell(&self, id: &str, cols: u16, rows: u16) -> Result<Shell> {
-        self.ensure_image(DEBUG_IMAGE).await?;
         let name = format!("containeria-debug-{}", id.get(..12).unwrap_or(id));
+        let joined = format!("container:{id}");
+        let host = HostConfig {
+            pid_mode: Some(joined.clone()),
+            network_mode: Some(joined),
+            cap_add: Some(vec!["SYS_PTRACE".to_owned()]),
+            auto_remove: Some(true),
+            ..HostConfig::default()
+        };
+        self.sidecar_shell(&name, host, vec!["sh".to_owned()], cols, rows).await
+    }
+
+    /// A root shell in the engine's Linux VM itself, for what `colima ssh` is used for: the VM's
+    /// processes, mounts and network, entered from a privileged busybox. Removes itself on exit.
+    ///
+    /// # Errors
+    /// Fails when the engine refuses a privileged container or busybox can't be pulled.
+    pub async fn engine_shell(&self, cols: u16, rows: u16) -> Result<Shell> {
+        let host = HostConfig {
+            privileged: Some(true),
+            pid_mode: Some("host".to_owned()),
+            network_mode: Some("host".to_owned()),
+            auto_remove: Some(true),
+            ..HostConfig::default()
+        };
+        let enter = [
+            "nsenter", "-t", "1", "-m", "-u", "-i", "-n", "-p", "--", SHELL[0], SHELL[1], SHELL[2],
+        ];
+        let command = enter.map(str::to_owned).to_vec();
+        self.sidecar_shell("containeria-engine-shell", host, command, cols, rows).await
+    }
+
+    async fn sidecar_shell(
+        &self,
+        name: &str,
+        host: HostConfig,
+        command: Vec<String>,
+        cols: u16,
+        rows: u16,
+    ) -> Result<Shell> {
+        self.ensure_image(DEBUG_IMAGE).await?;
         let replace = RemoveContainerOptionsBuilder::new().force(true).build();
         // A sidecar left over from a crash would block the name; it's ours to remove.
-        let _ = self.api.remove_container(&name, Some(replace)).await;
-        let joined = format!("container:{id}");
+        let _ = self.api.remove_container(name, Some(replace)).await;
         let body = ContainerCreateBody {
             image: Some(DEBUG_IMAGE.to_owned()),
-            cmd: Some(vec!["sh".to_owned()]),
+            cmd: Some(command),
             env: Some(vec!["TERM=xterm-256color".to_owned()]),
             tty: Some(true),
             open_stdin: Some(true),
@@ -118,16 +156,10 @@ impl Docker {
             attach_stdin: Some(true),
             attach_stdout: Some(true),
             attach_stderr: Some(true),
-            host_config: Some(HostConfig {
-                pid_mode: Some(joined.clone()),
-                network_mode: Some(joined),
-                cap_add: Some(vec!["SYS_PTRACE".to_owned()]),
-                auto_remove: Some(true),
-                ..HostConfig::default()
-            }),
+            host_config: Some(host),
             ..ContainerCreateBody::default()
         };
-        let options = CreateContainerOptionsBuilder::new().name(&name).build();
+        let options = CreateContainerOptionsBuilder::new().name(name).build();
         let created = self.api.create_container(Some(options), body).await?;
         let attach = AttachContainerOptionsBuilder::new()
             .stream(true)

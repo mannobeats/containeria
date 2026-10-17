@@ -14,7 +14,7 @@ import { HeadRow, Table } from "@/ui/table";
 import { Tile } from "@/ui/tile";
 import { UsageBar } from "@/ui/usage-bar";
 
-import { useBackupVolume, useVolumes } from "./api";
+import { pickBackup, useBackupVolume, useVolumes } from "./api";
 import { matchesVolume, type VolumeFilter, volumeName, volumeStats } from "./model";
 import { type VolumeDialog, VolumeDialogs } from "./volume-dialogs";
 import { type VolumeHandlers, VolumeRow } from "./volume-row";
@@ -98,15 +98,23 @@ export function VolumesPage() {
   const all = volumes ?? [];
   const stats = volumeStats(all);
   const visible = all.filter((volume) => matchesVolume(volume, filter, query));
+  const restoreInto = (volume: string | null) =>
+    pickBackup()
+      .then((file) => (file ? setDialog({ kind: "restore", file, volume }) : undefined))
+      .catch(() => undefined);
   const create = (
-    <Button variant="brand" onClick={() => setDialog({ kind: "new" })}>
-      <IconPlus />
-      New volume
-    </Button>
+    <span className="flex gap-2">
+      <Button onClick={() => restoreInto(null)}>Restore…</Button>
+      <Button variant="brand" onClick={() => setDialog({ kind: "new" })}>
+        <IconPlus />
+        New volume
+      </Button>
+    </span>
   );
   const handlers: VolumeHandlers = {
     onBackup: (volume) => backup.run(volume.name),
     onClone: (volume) => setDialog({ kind: "clone", volume }),
+    onRestore: (volume) => restoreInto(volume.name),
     onDelete: (volume) => setDialog({ kind: "delete", volume }),
   };
   return (

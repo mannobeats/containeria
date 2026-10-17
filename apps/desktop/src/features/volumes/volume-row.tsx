@@ -18,6 +18,7 @@ import { volumeName } from "./model";
 export type VolumeHandlers = {
   onBackup: (volume: VolumeSummary) => void;
   onClone: (volume: VolumeSummary) => void;
+  onRestore: (volume: VolumeSummary) => void;
   onDelete: (volume: VolumeSummary) => void;
 };
 
@@ -25,6 +26,7 @@ export function VolumeRow({
   volume,
   onBackup,
   onClone,
+  onRestore,
   onDelete,
 }: VolumeHandlers & { volume: VolumeSummary }) {
   const navigate = useNavigate();
@@ -41,6 +43,7 @@ export function VolumeRow({
     },
     { kind: "separator" },
     { label: "Back Up to .tar.gz…", onSelect: () => onBackup(volume) },
+    { label: "Restore from Backup…", onSelect: () => onRestore(volume) },
     { label: "Clone…", onSelect: () => onClone(volume) },
     { kind: "separator" },
     { label: "Delete Volume…", danger: true, onSelect: () => onDelete(volume) },

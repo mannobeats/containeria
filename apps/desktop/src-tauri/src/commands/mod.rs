@@ -2,6 +2,7 @@ pub(crate) mod compose;
 pub(crate) mod container_detail;
 pub(crate) mod containers;
 pub(crate) mod data;
+pub(crate) mod diagnostics;
 pub(crate) mod domains;
 pub(crate) mod engine;
 pub(crate) mod images;

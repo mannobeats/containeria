@@ -4,11 +4,13 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::pin::pin;
 
+use bollard::body_full;
 use bollard::models::VolumeCreateRequest;
 use bollard::query_parameters::{
     DownloadFromContainerOptionsBuilder, ListContainersOptionsBuilder, PruneVolumesOptionsBuilder,
-    RemoveVolumeOptionsBuilder,
+    RemoveVolumeOptionsBuilder, UploadToContainerOptionsBuilder,
 };
+use bytes::Bytes;
 use flate2::Compression;
 use flate2::write::GzEncoder;
 use futures::StreamExt;
@@ -257,6 +259,42 @@ impl Docker {
         copied.map(drop)
     }
 
+    /// Puts a backup's files into `name`, creating the volume when it doesn't exist. With
+    /// `replace`, what the volume held is deleted first. Takes Containeria's own backups and plain
+    /// `.tar` or `.tar.gz` archives of a volume's contents.
+    ///
+    /// # Errors
+    /// Fails when the file isn't a tar archive or the volume can't be written.
+    pub async fn restore_volume(&self, name: &str, source: &Path, replace: bool) -> Result<()> {
+        let source = source.to_path_buf();
+        let (bytes, ours) = tokio::task::spawn_blocking(move || -> Result<(Vec<u8>, bool)> {
+            let bytes = std::fs::read(&source)?;
+            let ours = is_containeria_backup(&bytes)?;
+            Ok((bytes, ours))
+        })
+        .await
+        .map_err(|error| Error::Engine(error.to_string()))??;
+        if self.api.inspect_volume(name).await.is_err() {
+            self.create_volume(name).await?;
+        } else if replace {
+            let binds = vec![format!("{name}:{MOUNT}")];
+            let wipe = format!("find {MOUNT} -mindepth 1 -maxdepth 1 -exec rm -rf {{}} +");
+            let helper = Helper::create(self, binds, &["sh", "-c", &wipe]).await?;
+            let wiped = helper.run().await;
+            helper.remove().await?;
+            wiped?;
+        }
+        let helper = Helper::create(self, vec![format!("{name}:{MOUNT}")], &["true"]).await?;
+        let target = if ours { "/" } else { MOUNT };
+        let options = UploadToContainerOptionsBuilder::new().path(target).build();
+        let uploaded = self
+            .api
+            .upload_to_container(&helper.id, Some(options), body_full(Bytes::from(bytes)))
+            .await;
+        helper.remove().await?;
+        Ok(uploaded?)
+    }
+
     /// Writes on the async runtime; move to `spawn_blocking` if large backups ever stall other tasks.
     async fn save_archive(&self, volume: &str, path: &str, mut writer: impl Write) -> Result<()> {
         let helper = Helper::create(self, vec![format!("{volume}:{MOUNT}:ro")], &["true"]).await?;
@@ -276,11 +314,62 @@ impl Docker {
     }
 }
 
+/// Whether every entry sits under the `v/` folder Containeria's backups use; other archives hold
+/// a volume's files at their top level. Takes `.tar` and `.tar.gz`.
+fn is_containeria_backup(bytes: &[u8]) -> Result<bool> {
+    let gzip = bytes.starts_with(&[0x1f, 0x8b]);
+    let reader: Box<dyn std::io::Read> =
+        if gzip { Box::new(flate2::read::GzDecoder::new(bytes)) } else { Box::new(bytes) };
+    let prefix = MOUNT.trim_start_matches('/');
+    let mut archive = tar::Archive::new(reader);
+    let mut any = false;
+    for entry in archive.entries().map_err(|_| not_an_archive())? {
+        let entry = entry.map_err(|_| not_an_archive())?;
+        let path = entry.path().map_err(|_| not_an_archive())?.into_owned();
+        let first = path.components().next().map(|part| part.as_os_str().to_owned());
+        if first.as_deref() != Some(std::ffi::OsStr::new(prefix)) {
+            return Ok(false);
+        }
+        any = true;
+    }
+    if any { Ok(true) } else { Err(not_an_archive()) }
+}
+
+fn not_an_archive() -> Error {
+    Error::Engine("That file isn't a .tar or .tar.gz archive.".to_owned())
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
 
     use super::*;
+
+    fn archive(paths: &[&str], gzip: bool) -> Vec<u8> {
+        let mut builder = tar::Builder::new(Vec::new());
+        for path in paths {
+            let mut header = tar::Header::new_gnu();
+            header.set_size(2);
+            header.set_mode(0o644);
+            header.set_cksum();
+            builder.append_data(&mut header, path, &b"hi"[..]).unwrap();
+        }
+        let tar = builder.into_inner().unwrap();
+        if !gzip {
+            return tar;
+        }
+        let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
+        encoder.write_all(&tar).unwrap();
+        encoder.finish().unwrap()
+    }
+
+    #[test]
+    fn tells_its_own_backups_from_plain_archives() {
+        assert!(is_containeria_backup(&archive(&["v/PG_VERSION", "v/base/1"], true)).unwrap());
+        assert!(!is_containeria_backup(&archive(&["PG_VERSION", "base/1"], false)).unwrap());
+        assert!(!is_containeria_backup(&archive(&["./PG_VERSION"], true)).unwrap());
+        assert!(is_containeria_backup(b"not a tar at all, just text").is_err());
+    }
 
     #[test]
     fn reads_a_busybox_listing_folders_first() {

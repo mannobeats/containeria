@@ -19,6 +19,8 @@ function setup({ enabled = true, url = "/kubernetes" } = {}) {
     metricsLatest: () => metricsFixture(),
     kubernetesConfigValue: () => "hunter2",
     kubernetesApply: () => ["deployments/web configured"],
+    kubernetesYaml: () => "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: storefront\n",
+    kubernetesKubeconfigPath: () => "/Users/ada/.kube/config",
   });
   renderWithApp(<KubernetesPage />, { route: { path: "/kubernetes", url } });
   return calls;
@@ -97,7 +99,7 @@ describe("KubernetesPage", () => {
   it("asks before resetting the cluster", async () => {
     const calls = setup();
     await userEvent.click(await screen.findByRole("button", { name: "Cluster" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Reset cluster…" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Reset Cluster…" }));
     await userEvent.click(await screen.findByRole("button", { name: "Reset cluster" }));
     await called(calls, "kubernetesReset");
   });
@@ -147,5 +149,68 @@ describe("KubernetesPage", () => {
     fireEvent.contextMenu(await screen.findByRole("row", { name: /db-credentials/ }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Open" }));
     expect(await screen.findByRole("dialog")).toBeDefined();
+  });
+
+  it("creates a namespace from the namespace menu, refusing invalid names", async () => {
+    const calls = setup();
+    await userEvent.click(await screen.findByRole("button", { name: /All namespaces/ }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "New Namespace…" }));
+    const sheet = await screen.findByRole("dialog");
+    const name = within(sheet).getByRole("textbox", { name: "Name" });
+    await userEvent.type(name, "Shop_DB");
+    await userEvent.click(within(sheet).getByRole("button", { name: "Create" }));
+    expect(within(sheet).getByText(/^Use lowercase letters/)).toBeDefined();
+    expect(calls.map((call) => call.command)).not.toContain("kubernetesCreateNamespace");
+    await userEvent.clear(name);
+    await userEvent.type(name, "staging");
+    await userEvent.click(within(sheet).getByRole("button", { name: "Create" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        command: "kubernetesCreateNamespace",
+        args: { name: "staging" },
+      }),
+    );
+  });
+
+  it("opens the new namespace sheet from the cluster menu", async () => {
+    setup();
+    await userEvent.click(await screen.findByRole("button", { name: "Cluster" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "New Namespace…" }));
+    expect(await screen.findByRole("dialog", { name: "New namespace" })).toBeDefined();
+  });
+
+  it("copies the kubeconfig path", async () => {
+    const calls = setup();
+    await userEvent.click(await screen.findByRole("button", { name: "Cluster" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Copy kubeconfig Path" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual(
+        expect.objectContaining({
+          args: expect.objectContaining({ text: "/Users/ada/.kube/config" }),
+        }),
+      ),
+    );
+  });
+
+  it("edits a deployment's YAML and applies it", async () => {
+    const calls = setup({ url: "/kubernetes?tab=deployments" });
+    fireEvent.contextMenu(await screen.findByRole("row", { name: /storefront/ }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Edit YAML…" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        command: "kubernetesYaml",
+        args: { kind: "deployment", namespace: "shop", name: "storefront" },
+      }),
+    );
+    const sheet = await screen.findByRole("dialog", { name: "Apply YAML" });
+    await userEvent.click(within(sheet).getByRole("button", { name: "Apply" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual(
+        expect.objectContaining({
+          command: "kubernetesApply",
+          args: expect.objectContaining({ manifest: expect.stringContaining("name: storefront") }),
+        }),
+      ),
+    );
   });
 });

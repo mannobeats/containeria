@@ -55,6 +55,25 @@ export function useCloneVolume() {
   });
 }
 
+export function useRestoreVolume() {
+  return useToastedMutation({
+    run: ({ name, file, replace }: { name: string; file: string; replace: boolean }) =>
+      commands.volumeRestore(name, file, replace),
+    done: ({ name }) => `Restored into ${name}`,
+    failed: "The backup wasn't restored",
+    invalidates: queryKeys.volumes,
+  });
+}
+
+/** Asks for a backup archive with the macOS open panel. */
+export async function pickBackup(): Promise<string | null> {
+  const file = await open({
+    title: "Choose a backup to restore",
+    filters: [{ name: "Backup", extensions: ["gz", "tgz", "tar"] }],
+  });
+  return typeof file === "string" ? file : null;
+}
+
 export function usePruneVolumes() {
   const client = useQueryClient();
   return useMutation({

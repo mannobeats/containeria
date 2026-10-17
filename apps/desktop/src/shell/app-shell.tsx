@@ -13,6 +13,7 @@ import { Toaster } from "@/ui/toaster";
 import { TooltipProvider } from "@/ui/tooltip";
 
 import { CommandPalette } from "./command-palette";
+import { ShortcutsSheet } from "./shortcuts-sheet";
 import { Sidebar } from "./sidebar";
 import { useUi } from "./ui-store";
 import { useMenuCommands } from "./use-menu-commands";
@@ -60,6 +61,7 @@ export function AppShell() {
         </div>
       </div>
       <CommandPalette />
+      <ShortcutsSheet />
       <RunSheet />
       <ComposeSheet />
       <ComposeRunSheet />

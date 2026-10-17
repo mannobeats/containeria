@@ -96,3 +96,63 @@ async fn deploys_previews_and_removes_a_compose_project() {
     compose.run(&ComposeFiles::default(), &name, ComposeVerb::Down, |_| {}).await.unwrap();
     assert!(docker.project_containers(&name).await.unwrap().is_empty());
 }
+
+#[tokio::test]
+#[ignore = "needs a Docker engine"]
+async fn opens_a_root_shell_in_the_engine_vm() {
+    use futures::StreamExt;
+    use tokio::io::AsyncWriteExt;
+
+    let docker = Docker::connect(&socket()).unwrap();
+    let mut shell = docker.engine_shell(120, 40).await.unwrap();
+    shell.input.write_all(b"echo engine-$(id -u)-$(cat /proc/1/comm); exit\n").await.unwrap();
+    let mut seen = String::new();
+    while let Some(Ok(chunk)) = shell.output.next().await {
+        seen.push_str(&String::from_utf8_lossy(&chunk));
+        if seen.contains("engine-0-systemd") {
+            break;
+        }
+    }
+    assert!(seen.contains("engine-0-systemd"), "{seen}");
+}
+
+#[tokio::test]
+#[ignore = "needs a Docker engine"]
+async fn backs_up_and_restores_a_volume() {
+    let docker = Docker::connect(&socket()).unwrap();
+    let id = std::process::id();
+    let (source, restored) =
+        (format!("containeria-test-vol-{id}"), format!("containeria-test-restored-{id}"));
+    docker.create_volume(&source).await.unwrap();
+    let writer = RunSpec {
+        image: "busybox:1.37".to_owned(),
+        name: Some(format!("containeria-test-writer-{id}")),
+        ports: Vec::new(),
+        env: Vec::new(),
+        storage: vec![containeria_docker::StorageMapping {
+            source: source.clone(),
+            target: "/d".to_owned(),
+            read_only: false,
+        }],
+        restart: Restart::No,
+        command: Some(vec![
+            "sh".into(),
+            "-c".into(),
+            "mkdir -p /d/sub && echo kept > /d/sub/note".into(),
+        ]),
+        platform: None,
+    };
+    let container = docker.run(&writer).await.unwrap();
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+    docker.act(&container, ContainerAction::Remove).await.unwrap();
+
+    let folder = tempfile::tempdir().unwrap();
+    let backup = folder.path().join("backup.tar.gz");
+    docker.backup_volume(&source, &backup).await.unwrap();
+    docker.restore_volume(&restored, &backup, false).await.unwrap();
+    let files = docker.volume_files(&restored, "/sub").await.unwrap();
+    assert!(files.iter().any(|file| file.name == "note"), "{files:?}");
+
+    docker.remove_volume(&source).await.unwrap();
+    docker.remove_volume(&restored).await.unwrap();
+}

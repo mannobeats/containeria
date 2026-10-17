@@ -173,6 +173,11 @@ const routeTree = root.addChildren([
       })),
     false,
   ),
+  page("engine/shell", "Engine shell", () =>
+    import("@/features/engine/engine-shell-page").then((module) => ({
+      default: module.EngineShellPage,
+    })),
+  ),
   welcome,
 ]);
 

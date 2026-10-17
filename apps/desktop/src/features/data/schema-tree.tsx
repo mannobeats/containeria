@@ -23,10 +23,15 @@ import { engineLogo } from "./engines";
 import { compactCount, tableKey } from "./model";
 import { tableTab, useOpenTab } from "./tabs";
 import { useOpenQuery } from "./use-open-query";
+import { useTableActions } from "./use-table-actions";
 import { nextQueryTab, useWorkspace } from "./workspace-store";
 
 const rowClass =
   "flex h-[26px] w-full items-center gap-[7px] rounded-sm px-2 text-left text-13 text-ink-2 transition-colors duration-140 hover:bg-hover hover:text-ink data-[state=open]:bg-hover [&_.tabler-icon]:size-3.5 [&_.tabler-icon]:text-ink-3";
+
+function withSeparator(entries: MenuEntry[]): MenuEntry[] {
+  return entries.length > 0 ? [{ kind: "separator" }, ...entries] : [];
+}
 
 function matches(table: Table, needle: string): boolean {
   return (
@@ -125,6 +130,7 @@ export function SchemaTree({ info, namespaces, active }: SchemaTreeProps) {
   const openQuery = useOpenQuery();
   const tabs = useWorkspace((state) => state.tabs[info.id]);
   const setView = useWorkspace((state) => state.setView);
+  const actions = useTableActions(info);
   const openAs = (table: Table, structure: boolean) => {
     setView(`${info.id}|${tableKey(table)}`, { structure });
     open(tableTab(tableKey(table)));
@@ -141,7 +147,11 @@ export function SchemaTree({ info, namespaces, active }: SchemaTreeProps) {
         ]
       : []),
     { kind: "separator" },
+    ...actions.imports(table),
+    ...actions.exports(table),
+    { kind: "separator" },
     { label: "Copy Name", onSelect: () => copyText("Name", table.name) },
+    ...withSeparator(actions.destroy(table)),
   ];
   return (
     <aside className="flex min-h-0 flex-col border-r-[0.5px] border-line bg-panel-solid">

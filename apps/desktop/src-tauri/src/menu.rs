@@ -9,6 +9,7 @@ use crate::tray;
 
 const SETTINGS: &str = "settings";
 const ABOUT: &str = "about";
+const ENGINE_SETTINGS: &str = "engine-settings";
 const DOCS: &str = "https://github.com/mannobeats/containeria#readme";
 const ISSUES: &str = "https://github.com/mannobeats/containeria/issues/new/choose";
 
@@ -33,6 +34,20 @@ const COMMANDS: [(MenuCommand, &str, &str, Option<&str>); 7] = [
     (MenuCommand::NewConnection, "command:connection", "New Database Connection…", None),
 ];
 
+/// The Engine menu's items.
+const ENGINE: [(MenuCommand, &str, &str, Option<&str>); 4] = [
+    (MenuCommand::StartEngine, "command:engine-start", "Start Engine", None),
+    (MenuCommand::StopEngine, "command:engine-stop", "Stop Engine", None),
+    (MenuCommand::RestartEngine, "command:engine-restart", "Restart Engine", None),
+    (MenuCommand::OpenEngineShell, "command:engine-shell", "Open Engine Shell", None),
+];
+
+/// The Help menu's items the main window shows.
+const HELP: [(MenuCommand, &str, &str, Option<&str>); 2] = [
+    (MenuCommand::ShowShortcuts, "command:shortcuts", "Keyboard Shortcuts", Some("CmdOrCtrl+/")),
+    (MenuCommand::CollectDiagnostics, "command:diagnostics", "Collect Diagnostics…", None),
+];
+
 /// Menu item id to the view it opens. Ids double as routes so the UI needs no lookup table.
 const SECTIONS: [(&str, &str, &str); 6] = [
     ("/containers", "Containers", "CmdOrCtrl+1"),
@@ -40,10 +55,11 @@ const SECTIONS: [(&str, &str, &str); 6] = [
     ("/volumes", "Volumes", "CmdOrCtrl+3"),
     ("/networks", "Networks", "CmdOrCtrl+4"),
     ("/kubernetes", "Kubernetes", "CmdOrCtrl+5"),
-    ("/machines", "Linux machines", "CmdOrCtrl+6"),
+    ("/machines", "Linux Machines", "CmdOrCtrl+6"),
 ];
 
-/// The macOS menu bar: the standard app, Edit and Window menus plus Containeria's views.
+/// The macOS menu bar: the standard app, Edit and Window menus plus Containeria's views, engine
+/// and help.
 pub(crate) fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     let containeria = SubmenuBuilder::new(app, "Containeria")
         .text(ABOUT, "About Containeria")
@@ -97,27 +113,44 @@ pub(crate) fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .separator()
         .item(&PredefinedMenuItem::fullscreen(app, None)?)
         .build()?;
+    let mut engine = SubmenuBuilder::new(app, "Engine");
+    for (index, (_, id, label, accelerator)) in ENGINE.into_iter().enumerate() {
+        if index == 3 {
+            engine = engine.separator();
+        }
+        engine = engine.item(&tauri::menu::MenuItem::with_id(app, id, label, true, accelerator)?);
+    }
+    let engine = engine.separator().text(ENGINE_SETTINGS, "Engine Settings…").build()?;
     let window = SubmenuBuilder::new(app, "Window")
         .minimize()
         .item(&PredefinedMenuItem::maximize(app, Some("Zoom"))?)
         .separator()
         .item(&PredefinedMenuItem::close_window(app, None)?)
         .build()?;
-    let help = SubmenuBuilder::new(app, "Help")
-        .text(DOCS, "Documentation")
-        .text(ISSUES, "Report an issue")
-        .build()?;
-    MenuBuilder::new(app).items(&[&containeria, &file, &edit, &view, &window, &help]).build()
+    let mut help = SubmenuBuilder::new(app, "Help").text(DOCS, "Documentation");
+    for (_, id, label, accelerator) in HELP {
+        help = help.item(&tauri::menu::MenuItem::with_id(app, id, label, true, accelerator)?);
+    }
+    let help = help.separator().text(ISSUES, "Report an Issue").build()?;
+    MenuBuilder::new(app)
+        .items(&[&containeria, &file, &edit, &view, &engine, &window, &help])
+        .build()
 }
 
 /// Settings opens its own window; routes open a view in the main window; web addresses open in
 /// the browser.
 pub(crate) fn handle(app: &AppHandle, event: &MenuEvent) {
     let id = event.id().as_ref();
-    if id == SETTINGS || id == ABOUT {
-        let pane = if id == ABOUT { SettingsPane::About } else { SettingsPane::General };
+    if id == SETTINGS || id == ABOUT || id == ENGINE_SETTINGS {
+        let pane = match id {
+            ABOUT => SettingsPane::About,
+            ENGINE_SETTINGS => SettingsPane::Engine,
+            _ => SettingsPane::General,
+        };
         let _ = settings_window::open(app, pane);
-    } else if let Some((command, ..)) = COMMANDS.iter().find(|(_, item, ..)| *item == id) {
+    } else if let Some((command, ..)) =
+        COMMANDS.iter().chain(&ENGINE).chain(&HELP).find(|(_, item, ..)| *item == id)
+    {
         tray::show_main(app);
         let _ = command.emit(app);
     } else if id.starts_with("https://") {

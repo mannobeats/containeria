@@ -4,13 +4,15 @@ import { toast } from "sonner";
 
 import { useContainers } from "@/features/containers/api";
 import { useMetrics } from "@/features/metrics/api";
+import { copyText } from "@/lib/clipboard";
 import { formatMemory, plural } from "@/lib/format";
 import type { Cluster } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
-import { Menu } from "@/ui/menu";
+import { Menu, type MenuEntry } from "@/ui/menu";
 import { Switch } from "@/ui/switch";
 import { Tile } from "@/ui/tile";
 
+import { useKubeconfigPath } from "./api";
 import type { KubeSheet } from "./kube-sheet";
 import { k3sVersion, podMemory } from "./model";
 
@@ -30,12 +32,25 @@ export function ClusterHeader({
   cluster: Cluster;
   open: (sheet: KubeSheet) => void;
 }) {
+  const { data: kubeconfig } = useKubeconfigPath();
   const { data: containers } = useContainers();
   const { data: metrics } = useMetrics();
   const memory = [...podMemory(containers, metrics).values()].reduce(
     (total, bytes) => total + bytes,
     0,
   );
+  const menu: MenuEntry[] = [
+    { label: "New Namespace…", onSelect: () => open({ kind: "newNamespace" }) },
+    { kind: "separator" },
+    { label: "Copy kubectl Context Command", onSelect: copyContext },
+    {
+      label: "Copy kubeconfig Path",
+      disabled: kubeconfig === undefined,
+      onSelect: () => copyText("kubeconfig path", kubeconfig ?? ""),
+    },
+    { kind: "separator" },
+    { label: "Reset Cluster…", danger: true, onSelect: () => open({ kind: "reset" }) },
+  ];
   return (
     <header className="flex items-center gap-3.5 px-5 pt-[18px] pb-3">
       <Tile icon="kube" size="lg" />
@@ -58,14 +73,7 @@ export function ClusterHeader({
         <IconFileUpload />
         Apply YAML
       </Button>
-      <Menu
-        align="end"
-        entries={[
-          { label: "Copy kubectl context command", onSelect: copyContext },
-          { kind: "separator" },
-          { label: "Reset cluster…", danger: true, onSelect: () => open({ kind: "reset" }) },
-        ]}
-      >
+      <Menu align="end" entries={menu}>
         <Button variant="ghost" iconOnly aria-label="Cluster">
           <IconDots />
         </Button>

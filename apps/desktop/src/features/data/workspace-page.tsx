@@ -19,6 +19,7 @@ import { QueryView } from "./query/query-view";
 import { RedisView } from "./redis/redis-view";
 import { SafeBanner } from "./safe-banner";
 import { SchemaTree } from "./schema-tree";
+import { TableActionSheets } from "./table/table-action-sheets";
 import { TableView } from "./table/table-view";
 import { tabFromKey } from "./tabs";
 import { type Tab, useWorkspace } from "./workspace-store";
@@ -141,6 +142,7 @@ function Workspace({ info, tabKey }: { info: ServerInfo; tabKey: string | undefi
         <SafeBanner info={info} />
         <ActiveView info={info} tab={active} namespaces={namespaces} />
       </section>
+      <TableActionSheets info={info} />
     </div>
   );
 }

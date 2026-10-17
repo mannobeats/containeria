@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { queryKeys } from "@/app/query-keys";
 import { isServing, useEngineStatus } from "@/features/engine/api";
 import { commands, type LogEntry, type StatsSample } from "@/lib/ipc/bindings";
+import type { OpenShell } from "@/lib/ipc/connect-shell";
 import { errorMessage } from "@/lib/ipc/errors";
 import { useStream } from "@/lib/ipc/use-stream";
 
@@ -130,3 +131,9 @@ export function useCommit(id: string) {
     onSettled: () => client.invalidateQueries({ queryKey: queryKeys.images }),
   });
 }
+
+/** A shell in the container, or busybox beside it when `debug` is set. */
+export const containerShell =
+  (id: string, debug: boolean): OpenShell =>
+  (cols, rows, channel) =>
+    commands.containerShell(id, debug, cols, rows, channel);

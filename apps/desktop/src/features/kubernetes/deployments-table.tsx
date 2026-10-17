@@ -39,6 +39,7 @@ function deploymentMenu(deployment: DeploymentSummary, { open, restart }: Handle
   return [
     { label: "Scale…", onSelect: () => open({ kind: "scale", deployment }) },
     { label: "Restart Rollout", onSelect: () => restart(deployment) },
+    { label: "Edit YAML…", onSelect: () => open({ kind: "editYaml", deployment }) },
     { kind: "separator" },
     { label: "Copy Name", onSelect: () => copyText("Name", deployment.name) },
     { kind: "separator" },

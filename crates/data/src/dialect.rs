@@ -85,6 +85,15 @@ impl Dialect {
             _ => self.quote(name),
         }
     }
+
+    /// Empties a table. SQLite has no `TRUNCATE`; its `DELETE` without a `WHERE` is just as fast.
+    #[must_use]
+    pub(crate) fn truncate(self, table: &str) -> String {
+        match self {
+            Self::Sqlite => format!("DELETE FROM {table}"),
+            Self::Postgres | Self::MySql | Self::ClickHouse => format!("TRUNCATE TABLE {table}"),
+        }
+    }
 }
 
 /// Escapes `%`, `_` and the escape character so a search term matches literally inside `LIKE`.
@@ -133,5 +142,12 @@ mod tests {
     fn qualifies_tables_with_their_schema() {
         assert_eq!(Dialect::Postgres.table(Some("auth"), "users"), "\"auth\".\"users\"");
         assert_eq!(Dialect::Sqlite.table(None, "notes"), "\"notes\"");
+    }
+
+    #[test]
+    fn truncates_with_delete_on_sqlite() {
+        assert_eq!(Dialect::Postgres.truncate("\"a\""), "TRUNCATE TABLE \"a\"");
+        assert_eq!(Dialect::MySql.truncate("`a`"), "TRUNCATE TABLE `a`");
+        assert_eq!(Dialect::Sqlite.truncate("\"a\""), "DELETE FROM \"a\"");
     }
 }

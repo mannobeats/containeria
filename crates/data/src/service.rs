@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -16,10 +17,11 @@ use crate::engine::{Capabilities, Engine, Provider};
 use crate::error::{Error, Result};
 use crate::export::{ExportFormat, Writer};
 use crate::history::{HistoryEntry, HistoryStore, SavedQuery};
-use crate::query::{MAX_PAGE, RowsRequest};
+use crate::import::{self, ImportOptions, ImportPreview, ImportRequest, ImportedRows, Plan};
+use crate::query::{MAX_PAGE, RowsRequest, Statement};
 use crate::redis::{RedisKeyPage, RedisValue};
 use crate::result::{QueryResult, RowPage};
-use crate::schema::{Namespace, TableKind};
+use crate::schema::{Namespace, Table, TableKind, TableRef};
 use crate::session::{COUNT_CAP, Session};
 
 /// An open connection, as the workspace header and the safe-mode banner show it.
@@ -58,11 +60,7 @@ fn ms(time: SystemTime) -> f64 {
 }
 
 /// What the grid stays able to edit, given the engine and the table.
-fn read_only_reason(
-    session: &Session,
-    table: &crate::schema::Table,
-    writes_blocked: bool,
-) -> Option<String> {
+fn read_only_reason(session: &Session, table: &Table, writes_blocked: bool) -> Option<String> {
     if !session.engine.capabilities().edit_rows {
         return Some(format!("Rows from {} are shown read-only.", session.version));
     }
@@ -425,6 +423,91 @@ impl Data {
             page.offset += MAX_PAGE;
         }
         writer.finish()
+    }
+
+    /// A table writes may change: safe mode is off and it isn't a view.
+    async fn writable(&self, id: &str, reference: &TableRef) -> Result<(Arc<Session>, Table)> {
+        let session = self.session(id).await?;
+        self.guard_writes(id, &session)?;
+        let table = session.table(reference).await?;
+        if table.kind != TableKind::Table {
+            return Err(Error::Unsupported(format!("{} is a view, not a table.", table.name)));
+        }
+        session.sql()?;
+        Ok((session, table))
+    }
+
+    /// The columns and first rows of a CSV or JSON file, for matching them to a table's columns.
+    ///
+    /// # Errors
+    /// Fails when the file can't be read or parsed.
+    pub fn import_preview(&self, path: &Path, options: ImportOptions) -> Result<ImportPreview> {
+        import::preview(path, options)
+    }
+
+    /// Imports a CSV or JSON file into a table in one transaction, streaming it in batches and
+    /// calling `progress` after each. Refused in safe mode.
+    ///
+    /// # Errors
+    /// Fails, changing nothing, when safe mode is on, the mapping doesn't fit the table, a row
+    /// can't be parsed, or the database refuses a row; the message names the row.
+    pub async fn import(
+        &self,
+        id: &str,
+        request: &ImportRequest,
+        progress: impl Fn(ImportedRows) + Sync,
+    ) -> Result<u64> {
+        let (session, table) = self.writable(id, &request.table).await?;
+        let pool = session.sql()?;
+        let plan = Plan::new(pool.dialect(), &table, &request.mapping)?;
+        let path = PathBuf::from(&request.path);
+        let bytes_total = std::fs::metadata(&path)?.len();
+        let read = Arc::new(AtomicU64::new(0));
+        let (sender, batches) = tokio::sync::mpsc::channel(2);
+        let reader = tokio::task::spawn_blocking({
+            let (options, sources, size, read) =
+                (request.options, plan.sources.clone(), plan.batch_size(), Arc::clone(&read));
+            move || import::read(&path, options, &sources, size, read, sender)
+        });
+        let clear = request.empty_first.then(|| plan.clear());
+        pool.import(
+            clear.as_ref(),
+            batches,
+            reader,
+            |rows| plan.insert(rows),
+            |rows| {
+                let bytes_read = read.load(Ordering::Relaxed).min(bytes_total);
+                progress(ImportedRows { rows, bytes_read, bytes_total });
+            },
+        )
+        .await
+    }
+
+    /// Deletes every row of a table and returns the refreshed schema. Refused in safe mode.
+    ///
+    /// # Errors
+    /// Fails when safe mode is on, it's a view, or the database refuses, such as a Postgres table
+    /// other tables reference.
+    pub async fn truncate(&self, id: &str, reference: &TableRef) -> Result<Vec<Namespace>> {
+        let (session, table) = self.writable(id, reference).await?;
+        let pool = session.sql()?;
+        let target = pool.dialect().table(table.schema.as_deref(), &table.name);
+        pool.execute(&Statement { sql: pool.dialect().truncate(&target), params: Vec::new() })
+            .await?;
+        session.schema(true).await
+    }
+
+    /// Drops a table and returns the refreshed schema. Refused in safe mode.
+    ///
+    /// # Errors
+    /// Fails when safe mode is on, it's a view, or the database refuses.
+    pub async fn drop_table(&self, id: &str, reference: &TableRef) -> Result<Vec<Namespace>> {
+        let (session, table) = self.writable(id, reference).await?;
+        let pool = session.sql()?;
+        let target = pool.dialect().table(table.schema.as_deref(), &table.name);
+        pool.execute(&Statement { sql: format!("DROP TABLE {target}"), params: Vec::new() })
+            .await?;
+        session.schema(true).await
     }
 
     /// # Errors

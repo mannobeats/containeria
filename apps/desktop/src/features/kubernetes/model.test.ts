@@ -3,7 +3,17 @@ import { describe, expect, it } from "vitest";
 import { containerFixture, metricsFixture } from "@/test/fixtures";
 import { clusterFixture, podFixture } from "@/test/kube-fixtures";
 
-import { asTab, crashing, k3sVersion, podMemory, sortPods, tabCounts, visible } from "./model";
+import {
+  asTab,
+  crashing,
+  execCommand,
+  k3sVersion,
+  namespaceProblem,
+  podMemory,
+  sortPods,
+  tabCounts,
+  visible,
+} from "./model";
 
 describe("visible", () => {
   const cluster = clusterFixture();
@@ -75,5 +85,32 @@ describe("cluster summaries", () => {
     expect(asTab("nonsense")).toBe("pods");
     expect(asTab(undefined)).toBe("pods");
     expect(k3sVersion("v1.35.0+k3s1")).toBe("1.35.0");
+  });
+});
+
+describe("execCommand", () => {
+  it("names the container only when the pod has several", () => {
+    const pod = podFixture();
+    expect(execCommand(pod, null)).toBe("kubectl exec -it -n shop storefront-6f9c-abcde -- sh");
+    expect(execCommand(pod, "sidecar")).toBe(
+      "kubectl exec -it -n shop storefront-6f9c-abcde -c sidecar -- sh",
+    );
+  });
+});
+
+describe("namespaceProblem", () => {
+  it("accepts DNS-1123 labels", () => {
+    for (const name of ["shop", "a", "team-42", "9lives", "x".repeat(63)]) {
+      expect(namespaceProblem(name, [])).toBeUndefined();
+    }
+  });
+
+  it("explains names Kubernetes would refuse", () => {
+    expect(namespaceProblem("", [])).toBe("Enter a name.");
+    expect(namespaceProblem("x".repeat(64), [])).toBe("Use 63 characters or fewer.");
+    for (const name of ["Shop", "-shop", "shop-", "shop_db", "shop.db"]) {
+      expect(namespaceProblem(name, [])).toMatch(/^Use lowercase letters/);
+    }
+    expect(namespaceProblem("shop", ["default", "shop"])).toBe("shop already exists.");
   });
 });

@@ -2,8 +2,8 @@ use tauri::Wry;
 use tauri_specta::{Builder, Commands, ErrorHandlingMode, collect_commands, collect_events};
 
 use crate::commands::{
-    compose, container_detail, containers, data, domains, engine, images, kubernetes, machines,
-    metrics, networks, run, settings, shell, storage, streams, volumes, welcome,
+    compose, container_detail, containers, data, diagnostics, domains, engine, images, kubernetes,
+    machines, metrics, networks, run, settings, shell, storage, streams, volumes, welcome,
 };
 use crate::events::{
     DockerChanged, EngineChanged, KubeChanged, MachinesChanged, MenuCommand, MetricsUpdated,
@@ -47,6 +47,7 @@ fn commands() -> Commands<Wry> {
         settings::preferences_set,
         settings::host_info,
         settings::about,
+        diagnostics::diagnostics_collect,
         settings::window_show_main,
         settings::window_fit,
         settings::window_hide,
@@ -76,6 +77,7 @@ fn commands() -> Commands<Wry> {
         container_detail::save_text,
         container_detail::container_recreate,
         shell::container_shell,
+        shell::engine_shell,
         shell::shell_input,
         shell::shell_resize,
         run::container_run,
@@ -126,6 +128,7 @@ fn commands() -> Commands<Wry> {
         volumes::volume_download,
         volumes::volume_backup,
         volumes::volume_clone,
+        volumes::volume_restore,
         networks::networks_list,
         networks::network_detail,
         networks::network_create,
@@ -147,6 +150,9 @@ fn commands() -> Commands<Wry> {
         kubernetes::kubernetes_port_forward,
         kubernetes::kubernetes_forwards,
         kubernetes::kubernetes_stop_forward,
+        kubernetes::kubernetes_create_namespace,
+        kubernetes::kubernetes_kubeconfig_path,
+        kubernetes::kubernetes_shell,
         data::data_connections,
         data::data_detected,
         data::data_save_connection,
@@ -167,6 +173,10 @@ fn commands() -> Commands<Wry> {
         data::data_save_query,
         data::data_delete_query,
         data::data_export,
+        data::data_import_preview,
+        data::data_import,
+        data::data_truncate,
+        data::data_drop_table,
         data::data_redis_keys,
         data::data_redis_value,
         data::data_redis_set,

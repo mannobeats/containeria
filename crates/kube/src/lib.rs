@@ -2,12 +2,16 @@
 
 mod apply;
 mod model;
+mod shell;
 mod streams;
+
+use std::ffi::OsString;
+use std::path::PathBuf;
 
 use k8s_openapi::api::apps::v1::Deployment;
 use k8s_openapi::api::core::v1::{ConfigMap, Event, Namespace, Pod, Secret, Service};
 use k8s_openapi::api::networking::v1::Ingress;
-use kube::api::{DeleteParams, ListParams, Patch, PatchParams};
+use kube::api::{DeleteParams, ListParams, ObjectMeta, Patch, PatchParams, PostParams};
 use kube::config::KubeConfigOptions;
 use kube::{Api, Client, Config, Resource};
 use serde::de::DeserializeOwned;
@@ -17,6 +21,7 @@ pub use model::{
     Cluster, ConfigKind, ConfigSummary, DeploymentSummary, IngressRoute, IngressSummary, KubeEvent,
     PodSummary, ServicePort, ServiceSummary,
 };
+pub use shell::{PodResize, PodShell};
 
 /// The kubeconfig context Colima writes for the `containeria` profile: `colima-` plus the profile.
 pub const CONTEXT: &str = "colima-containeria";
@@ -140,6 +145,20 @@ impl Kube {
         Ok(list.items.into_iter().filter_map(|namespace| namespace.metadata.name).collect())
     }
 
+    /// # Errors
+    /// Fails when `name` isn't a DNS-1123 label, the namespace exists, or the API refuses.
+    pub async fn create_namespace(&self, name: &str) -> Result<()> {
+        check_namespace_name(name)?;
+        let namespace = Namespace {
+            metadata: ObjectMeta { name: Some(name.to_owned()), ..ObjectMeta::default() },
+            ..Namespace::default()
+        };
+        Api::<Namespace>::all(self.client.clone())
+            .create(&PostParams::default(), &namespace)
+            .await?;
+        Ok(())
+    }
+
     /// Deletes a pod; its controller schedules a replacement.
     ///
     /// # Errors
@@ -241,10 +260,71 @@ impl Kube {
     }
 }
 
+/// Namespace names are DNS-1123 labels: up to 63 lowercase letters, digits and `-`, starting and
+/// ending with a letter or digit.
+fn check_namespace_name(name: &str) -> Result<()> {
+    let edge = |c: Option<char>| c.is_some_and(|c| c.is_ascii_lowercase() || c.is_ascii_digit());
+    let valid = name.len() <= 63
+        && edge(name.chars().next())
+        && edge(name.chars().last())
+        && name.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
+    if valid {
+        Ok(())
+    } else {
+        Err(Error::Api(format!(
+            "\"{name}\" isn't a valid namespace name. Use up to 63 lowercase letters, digits and \
+             hyphens, starting and ending with a letter or digit."
+        )))
+    }
+}
+
+/// The kubeconfig file `connect` reads first, as `kubectl` does: the first entry of `$KUBECONFIG`,
+/// or `~/.kube/config`.
+#[must_use]
+pub fn kubeconfig_path() -> Option<PathBuf> {
+    kubeconfig_from(std::env::var_os("KUBECONFIG"), std::env::home_dir())
+}
+
+fn kubeconfig_from(variable: Option<OsString>, home: Option<PathBuf>) -> Option<PathBuf> {
+    variable
+        .and_then(|paths| std::env::split_paths(&paths).find(|path| !path.as_os_str().is_empty()))
+        .or_else(|| home.map(|home| home.join(".kube/config")))
+}
+
 fn to_value<T: Serialize>(object: T) -> serde_json::Value {
     serde_json::to_value(object).unwrap_or_default()
 }
 
 fn jiff_now() -> String {
     k8s_openapi::jiff::Timestamp::now().to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn accepts_dns_1123_labels_as_namespace_names() {
+        for name in ["shop", "a", "team-42", "9lives", &"x".repeat(63)] {
+            assert!(check_namespace_name(name).is_ok(), "{name}");
+        }
+    }
+
+    #[test]
+    fn refuses_names_kubernetes_would_reject() {
+        for name in ["", "Shop", "-shop", "shop-", "shop_db", "shop.db", "café", &"x".repeat(64)] {
+            assert!(check_namespace_name(name).is_err(), "{name}");
+        }
+    }
+
+    #[test]
+    fn reads_the_first_kubeconfig_before_the_home_one() {
+        let home = Some(PathBuf::from("/Users/ada"));
+        assert_eq!(
+            kubeconfig_from(Some(OsString::from(":/tmp/a.yaml:/tmp/b.yaml")), home.clone()),
+            Some(PathBuf::from("/tmp/a.yaml"))
+        );
+        assert_eq!(kubeconfig_from(None, home), Some(PathBuf::from("/Users/ada/.kube/config")));
+        assert_eq!(kubeconfig_from(None, None), None);
+    }
 }

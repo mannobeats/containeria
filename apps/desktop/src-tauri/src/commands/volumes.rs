@@ -75,3 +75,16 @@ pub(crate) async fn volume_clone(
 ) -> Result<()> {
     Ok(state.engine.docker().await?.clone_volume(&source, &target).await?)
 }
+
+/// Puts a backup's files into `name`, creating it when needed; with `replace`, its current files
+/// go first.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn volume_restore(
+    state: State<'_, AppState>,
+    name: String,
+    source: PathBuf,
+    replace: bool,
+) -> Result<()> {
+    Ok(state.engine.docker().await?.restore_volume(&name, &source, replace).await?)
+}

@@ -4,8 +4,10 @@ import { persist } from "zustand/middleware";
 type UiState = {
   sidebarCollapsed: boolean;
   paletteOpen: boolean;
+  shortcutsOpen: boolean;
   toggleSidebar: () => void;
   setPaletteOpen: (open: boolean) => void;
+  setShortcutsOpen: (open: boolean) => void;
 };
 
 export const useUi = create<UiState>()(
@@ -13,8 +15,10 @@ export const useUi = create<UiState>()(
     (set) => ({
       sidebarCollapsed: false,
       paletteOpen: false,
+      shortcutsOpen: false,
       toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
       setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
+      setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
     }),
     {
       name: "containeria.ui",

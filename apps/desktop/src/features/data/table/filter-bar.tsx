@@ -1,4 +1,5 @@
 import {
+  IconDots,
   IconFilterPlus,
   IconLayoutSidebarRight,
   IconRefresh,
@@ -15,6 +16,7 @@ import { Segmented } from "@/ui/segmented";
 
 import { useExport, useRefreshSchema } from "../api";
 import { opLabel, tableRef, whereText } from "../model";
+import { useTableActions } from "../use-table-actions";
 import type { GridView } from "../workspace-store";
 import { FilterPopover } from "./filter-popover";
 
@@ -72,6 +74,12 @@ const FORMATS: { format: ExportFormat; label: string; extension: string }[] = [
 export function FilterBar({ info, table, view, onView }: FilterBarProps) {
   const exporter = useExport(info.id);
   const refresh = useRefreshSchema(info.id);
+  const actions = useTableActions(info);
+  const destroy = actions.destroy(table);
+  const more = [
+    ...actions.imports(table),
+    ...(destroy.length > 0 ? [{ kind: "separator" as const }, ...destroy] : []),
+  ];
   const setFilters = (filters: Filter[]) => onView({ filters, page: 0 });
   const exportAs = (format: ExportFormat, extension: string) =>
     save({ defaultPath: `${table.name}.${extension}` })
@@ -157,6 +165,19 @@ export function FilterBar({ info, table, view, onView }: FilterBarProps) {
             <IconTableExport />
           </Button>
         </Menu>
+        {more.length > 0 ? (
+          <Menu entries={more} align="end">
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
+              aria-label="More table actions"
+              className="text-ink-3 hover:text-ink"
+            >
+              <IconDots />
+            </Button>
+          </Menu>
+        ) : null}
         <IconAction
           label={view.inspector ? "Hide row inspector" : "Row inspector"}
           onClick={() => onView({ inspector: !view.inspector })}

@@ -76,6 +76,18 @@ describe("AppShell", () => {
     expect(router.state.location.pathname).toBe("/test");
   });
 
+  it("carries out the menu bar's commands", async () => {
+    const calls = renderShell("stopped");
+    await screen.findByText("Page content");
+    await emit("menu-command", "showShortcuts");
+    expect(await screen.findByRole("dialog", { name: "Keyboard shortcuts" })).toBeDefined();
+    await userEvent.keyboard("{Escape}");
+    await emit("menu-command", "startEngine");
+    await waitFor(() => expect(calls.map((call) => call.command)).toContain("engineStart"));
+    await emit("menu-command", "openEngineShell");
+    await waitFor(() => expect(calls.router.state.location.pathname).toBe("/engine/shell"));
+  });
+
   it("opens the view the native menu asks for", async () => {
     const { router } = renderShell("running");
     await screen.findByText("Page content");

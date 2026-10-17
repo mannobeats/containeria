@@ -99,7 +99,7 @@ the user installed:
 | Build from a Dockerfile | BuildKit through `docker build` | Built | Build sheet or drop a Dockerfile on the window; plain BuildKit progress streams into the run sheet. |
 | Volumes: list, size, used by | volumes API + `/system/df` | Docker API | |
 | Browse volume files | short-lived helper container mounting the volume | We build | |
-| Back up, clone, export a volume | helper container with tar | We build | |
+| Back up, restore, clone, export a volume | helper container with tar | Built | Restore takes Containeria backups and plain tar or tar.gz archives of a volume's files. |
 | Networks: list, create, connect, inspect | networks API | Docker API | |
 
 ## Kubernetes
@@ -108,8 +108,8 @@ the user installed:
 |---|---|---|---|
 | Turn on and off, pick version | `kubernetes.enabled`, `version` (k3s) | Colima | |
 | Pods, deployments, services, ingress, config | Kubernetes API via `kube-rs` | We build | |
-| Pod logs, terminal, events, YAML | Kubernetes API | We build | |
-| Apply YAML, scale, restart, port-forward | Kubernetes API | We build | |
+| Pod logs, terminal, events, YAML | Kubernetes API | Built | The terminal is `kubectl exec -it` through kube-rs, with a container picker. |
+| Apply YAML, scale, restart, port-forward, namespaces | Kubernetes API | Built | Deployments edit their YAML in place; New Namespace…; Copy kubeconfig Path. |
 | Images built locally usable in k3s | Docker runtime shares images | Colima | |
 | LoadBalancer services on localhost | k3s service load balancer + Lima port forwarding | Colima | |
 | Reset cluster | delete and re-enable k3s | We build | |
@@ -124,7 +124,7 @@ the user installed:
 | `ssh name@containeria` | small SSH gateway in our Rust core | We build | |
 | Mac home folder inside the machine | Incus disk device of the virtiofs mount | We build | |
 | amd64 machines | Rosetta or binfmt | Limited | Same rules as containers. |
-| Engine shell | `colima ssh` | Colima | |
+| Engine shell | privileged busybox entering PID 1 with `nsenter` | Built | Engine → Open Engine Shell: root in the VM, without needing `colima` on the PATH. |
 
 ## Data browser
 
@@ -145,7 +145,7 @@ None of this depends on the engine. It runs in the app's Rust core.
 | Filters, sort, pagination pushed into SQL | our query builder | We build |
 | SQL editor with schema autocomplete | CodeMirror 6 + schema reads | We build |
 | Schema diagram | React Flow + elkjs | We build |
-| Import and export CSV, JSON, SQL, Parquet | our code (Arrow for Parquet) | We build |
+| Import and export CSV, JSON, SQL, Parquet | our code (Arrow for Parquet) | Built: CSV and JSON import (streamed, one transaction), CSV/JSON/SQL export. Parquet not yet. Truncate and drop with confirmation. |
 | Passwords in the macOS Keychain | `keyring` crate | We build |
 | Read-only safe mode for production | our code | We build |
 | SSH tunnels | `russh` | We build |
@@ -164,7 +164,7 @@ None of this depends on the engine. It runs in the app's Rust core.
 | First launch and import from Docker Desktop | `docker save`/`load`, volume tar copy, recreate from inspect | We build | |
 | `docker`, `docker compose`, `kubectl` on the PATH | bundled CLIs, Docker context set by Colima | Colima | `autoActivate: true`. |
 | `cx` command-line tool | `crates/cli` | Built | `cx ps`, `start`, `stop`, `restart`, `logs -f`, `open`, `engine start\|stop\|status`, `data`. Works without the app. |
-| Collect diagnostics | Colima and Lima logs + our logs | We build | |
+| Collect diagnostics | Colima and Lima logs + our logs | Built | Help → Collect Diagnostics…: versions, engine and machine status, container names and states, engine settings, the tail of each VM's logs. No container settings, so no secrets. |
 
 ## Decisions this map forces
 

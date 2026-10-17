@@ -4,7 +4,8 @@ import { toast } from "sonner";
 
 import { queryKeys } from "@/app/query-keys";
 import { isServing, useBootLog, useEngineStatus } from "@/features/engine/api";
-import { commands, type LogLine, type ResourceKind } from "@/lib/ipc/bindings";
+import { commands, type LogLine, type PodSummary, type ResourceKind } from "@/lib/ipc/bindings";
+import type { OpenShell } from "@/lib/ipc/connect-shell";
 import { errorMessage } from "@/lib/ipc/errors";
 
 import { crashing } from "./model";
@@ -94,3 +95,25 @@ export function useKubeEvents(namespace: string, name: string) {
     queryFn: () => commands.kubernetesEvents(namespace, name),
   });
 }
+
+/** Where the cluster's kubeconfig is, for other tools. It only moves if `$KUBECONFIG` does. */
+export function useKubeconfigPath() {
+  return useQuery({
+    queryKey: [...queryKeys.kubernetes, "kubeconfig"],
+    queryFn: commands.kubernetesKubeconfigPath,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+}
+
+export function useCreateNamespace() {
+  return useKubeAction(
+    (name: string) => commands.kubernetesCreateNamespace(name),
+    (name) => `Created namespace ${name}`,
+  );
+}
+
+/** A shell in the pod; `container` picks one when it has several. */
+export const podShell =
+  (pod: PodSummary, container: string | null): OpenShell =>
+  (cols, rows, channel) =>
+    commands.kubernetesShell(pod.namespace, pod.name, container, cols, rows, channel);
