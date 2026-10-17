@@ -1,6 +1,7 @@
 //! The Containeria desktop app: the window, the menu bar item and the commands the UI calls.
 
 mod commands;
+mod domains;
 mod engine;
 mod error;
 mod events;
@@ -14,6 +15,8 @@ mod tray;
 
 use std::sync::Arc;
 
+use containeria_engine::Home;
+use containeria_net::Domains;
 use tauri::{AppHandle, Manager, RunEvent, Window, WindowEvent};
 
 use crate::engine::Engine;
@@ -58,8 +61,17 @@ pub fn run() -> tauri::Result<()> {
             tauri::async_runtime::spawn(
                 async move { sampler.run(engine_for_sampler, handle).await },
             );
+            let domains = Arc::new(Domains::open(&Home::from_env()?.root().join("net"))?);
+            let (supervised, engine_for_domains) = (Arc::clone(&domains), Arc::clone(&engine));
+            tauri::async_runtime::spawn(domains::supervise(supervised, engine_for_domains));
             let preferences = PreferencesStore::open(engine.home().root());
-            app.manage(AppState { engine, metrics, preferences, streams: Streams::default() });
+            app.manage(AppState {
+                engine,
+                domains,
+                metrics,
+                preferences,
+                streams: Streams::default(),
+            });
             tray::install(app.handle())?;
             Ok(())
         })

@@ -40,6 +40,17 @@ export const commands = {
 	containerAct: (id: string, action: ContainerAction) => __TAURI_INVOKE<null>("container_act", { id, action }),
 	/**  Streams stats readings into `channel` until cancelled with `stream_cancel`. */
 	containerStats: (id: string, channel: Channel<StatsSample>) => __TAURI_INVOKE<number>("container_stats", { id, channel }),
+	domainsStatus: () => __TAURI_INVOKE<DomainsStatus>("domains_status"),
+	/**  Turns domains on or off. On starts the DNS server and the proxy at once. */
+	domainsSetEnabled: (enabled: boolean) => __TAURI_INVOKE<null>("domains_set_enabled", { enabled }),
+	domainsAddRoute: (route: CustomRoute) => __TAURI_INVOKE<null>("domains_add_route", { route }),
+	domainsRemoveRoute: (host: string) => __TAURI_INVOKE<null>("domains_remove_route", { host }),
+	/**  Asks macOS for an administrator password, then writes `/etc/resolver/<tld>`. */
+	domainsInstallResolver: () => __TAURI_INVOKE<null>("domains_install_resolver"),
+	domainsUninstallResolver: () => __TAURI_INVOKE<null>("domains_uninstall_resolver"),
+	/**  Adds the local certificate authority to the login keychain; macOS asks the user to confirm. */
+	domainsTrustCa: () => __TAURI_INVOKE<null>("domains_trust_ca"),
+	domainsUntrustCa: () => __TAURI_INVOKE<null>("domains_untrust_ca"),
 };
 
 /** Events */
@@ -90,6 +101,14 @@ export type ContainerUsage = {
 	memoryBytes: number,
 };
 
+/**  A name the user added, like `shop.test`, pointing at one port of one container. */
+export type CustomRoute = {
+	host: string,
+	container: string,
+	port: number,
+	https: boolean,
+};
+
 /**  Something in Docker changed; refetch lists of that kind. */
 export type DockerChanged = DockerEvent;
 
@@ -106,6 +125,33 @@ export type DockerEvent = {
 	kind: ObjectKind,
 	action: string,
 	id: string,
+};
+
+export type DomainPorts = {
+	dns: number,
+	http: number,
+	https: number,
+};
+
+export type DomainRoute = {
+	host: string,
+	kind: RouteKind,
+	container: string,
+	/**  The port inside the container. */
+	port: number | null,
+	https: boolean,
+	down: RouteDown | null,
+};
+
+export type DomainsStatus = {
+	enabled: boolean,
+	tld: string,
+	https: boolean,
+	/**  Set while the DNS server and proxy run. */
+	ports: DomainPorts | null,
+	resolver: ResolverState,
+	caTrusted: boolean,
+	routes: DomainRoute[],
 };
 
 /**  The engine started, stopped or changed settings; refetch its status. */
@@ -156,7 +202,9 @@ export type EngineStatus = {
 };
 
 /**  What the UI can do about a failure: each kind gets its own empty state or action. */
-export type ErrorKind = "engineMissing" | "engineStopped" | "notFound" | "engine" | "internal";
+export type ErrorKind = "engineMissing" | "engineStopped" | "notFound" | 
+/**  The user dismissed a macOS permission prompt; nothing to report. */
+"cancelled" | "invalidInput" | "engine" | "internal";
 
 /**  The Mac the engine runs on, for sizing the engine's limits. */
 export type Host = {
@@ -253,6 +301,20 @@ export type Preferences = {
 	/**  First launch was finished or skipped. */
 	onboarded: boolean,
 };
+
+/**  Whether macOS sends the zone's lookups to Containeria. */
+export type ResolverState = "installed" | 
+/**  The file exists but points somewhere else, usually an old port. */
+"stale" | "missing";
+
+/**  Why a route can't be reached right now. */
+export type RouteDown = 
+/**  The container is stopped or gone. */
+"stopped" | 
+/**  The container runs but doesn't publish the port to the Mac. */
+"notPublished";
+
+export type RouteKind = "container" | "custom";
 
 export type SegmentKind = "project" | "standalone" | "kubernetes";
 

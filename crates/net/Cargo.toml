@@ -1,0 +1,33 @@
+[package]
+name = "containeria-net"
+description = "Domains for containers on the Mac: DNS, the local certificate authority and the reverse proxy."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+[dependencies]
+containeria-docker.workspace = true
+hickory-proto.workspace = true
+http-body-util.workspace = true
+hyper.workspace = true
+hyper-util.workspace = true
+rcgen.workspace = true
+rustls.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+specta.workspace = true
+thiserror.workspace = true
+time.workspace = true
+tokio.workspace = true
+tokio-rustls.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true
