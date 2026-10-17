@@ -9,3 +9,4 @@ coverage/
 apps/desktop/src-tauri/gen/
 coverage/
 .claude/worktrees/
+.claude/scheduled_tasks.lock
