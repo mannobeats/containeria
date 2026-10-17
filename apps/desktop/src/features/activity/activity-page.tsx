@@ -5,7 +5,7 @@ import { useContainers } from "@/features/containers/api";
 import { isServing, useEngineStatus } from "@/features/engine/api";
 import { useMetrics } from "@/features/metrics/api";
 import { Crumb, Page } from "@/shell/page";
-import { Button } from "@/ui/button";
+import { buttonClass } from "@/ui/button-class";
 import { EmptyState } from "@/ui/empty-state";
 import { Tile } from "@/ui/tile";
 import { Tip } from "@/ui/tooltip";
@@ -18,10 +18,13 @@ import { TopConsumers } from "./top-consumers";
 
 const tools = (
   <Tip label="Engine settings">
-    <Link to="/settings/$section" params={{ section: "engine" }} aria-label="Engine settings">
-      <Button variant="ghost" iconOnly tabIndex={-1}>
-        <IconAdjustments />
-      </Button>
+    <Link
+      to="/settings/$section"
+      params={{ section: "engine" }}
+      aria-label="Engine settings"
+      className={buttonClass({ variant: "ghost", iconOnly: true })}
+    >
+      <IconAdjustments />
     </Link>
   </Tip>
 );

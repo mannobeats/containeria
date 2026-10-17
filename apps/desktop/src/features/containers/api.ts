@@ -12,6 +12,8 @@ export function useContainers() {
     queryKey: queryKeys.containers,
     queryFn: commands.containersList,
     enabled: isServing(engine?.phase),
+    // Events refresh it on every change; this only keeps Docker's "Up 3 minutes" text current.
+    refetchInterval: 30_000,
   });
 }
 

@@ -25,18 +25,20 @@ export function AppShell() {
   const leaf = matches.at(-1);
   const needsEngine = matches.some((match) => match.staticData.needsEngine);
   const bare = matches.some((match) => match.staticData.bare);
+  const hidden = collapsed || bare;
   return (
     <TooltipProvider>
       <div
         className={clsx(
           "grid h-full transition-[grid-template-columns] duration-220 ease-out",
-          collapsed || bare ? "grid-cols-[0px_minmax(0,1fr)]" : "grid-cols-[236px_minmax(0,1fr)]",
+          hidden ? "grid-cols-[0px_minmax(0,1fr)]" : "grid-cols-[236px_minmax(0,1fr)]",
         )}
       >
         <div
+          inert={hidden}
           className={clsx(
             "flex min-h-0 min-w-0 flex-col overflow-hidden transition-opacity duration-140 [&>aside]:flex-1",
-            (collapsed || bare) && "pointer-events-none opacity-0",
+            hidden && "opacity-0",
           )}
         >
           <Sidebar />

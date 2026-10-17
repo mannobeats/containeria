@@ -13,6 +13,7 @@ import { formatRelative } from "@/lib/format";
 import type { ContainerDetails } from "@/lib/ipc/bindings";
 import { logoFor } from "@/lib/logos";
 import { Button } from "@/ui/button";
+import { buttonClass } from "@/ui/button-class";
 import { Chip } from "@/ui/chip";
 import { CxIcon } from "@/ui/cx-icon";
 import { IconAction } from "@/ui/icon-action";
@@ -87,11 +88,9 @@ export function DetailHeader({ details }: { details: ContainerDetails }) {
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         {isDatabase(details) ? (
-          <Link to="/data" className="no-underline">
-            <Button tabIndex={-1}>
-              <CxIcon name="data" />
-              Open in Data
-            </Button>
+          <Link to="/data" className={buttonClass()}>
+            <CxIcon name="data" />
+            Open in Data
           </Link>
         ) : null}
         {running && port?.host ? (

@@ -5,6 +5,7 @@ import type { Namespace, ServerInfo } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
 import { Crumb, Page } from "@/shell/page";
 import { Button } from "@/ui/button";
+import { buttonClass } from "@/ui/button-class";
 import { EmptyState } from "@/ui/empty-state";
 import { Skeleton } from "@/ui/progress";
 import { Tile } from "@/ui/tile";
@@ -57,8 +58,8 @@ function CouldNotConnect({ id, error }: { id: string; error: unknown }) {
             <IconRefresh />
             Try again
           </Button>
-          <Link to="/data" className="no-underline">
-            <Button tabIndex={-1}>All connections</Button>
+          <Link to="/data" className={buttonClass()}>
+            All connections
           </Link>
         </>
       }

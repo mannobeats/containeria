@@ -21,20 +21,26 @@ const MEMORY = ["1", "2", "4", "8", "16"].map((value) => ({ value, label: `${val
 
 type Form = ReturnType<typeof useNewMachineForm>;
 
+const KINDS: { value: MachineKind; label: string }[] = [
+  { value: "container", label: "System container" },
+  { value: "vm", label: "Full VM" },
+];
+
 function KindField({ form, supportsVms }: { form: Form; supportsVms: boolean }) {
-  const options: { value: MachineKind; label: string }[] = [
-    { value: "container", label: "System container" },
-  ];
-  if (supportsVms) {
-    options.push({ value: "vm", label: "Full VM" });
+  if (!supportsVms) {
+    return (
+      <p className="m-0 text-12 text-ink-3">
+        This machine is a system container, which boots in about a second. Full VMs need nested
+        virtualization: an M3 or newer Mac on macOS 15.
+      </p>
+    );
   }
   return (
     <div className="flex flex-col gap-1.5">
-      <Segmented label="Kind" value={form.request.kind} onChange={form.setKind} options={options} />
+      <Segmented label="Kind" value={form.request.kind} onChange={form.setKind} options={KINDS} />
       <p className="m-0 text-12 text-ink-3">
-        {supportsVms
-          ? "A system container boots in about a second. A full VM runs its own kernel, for Docker-in-Linux or kernel modules."
-          : "Full VMs need nested virtualization, which needs an M3 or newer Mac on macOS 15. This Mac runs system containers, which boot in about a second."}
+        A system container boots in about a second. A full VM runs its own kernel, for
+        Docker-in-Linux or kernel modules.
       </p>
     </div>
   );

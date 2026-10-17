@@ -4,7 +4,7 @@ import { useEffect, useEffectEvent } from "react";
 
 import { isCommandError } from "@/lib/ipc/errors";
 import { Crumb, Page } from "@/shell/page";
-import { Button } from "@/ui/button";
+import { buttonClass } from "@/ui/button-class";
 import { EmptyState } from "@/ui/empty-state";
 import { IconAction } from "@/ui/icon-action";
 import { Skeleton } from "@/ui/progress";
@@ -71,8 +71,8 @@ function Gone() {
         title="This container was deleted"
         className="h-full"
         actions={
-          <Link to="/containers" className="no-underline">
-            <Button tabIndex={-1}>Back to containers</Button>
+          <Link to="/containers" className={buttonClass()}>
+            Back to containers
           </Link>
         }
       />

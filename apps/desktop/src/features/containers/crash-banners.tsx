@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 
 import type { ContainerSummary } from "@/lib/ipc/bindings";
 import { Banner } from "@/ui/banner";
-import { Button } from "@/ui/button";
+import { buttonClass } from "@/ui/button-class";
 
 import { exitCode, isCrashed } from "./model";
 
@@ -20,11 +20,9 @@ export function CrashBanners({ containers }: { containers: ContainerSummary[] })
           to="/containers/$id"
           params={{ id: container.id }}
           search={{ tab: "logs" }}
-          className="no-underline"
+          className={buttonClass({ size: "sm" })}
         >
-          <Button size="sm" tabIndex={-1}>
-            View logs
-          </Button>
+          View logs
         </Link>
       }
     >

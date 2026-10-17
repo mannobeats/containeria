@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import type { EnginePhase } from "@/lib/ipc/bindings";
 import { AppMark } from "@/ui/app-mark";
 import { Button } from "@/ui/button";
+import { buttonClass } from "@/ui/button-class";
 import { EmptyState } from "@/ui/empty-state";
 import { Progress } from "@/ui/progress";
 
@@ -79,10 +80,8 @@ export function EngineOff({ phase }: { phase: EnginePhase | undefined }) {
             {idle.control === "restart" ? <IconRefresh /> : <IconPlayerPlay />}
             {idle.action}
           </Button>
-          <Link to="/settings" className="no-underline">
-            <Button size="lg" tabIndex={-1}>
-              Engine settings
-            </Button>
+          <Link to="/settings" className={buttonClass({ size: "lg" })}>
+            Engine settings
           </Link>
         </>
       }

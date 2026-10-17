@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import type { Connection, Detected, Environment } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
+import { buttonClass } from "@/ui/button-class";
 import { Chip } from "@/ui/chip";
 import { Dash } from "@/ui/dash";
 import { Menu, type MenuEntry } from "@/ui/menu";
@@ -15,7 +16,7 @@ import { Tile } from "@/ui/tile";
 import { engineLabel, engineLogo } from "./engines";
 
 const tableClass =
-  "w-full table-fixed border-separate border-spacing-0 text-13 [&_td]:h-12 [&_td]:border-b-[0.5px] [&_td]:border-line [&_td]:px-2.5 [&_td:first-child]:pl-5 [&_td:last-child]:pr-5 [&_th]:h-[30px] [&_th]:border-b-[0.5px] [&_th]:border-line [&_th]:px-2.5 [&_th]:text-left [&_th]:text-12 [&_th]:font-medium [&_th]:text-ink-3 [&_th:first-child]:w-[30%] [&_th:first-child]:pl-5 [&_th:last-child]:w-[150px]";
+  "w-full table-fixed border-separate border-spacing-0 text-13 [&_td]:h-12 [&_td]:border-b-[0.5px] [&_td]:border-line [&_td]:px-2.5 [&_td:first-child]:pl-5 [&_td:last-child]:pr-5 [&_th]:h-[30px] [&_th]:border-b-[0.5px] [&_th]:border-line [&_th]:px-2.5 [&_th]:text-left [&_th]:text-12 [&_th]:font-medium [&_th]:text-ink-3 [&_th:first-child]:w-[26%] [&_th:first-child]:pl-5 [&_th:nth-child(2)]:w-24 [&_th:nth-child(3)]:w-[140px] [&_th:last-child]:w-[88px]";
 
 function Head({ fourth, last }: { fourth: string; last: string }) {
   return (
@@ -57,10 +58,12 @@ function NameCell({
 
 function OpenLink({ id, children }: { id: string; children: ReactNode }) {
   return (
-    <Link to="/data/$connection" params={{ connection: id }} className="no-underline">
-      <Button size="sm" variant="soft" tabIndex={-1}>
-        {children}
-      </Button>
+    <Link
+      to="/data/$connection"
+      params={{ connection: id }}
+      className={buttonClass({ size: "sm", variant: "soft" })}
+    >
+      {children}
     </Link>
   );
 }

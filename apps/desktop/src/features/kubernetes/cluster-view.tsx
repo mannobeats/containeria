@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { Cluster } from "@/lib/ipc/bindings";
 import { Banner } from "@/ui/banner";
 import { Button } from "@/ui/button";
+import { buttonClass } from "@/ui/button-class";
 import { EmptyState } from "@/ui/empty-state";
 import { Menu, type MenuEntry } from "@/ui/menu";
 import { SearchField } from "@/ui/search-field";
@@ -34,9 +35,9 @@ function CrashBanner({ cluster }: { cluster: Cluster }) {
           to="/kubernetes/pods/$namespace/$name"
           params={{ namespace: pod.namespace, name: pod.name }}
           search={{ tab: "logs" }}
-          tabIndex={-1}
+          className={buttonClass({ size: "sm" })}
         >
-          <Button size="sm">View logs</Button>
+          View logs
         </Link>
       }
     >

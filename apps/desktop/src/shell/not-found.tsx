@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 
-import { Button } from "@/ui/button";
+import { buttonClass } from "@/ui/button-class";
 import { EmptyState } from "@/ui/empty-state";
 
 import { Crumb, Page } from "./page";
@@ -12,8 +12,8 @@ export function NotFound() {
         title="This view doesn't exist"
         className="h-full"
         actions={
-          <Link to="/containers" className="no-underline">
-            <Button tabIndex={-1}>Go to containers</Button>
+          <Link to="/containers" className={buttonClass()}>
+            Go to containers
           </Link>
         }
       >
