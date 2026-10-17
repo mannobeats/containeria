@@ -54,14 +54,16 @@ export function StatsTab({ id, running }: { id: string; running: boolean }) {
   return (
     <div className="h-full overflow-auto">
       <p className="m-0 px-5 pt-4 text-12 text-ink-3">
-        Sampled every second. The charts keep the last five minutes.
+        {history.times.length < 2
+          ? "Collecting the first readings…"
+          : "Sampled every second. The charts keep the last five minutes."}
       </p>
       <div className="grid grid-cols-2 gap-x-8 gap-y-7 px-5 pt-4 pb-10 max-[1180px]:grid-cols-1">
         <Panel
           title="CPU"
           note="of one core per 100%"
           value={formatPercent(sample?.cpuPercent ?? null)}
-          series={[{ label: "CPU", color: "s1" }]}
+          series={[{ label: "CPU", color: "var(--s1)" }]}
           data={[history.times, history.cpu]}
           format={formatPercent}
         />
@@ -69,7 +71,7 @@ export function StatsTab({ id, running }: { id: string; running: boolean }) {
           title="Memory"
           note={limit}
           value={sample ? formatMemory(sample.memoryBytes) : undefined}
-          series={[{ label: "Memory", color: "s2" }]}
+          series={[{ label: "Memory", color: "var(--s2)" }]}
           data={[history.times, history.memory]}
           format={formatMemory}
         />
@@ -77,8 +79,8 @@ export function StatsTab({ id, running }: { id: string; running: boolean }) {
           title="Network"
           note="received and sent"
           series={[
-            { label: "Received", color: "s1" },
-            { label: "Sent", color: "s3", fill: false },
+            { label: "Received", color: "var(--s1)" },
+            { label: "Sent", color: "var(--s3)", fill: false },
           ]}
           data={[history.times, history.received, history.sent]}
           format={rate}
@@ -87,8 +89,8 @@ export function StatsTab({ id, running }: { id: string; running: boolean }) {
           title="Disk"
           note="read and written"
           series={[
-            { label: "Read", color: "s4" },
-            { label: "Written", color: "s6", fill: false },
+            { label: "Read", color: "var(--s4)" },
+            { label: "Written", color: "var(--s6)", fill: false },
           ]}
           data={[history.times, history.read, history.written]}
           format={rate}

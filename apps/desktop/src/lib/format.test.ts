@@ -24,6 +24,7 @@ describe("formatBytes", () => {
   it("uses decimal units with one decimal under 100", () => {
     expect(formatBytes(0)).toBe("0 B");
     expect(formatBytes(999)).toBe("999 B");
+    expect(formatBytes(0.25)).toBe("0 B");
     expect(formatBytes(1_536_000)).toBe("1.5 MB");
     expect(formatBytes(214_000_000)).toBe("214 MB");
     expect(formatBytes(8_589_934_592)).toBe("8.6 GB");

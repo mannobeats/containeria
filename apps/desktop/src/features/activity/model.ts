@@ -1,6 +1,7 @@
 import { segmentColor } from "@/features/metrics/segment-color";
 import type { ContainerSummary, Metrics, MetricsPoint } from "@/lib/ipc/bindings";
-import type { TimeSeries } from "@/ui/time-chart-model";
+/** One line of a chart: a label, a CSS colour and a value per sample (`null` for a gap). */
+export type TimeSeries = { label: string; color: string; values: (number | null)[] };
 
 export type Range = "5m" | "30m";
 

@@ -7,8 +7,8 @@ import { mockCommands, renderWithApp } from "@/test/harness";
 
 import { ActivityPage } from "./activity-page";
 
-vi.mock("@/ui/time-chart", () => ({
-  TimeChart: ({ label, series }: { label: string; series: { label: string }[] }) => (
+vi.mock("@/ui/chart", () => ({
+  Chart: ({ label, series }: { label: string; series: { label: string }[] }) => (
     <figure aria-label={label}>{series.map((line) => line.label).join(", ")}</figure>
   ),
 }));

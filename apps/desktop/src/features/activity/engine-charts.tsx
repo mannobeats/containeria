@@ -2,8 +2,8 @@ import { useState } from "react";
 
 import { formatMemory, formatPercent } from "@/lib/format";
 import type { MetricsPoint } from "@/lib/ipc/bindings";
+import { Chart } from "@/ui/chart";
 import { Segmented } from "@/ui/segmented";
-import { TimeChart } from "@/ui/time-chart";
 
 import { memorySeries, type Range, withinRange } from "./model";
 
@@ -18,7 +18,8 @@ type ChartsProps = { points: MetricsPoint[]; cpus: number; totalBytes: number };
 export function EngineCharts({ points, cpus, totalBytes }: ChartsProps) {
   const [range, setRange] = useState<Range>("5m");
   const shown = withinRange(points, range, points.at(-1)?.sampledAtMs ?? 0);
-  const times = shown.map((point) => point.sampledAtMs ?? 0);
+  const times = shown.map((point) => (point.sampledAtMs ?? 0) / 1000);
+  const memory = memorySeries(shown);
   const latest = shown.at(-1);
   return (
     <section className="px-5 pt-5 pb-1">
@@ -45,12 +46,11 @@ export function EngineCharts({ points, cpus, totalBytes }: ChartsProps) {
               of {cpus * 100}% across {cpus} cores
             </span>
           </span>
-          <TimeChart
+          <Chart
             label="Engine CPU over time"
-            times={times}
-            series={[
-              { label: "CPU", color: "var(--s1)", values: shown.map((point) => point.cpuPercent) },
-            ]}
+            height={120}
+            series={[{ label: "CPU", color: "var(--s1)" }]}
+            data={[times, shown.map((point) => point.cpuPercent)]}
             format={(value) => `${Math.round(value)}%`}
           />
         </div>
@@ -62,10 +62,11 @@ export function EngineCharts({ points, cpus, totalBytes }: ChartsProps) {
             </b>
             <span className="text-12 text-ink-3">of {formatMemory(totalBytes)}</span>
           </span>
-          <TimeChart
+          <Chart
             label="Engine memory over time by project"
-            times={times}
-            series={memorySeries(shown)}
+            height={120}
+            series={memory.map(({ label, color }) => ({ label, color, fill: false }))}
+            data={[times, ...memory.map((line) => line.values)]}
             format={formatMemory}
           />
         </div>

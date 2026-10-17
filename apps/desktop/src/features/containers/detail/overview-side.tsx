@@ -20,7 +20,7 @@ type SparkProps = {
   value: string;
   times: number[];
   values: number[];
-  color: "s1" | "s2";
+  color: string;
   format: (value: number) => string;
 };
 
@@ -133,7 +133,7 @@ export function OverviewSide({
             value={formatPercent(sample?.cpuPercent ?? null)}
             times={history.times}
             values={history.cpu}
-            color="s1"
+            color="var(--s1)"
             format={formatPercent}
           />
           <Spark
@@ -141,7 +141,7 @@ export function OverviewSide({
             value={sample ? formatMemory(sample.memoryBytes) : "—"}
             times={history.times}
             values={history.memory}
-            color="s2"
+            color="var(--s2)"
             format={formatMemory}
           />
         </>

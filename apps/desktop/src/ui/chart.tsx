@@ -6,9 +6,10 @@ import uPlot from "uplot";
 import { resolveColor } from "@/lib/resolve-color";
 import { useIsDark } from "@/lib/theme";
 
-export type ChartColor = "s1" | "s2" | "s3" | "s4" | "s5" | "s6";
+import { readout, timeTicks } from "./chart-format";
 
-export type ChartSeries = { label: string; color: ChartColor; fill?: boolean };
+/** `color` is any CSS colour, usually a series token such as `var(--s1)`. */
+export type ChartSeries = { label: string; color: string; fill?: boolean };
 
 type ChartProps = {
   /** Read by screen readers in place of the canvas. */
@@ -20,21 +21,16 @@ type ChartProps = {
   format: (value: number) => string;
   /** A bare line with no axes, for a sparkline. */
   spark?: boolean;
+  /** A fixed top for the y axis, such as 100 for a percentage; otherwise it follows the data. */
+  max?: number;
 };
-
-const clock = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" });
-const precise = new Intl.DateTimeFormat("en-GB", {
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-});
 
 function options(
   host: HTMLElement,
   props: ChartProps,
   onCursor: (plot: uPlot) => void,
 ): uPlot.Options {
-  const { series, height, spark = false, format } = props;
+  const { series, height, spark = false, format, max } = props;
   const axis = {
     show: !spark,
     stroke: resolveColor(host, "var(--ink-3)"),
@@ -47,36 +43,36 @@ function options(
     padding: spark ? [4, 0, 2, 0] : [8, 4, 0, 0],
     legend: { show: false },
     cursor: { y: false, points: { size: 7, width: 2, fill: resolveColor(host, "var(--surface)") } },
-    scales: { x: { time: true }, y: { range: (_, __, max) => [0, Math.max(max * 1.15, 1)] } },
+    scales: {
+      x: { time: true },
+      y: { range: (_, __, high) => [0, max ?? Math.max(high * 1.15, 1)] },
+    },
     axes: [
       {
         ...axis,
         grid: { show: false },
         size: 26,
         space: 80,
-        values: (_, ticks) => ticks.map((tick) => clock.format(tick * 1000)),
+        values: (_, ticks) => timeTicks(ticks),
       },
       {
         ...axis,
         grid: { show: !spark, stroke: resolveColor(host, "var(--line)"), width: 1 },
         size: 62,
-        values: (_, ticks) => ticks.map(format),
+        values: (_, ticks) => ticks.map((tick) => format(tick)),
       },
     ],
     series: [
       {},
       ...series.map((entry) => ({
         label: entry.label,
-        stroke: resolveColor(host, `var(--${entry.color})`),
+        stroke: resolveColor(host, entry.color),
         width: 1.5,
         points: { show: false },
         ...(entry.fill === false
           ? {}
           : {
-              fill: resolveColor(
-                host,
-                `color-mix(in oklch, var(--${entry.color}) 12%, transparent)`,
-              ),
+              fill: resolveColor(host, `color-mix(in oklch, ${entry.color} 12%, transparent)`),
             }),
       })),
     ],
@@ -90,10 +86,11 @@ function tipText(chart: uPlot, props: ChartProps): string | null {
   if (index == null || time === undefined || props.spark) {
     return null;
   }
-  const values = props.series.map(
-    (entry, position) => `${entry.label}  ${props.format(chart.data[position + 1]?.[index] ?? 0)}`,
-  );
-  return [precise.format(time * 1000), ...values].join("\n");
+  const rows = props.series.map((entry, position) => ({
+    label: entry.label,
+    value: chart.data[position + 1]?.[index],
+  }));
+  return readout(time, rows, props.format);
 }
 
 /** The canvas itself. Built once; a new shape or theme remounts it through `key`. */
@@ -147,5 +144,5 @@ function Canvas(props: ChartProps) {
 export function Chart(props: ChartProps) {
   const dark = useIsDark();
   const shape = props.series.map((entry) => `${entry.label}/${entry.color}/${entry.fill}`).join();
-  return <Canvas key={`${dark}:${props.height}:${props.spark}:${shape}`} {...props} />;
+  return <Canvas key={`${dark}:${props.height}:${props.spark}:${props.max}:${shape}`} {...props} />;
 }

@@ -5,7 +5,7 @@ export function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) {
     return "0 B";
   }
-  const exponent = Math.min(Math.floor(Math.log10(bytes) / 3), UNITS.length - 1);
+  const exponent = Math.min(Math.max(Math.floor(Math.log10(bytes) / 3), 0), UNITS.length - 1);
   const value = bytes / 1000 ** exponent;
   const digits = value >= 100 || exponent === 0 ? 0 : 1;
   return `${value.toFixed(digits)} ${UNITS[exponent]}`;
