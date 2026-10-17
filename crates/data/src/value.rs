@@ -17,7 +17,10 @@ pub enum Value {
 /// How TypeScript sees a JSON cell. Only describes the shape; values are `serde_json::Value`.
 #[derive(Serialize, specta::Type)]
 #[serde(untagged)]
-#[expect(dead_code, reason = "only describes the TypeScript shape of a JSON cell; never built in Rust")]
+#[expect(
+    dead_code,
+    reason = "only describes the TypeScript shape of a JSON cell; never built in Rust"
+)]
 pub(crate) enum JsonDocument {
     Object(std::collections::BTreeMap<String, specta_typescript::Unknown<serde_json::Value>>),
     Array(Vec<specta_typescript::Unknown<serde_json::Value>>),

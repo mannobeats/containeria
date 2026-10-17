@@ -23,7 +23,7 @@ export function infoFixture(overrides: Partial<ServerInfo> = {}): ServerInfo {
   };
 }
 
-export function columnFixture(name: string, overrides: Partial<Column> = {}): Column {
+function columnFixture(name: string, overrides: Partial<Column> = {}): Column {
   return {
     name,
     typeName: "text",
@@ -54,7 +54,7 @@ export const usersTable: Table = {
   indexes: [{ name: "users_email_key", columns: ["email"], unique: true }],
 };
 
-export const teamsTable: Table = {
+const teamsTable: Table = {
   schema: "public",
   name: "teams",
   kind: "table",
