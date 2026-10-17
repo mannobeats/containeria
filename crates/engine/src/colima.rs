@@ -49,6 +49,8 @@ pub struct Instance {
 #[derive(Deserialize)]
 struct RawInstance {
     #[serde(default)]
+    name: String,
+    #[serde(default)]
     status: String,
     #[serde(default)]
     arch: String,
@@ -138,14 +140,9 @@ impl Colima {
     /// # Errors
     /// Fails when Colima can't run or prints something unreadable.
     pub async fn instance(&self, profile: Profile) -> Result<Option<Instance>> {
-        let stdout = self.output("list", profile, ["list", "--json"]).await?;
-        stdout
-            .lines()
-            .filter(|line| !line.trim().is_empty())
-            .map(|line| serde_json::from_str::<RawInstance>(line).map(Instance::from))
-            .next()
-            .transpose()
-            .map_err(Error::from)
+        // Listing every instance: with `--profile`, Colima fails until that profile exists.
+        let stdout = self.output("list", None, ["list", "--json"]).await?;
+        find_instance(&stdout, profile)
     }
 
     /// Details of a running profile.
@@ -153,7 +150,7 @@ impl Colima {
     /// # Errors
     /// Fails when the profile isn't running.
     pub async fn runtime(&self, profile: Profile) -> Result<RuntimeInfo> {
-        let stdout = self.output("status", profile, ["status", "--json"]).await?;
+        let stdout = self.output("status", Some(profile), ["status", "--json"]).await?;
         Ok(serde_json::from_str(&stdout)?)
     }
 
@@ -162,7 +159,7 @@ impl Colima {
     /// # Errors
     /// Fails when Colima can't run.
     pub async fn version(&self) -> Result<String> {
-        let stdout = self.output("version", Profile::Containers, ["version"]).await?;
+        let stdout = self.output("version", None, ["version"]).await?;
         Ok(parse_version(&stdout))
     }
 
@@ -205,7 +202,7 @@ impl Colima {
         self.stream(name, Profile::Containers, ["kubernetes", verb], on_line).await
     }
 
-    fn command<I, S>(&self, profile: Profile, args: I) -> Result<Command>
+    fn command<I, S>(&self, profile: Option<Profile>, args: I) -> Result<Command>
     where
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
@@ -213,19 +210,18 @@ impl Colima {
         // Colima ignores COLIMA_HOME unless the folder already exists.
         std::fs::create_dir_all(self.home.colima())?;
         let mut command = Command::new(&self.bin);
-        command
-            .args(args)
-            .args(["--profile", profile.name()])
-            .env("COLIMA_HOME", self.home.colima())
-            .stdin(Stdio::null())
-            .kill_on_drop(true);
+        command.args(args);
+        if let Some(profile) = profile {
+            command.args(["--profile", profile.name()]);
+        }
+        command.env("COLIMA_HOME", self.home.colima()).stdin(Stdio::null()).kill_on_drop(true);
         Ok(command)
     }
 
     async fn output<const N: usize>(
         &self,
         action: &'static str,
-        profile: Profile,
+        profile: Option<Profile>,
         args: [&str; N],
     ) -> Result<String> {
         let output = self.command(profile, args)?.output().await?;
@@ -243,8 +239,11 @@ impl Colima {
         args: [&str; N],
         mut on_line: impl FnMut(LogLine),
     ) -> Result<()> {
-        let mut child =
-            self.command(profile, args)?.stdout(Stdio::null()).stderr(Stdio::piped()).spawn()?;
+        let mut child = self
+            .command(Some(profile), args)?
+            .stdout(Stdio::null())
+            .stderr(Stdio::piped())
+            .spawn()?;
         let stderr = child.stderr.take().ok_or_else(|| io::Error::other("stderr was not piped"))?;
         let mut lines = BufReader::new(stderr).lines();
         let mut seen = Vec::new();
@@ -268,6 +267,17 @@ fn parse_version(stdout: &str) -> String {
     first.rsplit(' ').next().unwrap_or(first).trim().to_owned()
 }
 
+/// Picks one profile's line out of `colima list --json`, which prints one JSON object per line.
+fn find_instance(list: &str, profile: Profile) -> Result<Option<Instance>> {
+    for line in list.lines().filter(|line| !line.trim().is_empty()) {
+        let raw: RawInstance = serde_json::from_str(line)?;
+        if raw.name == profile.name() {
+            return Ok(Some(raw.into()));
+        }
+    }
+    Ok(None)
+}
+
 fn last_error<'a>(lines: impl DoubleEndedIterator<Item = &'a str>) -> String {
     lines.rev().find_map(LogLine::parse).map_or_else(|| "no output".to_owned(), |line| line.message)
 }
@@ -287,6 +297,20 @@ mod tests {
         assert_eq!(instance.status, InstanceStatus::Running);
         assert_eq!(instance.memory_bytes, 8 * 1024 * 1024 * 1024);
         assert_eq!(instance.address, None);
+    }
+
+    #[test]
+    fn finds_its_own_profile_among_all_instances() {
+        let list = concat!(
+            r#"{"name":"default","status":"Running","arch":"aarch64","cpus":2}"#,
+            "\n",
+            r#"{"name":"containeria","status":"Stopped","arch":"aarch64","cpus":4}"#,
+            "\n",
+        );
+        let instance = find_instance(list, Profile::Containers).unwrap().unwrap();
+        assert_eq!((instance.status, instance.cpus), (InstanceStatus::Stopped, 4));
+        assert_eq!(find_instance(list, Profile::Machines).unwrap(), None);
+        assert_eq!(find_instance("", Profile::Containers).unwrap(), None);
     }
 
     #[test]

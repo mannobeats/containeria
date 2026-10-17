@@ -75,6 +75,13 @@ const phaseLine: Record<EnginePhase, string> = {
   external: "Using another engine",
 };
 
+function engineLine(phase: EnginePhase | undefined, failed: boolean): string {
+  if (phase) {
+    return phaseLine[phase];
+  }
+  return failed ? "Couldn't check the engine" : "Checking…";
+}
+
 function engineLabel(status: EngineStatus | undefined): string {
   if (!status) {
     return "Engine";
@@ -86,7 +93,7 @@ function engineLabel(status: EngineStatus | undefined): string {
 }
 
 function EngineCard() {
-  const { data: status } = useEngineStatus();
+  const { data: status, isError } = useEngineStatus();
   const control = useEngineControl();
   const phase = status?.phase;
   const serving = isServing(phase);
@@ -138,7 +145,7 @@ function EngineCard() {
               phase === "broken" && "text-bad-ink",
             )}
           >
-            {phase ? phaseLine[phase] : "Checking…"}
+            {engineLine(phase, isError)}
           </span>
         </span>
       </button>

@@ -3,14 +3,12 @@ import clsx from "clsx";
 
 import { useEngineEvents } from "@/app/use-engine-events";
 import { RunSheet } from "@/features/containers/run/run-sheet";
-import { isServing, useEngineStatus } from "@/features/engine/api";
-import { EngineOff } from "@/features/engine/engine-off";
+import { EngineGate } from "@/features/engine/engine-gate";
 import { useFirstLaunch } from "@/features/welcome/use-first-launch";
 import { Toaster } from "@/ui/toaster";
 import { TooltipProvider } from "@/ui/tooltip";
 
 import { CommandPalette } from "./command-palette";
-import { Page } from "./page";
 import { Sidebar } from "./sidebar";
 import { useUi } from "./ui-store";
 import { useMenuNavigation } from "./use-menu-navigation";
@@ -27,8 +25,6 @@ export function AppShell() {
   const leaf = matches.at(-1);
   const needsEngine = matches.some((match) => match.staticData.needsEngine);
   const bare = matches.some((match) => match.staticData.bare);
-  const { data: engine } = useEngineStatus();
-  const blocked = needsEngine && engine !== undefined && !isServing(engine.phase);
   return (
     <TooltipProvider>
       <div
@@ -46,16 +42,10 @@ export function AppShell() {
           <Sidebar />
         </div>
         <div className="relative flex min-h-0 min-w-0 flex-col bg-bg">
-          {blocked ? (
-            <Page
-              crumbs={
-                <b className="px-1 text-14 font-semibold text-ink">
-                  {leaf?.staticData.title ?? ""}
-                </b>
-              }
-            >
-              <EngineOff phase={engine.phase} />
-            </Page>
+          {needsEngine ? (
+            <EngineGate title={leaf?.staticData.title ?? ""}>
+              <Outlet />
+            </EngineGate>
           ) : (
             <Outlet />
           )}
