@@ -3,6 +3,7 @@ use std::sync::Arc;
 use containeria_net::Domains;
 
 use crate::engine::Engine;
+use crate::machines::MachinesEngine;
 use crate::metrics::Sampler;
 use crate::preferences::PreferencesStore;
 use crate::streams::Streams;
@@ -11,6 +12,7 @@ use crate::streams::Streams;
 pub(crate) struct AppState {
     pub(crate) engine: Arc<Engine>,
     pub(crate) domains: Arc<Domains>,
+    pub(crate) machines: MachinesEngine,
     pub(crate) metrics: Arc<Sampler>,
     pub(crate) preferences: PreferencesStore,
     pub(crate) streams: Streams,

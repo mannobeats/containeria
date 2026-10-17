@@ -42,7 +42,7 @@ describe("WelcomePage", () => {
     await userEvent.click(screen.getByRole("button", { name: "Copy 1 image" }));
     await waitFor(() =>
       expect(
-        calls.find((call) => call.command === "dockerDesktopImportImages")?.args["references"],
+        calls.find((call) => call.command === "dockerDesktopImportImages")?.args.references,
       ).toEqual(["postgres:18"]),
     );
     await userEvent.click(await screen.findByRole("button", { name: "Continue" }));

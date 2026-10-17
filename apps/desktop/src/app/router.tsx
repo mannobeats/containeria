@@ -87,10 +87,21 @@ const welcome = createRoute({
   ),
 });
 
+const machineDetail = createRoute({
+  getParentRoute: () => root,
+  path: "machines/$name",
+  staticData: { needsEngine: false, title: "Linux machine" },
+  validateSearch: tabSearch,
+  component: lazyRouteComponent(() =>
+    import("@/features/machines/machine-page").then((module) => ({ default: module.MachinePage })),
+  ),
+});
+
 const routeTree = root.addChildren([
   index,
   containers,
   containerDetail,
+  machineDetail,
   page("images", "Images", () =>
     import("@/features/images/images-page").then((module) => ({ default: module.ImagesPage })),
   ),

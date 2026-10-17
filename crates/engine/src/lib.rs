@@ -14,5 +14,5 @@ pub use colima::{Colima, Instance, InstanceStatus, RuntimeInfo};
 pub use config::{EngineConfig, K3S_DEFAULT_VERSION, Kubernetes, VmType};
 pub use error::{Error, Result};
 pub use home::{Home, Profile};
-pub use host::Host;
+pub use host::{Host, supports_nested_virtualization};
 pub use log_line::{LogLevel, LogLine};

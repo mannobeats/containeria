@@ -1,8 +1,8 @@
 use tauri::Wry;
 use tauri_specta::{Builder, ErrorHandlingMode, collect_commands, collect_events};
 
-use crate::commands::{containers, domains, engine, metrics, settings, streams, welcome};
-use crate::events::{DockerChanged, EngineChanged, MetricsUpdated, Navigate};
+use crate::commands::{containers, domains, engine, machines, metrics, settings, streams, welcome};
+use crate::events::{DockerChanged, EngineChanged, MachinesChanged, MetricsUpdated, Navigate};
 
 /// Every command and event the UI can use. `bindings.ts` is generated from this list.
 pub(crate) fn builder() -> Builder<Wry> {
@@ -37,8 +37,29 @@ pub(crate) fn builder() -> Builder<Wry> {
             domains::domains_uninstall_resolver,
             domains::domains_trust_ca,
             domains::domains_untrust_ca,
+            machines::machines_status,
+            machines::machines_start,
+            machines::machines_stop,
+            machines::machines_list,
+            machines::machine_get,
+            machines::machine_distros,
+            machines::machine_create,
+            machines::machine_act,
+            machines::machine_delete,
+            machines::machine_files,
+            machines::machine_file_download,
+            machines::machine_file_upload,
+            machines::machine_shell,
+            machines::machine_shell_input,
+            machines::machine_shell_resize,
         ])
-        .events(collect_events![EngineChanged, DockerChanged, MetricsUpdated, Navigate])
+        .events(collect_events![
+            EngineChanged,
+            DockerChanged,
+            MetricsUpdated,
+            Navigate,
+            MachinesChanged
+        ])
 }
 
 #[cfg(test)]

@@ -78,6 +78,12 @@ impl Home {
     pub fn docker_socket(&self) -> PathBuf {
         self.profile_dir(Profile::Containers).join("docker.sock")
     }
+
+    /// Colima forwards the Incus API of the machines profile here.
+    #[must_use]
+    pub fn incus_socket(&self) -> PathBuf {
+        self.profile_dir(Profile::Machines).join("incus.sock")
+    }
 }
 
 #[cfg(test)]
@@ -90,6 +96,10 @@ mod tests {
         assert_eq!(
             home.docker_socket(),
             PathBuf::from("/Users/ada/.containeria/colima/containeria/docker.sock")
+        );
+        assert_eq!(
+            home.incus_socket(),
+            PathBuf::from("/Users/ada/.containeria/colima/containeria-machines/incus.sock")
         );
         assert_eq!(
             home.config_file(Profile::Machines),

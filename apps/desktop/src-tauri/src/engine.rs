@@ -40,6 +40,20 @@ pub(crate) struct EngineStatus {
     pub(crate) docker_socket: String,
 }
 
+/// A profile's phase: a start or stop in progress wins over what Colima last reported.
+pub(crate) fn phase_of(
+    transition: Option<EnginePhase>,
+    instance: Option<&Instance>,
+) -> EnginePhase {
+    match (transition, instance.map(|instance| instance.status)) {
+        (Some(transition), _) => transition,
+        (None, None) => EnginePhase::NotCreated,
+        (None, Some(InstanceStatus::Running)) => EnginePhase::Running,
+        (None, Some(InstanceStatus::Stopped)) => EnginePhase::Stopped,
+        (None, Some(InstanceStatus::Broken | InstanceStatus::Unknown)) => EnginePhase::Broken,
+    }
+}
+
 /// The containers engine as the app sees it: Colima for the VM, Docker for what runs inside.
 #[derive(Debug)]
 pub(crate) struct Engine {
@@ -87,14 +101,7 @@ impl Engine {
         }
         let Some(colima) = &self.colima else { return Ok((EnginePhase::Missing, None)) };
         let instance = colima.instance(Profile::Containers).await?;
-        let phase = match (self.transition(), instance.as_ref().map(|instance| instance.status)) {
-            (Some(transition), _) => transition,
-            (None, None) => EnginePhase::NotCreated,
-            (None, Some(InstanceStatus::Running)) => EnginePhase::Running,
-            (None, Some(InstanceStatus::Stopped)) => EnginePhase::Stopped,
-            (None, Some(InstanceStatus::Broken | InstanceStatus::Unknown)) => EnginePhase::Broken,
-        };
-        Ok((phase, instance))
+        Ok((phase_of(self.transition(), instance.as_ref()), instance))
     }
 
     /// The settings in the containers profile's `colima.yaml`, or the defaults before first start.

@@ -25,6 +25,7 @@ bytes = "1.12.1"
 clap = { version = "4.6.7", features = ["derive"] }
 futures = "0.3.34"
 hickory-proto = "0.26.3"
+http = "1.5.0"
 http-body-util = "0.1.5"
 hyper = { version = "1.12.0", features = ["client", "http1", "server"] }
 hyper-util = { version = "0.1.21", features = ["tokio"] }
@@ -49,6 +50,7 @@ thiserror = "2.0.21"
 time = "0.3.55"
 tokio = { version = "1.53.3", features = ["rt-multi-thread", "macros", "net", "process", "fs", "io-util", "sync", "time"] }
 tokio-rustls = { version = "0.26.6", default-features = false, features = ["ring", "tls12"] }
+tokio-tungstenite = "0.30.0"
 tokio-util = "0.7.20"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }

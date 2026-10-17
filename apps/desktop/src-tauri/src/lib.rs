@@ -6,6 +6,7 @@ mod engine;
 mod error;
 mod events;
 mod ipc;
+mod machines;
 mod menu;
 mod metrics;
 mod preferences;
@@ -20,6 +21,7 @@ use containeria_net::Domains;
 use tauri::{AppHandle, Manager, RunEvent, Window, WindowEvent};
 
 use crate::engine::Engine;
+use crate::machines::MachinesEngine;
 use crate::metrics::Sampler;
 use crate::preferences::PreferencesStore;
 use crate::state::AppState;
@@ -53,6 +55,7 @@ pub fn run() -> tauri::Result<()> {
             ipc.mount_events(app);
             let bundled = app.path().resource_dir().ok().map(|dir| dir.join("bin/colima"));
             let engine = Arc::new(Engine::new(bundled.as_deref())?);
+            let machines = MachinesEngine::new(Home::from_env()?, bundled.as_deref());
             let metrics = Arc::new(Sampler::default());
             let (watcher, handle) = (Arc::clone(&engine), app.handle().clone());
             tauri::async_runtime::spawn(async move { watcher.watch(handle).await });
@@ -68,6 +71,7 @@ pub fn run() -> tauri::Result<()> {
             app.manage(AppState {
                 engine,
                 domains,
+                machines,
                 metrics,
                 preferences,
                 streams: Streams::default(),

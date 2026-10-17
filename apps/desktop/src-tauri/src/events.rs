@@ -11,6 +11,10 @@ pub(crate) struct EngineChanged;
 #[derive(Debug, Clone, Serialize, specta::Type, tauri_specta::Event)]
 pub(crate) struct DockerChanged(pub(crate) DockerEvent);
 
+/// The machines VM or a machine changed; refetch machines.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+pub(crate) struct MachinesChanged;
+
 /// A fresh CPU and memory sample, about every two seconds while the engine runs.
 #[derive(Debug, Clone, Serialize, specta::Type, tauri_specta::Event)]
 pub(crate) struct MetricsUpdated(pub(crate) Metrics);
