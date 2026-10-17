@@ -37,6 +37,12 @@ a component it exists to share (the memory ledger). `ui/` never imports from `fe
   puts a `rowLink` link with `data-row-link` in its first cell, inside a `Table` (or a table with
   `ref={openRowOnClick}`), never `onClick` on `tr`. Don't stretch an `::after` over a row: WebKit
   doesn't contain it in a `tr`, so it covers the whole table.
+- Right-click: anything with actions (a row, a card, a file, a tab) opens a menu. Build one
+  `MenuEntry[]` (in a `*-menu.ts` or `*-actions.ts`) and pass it to both the row's ⋯ `Menu` and a
+  `ContextMenu` around the row. `ContextMenu` is a Radix `asChild` trigger, so the child must be a
+  DOM element or a component that spreads its props onto one (`Row` does); otherwise right-click
+  silently does nothing. Order entries as macOS does: primary action, other actions, copies,
+  destructive last with `danger` and a `…` when it asks first.
 
 ## Styling
 
@@ -51,6 +57,8 @@ a component it exists to share (the memory ledger). `ui/` never imports from `fe
 - Icons: Tabler (`@tabler/icons-react`) for actions, `CxIcon` for Containeria's own objects, `Tile`
   with `logoFor(...)` for brands. Never draw a logo or a letter monogram.
 - Copy is sentence case, says what happened or what to do, and never uses a status dot in a chip.
+  Menu items are the exception: Title Case, as in every macOS menu ("Copy Name", "Show in
+  Finder"), with short prepositions and command names (`docker`, `curl`) left lowercase.
 
 ## Design source
 

@@ -53,7 +53,7 @@ export function CommandPalette() {
   const { data: containers } = useContainers();
   const dark = useIsDark();
   const setImageSheet = useImageSheet((state) => state.setSheet);
-  const openImages = (sheet: "pull" | "prune") => {
+  const openImages = (sheet: "pull" | "prune" | "build") => {
     navigate({ to: "/images" }).catch(() => undefined);
     setImageSheet(sheet);
   };
@@ -97,7 +97,7 @@ export function CommandPalette() {
                   icon="container"
                   label="Run container…"
                   hint={<Kbd>⌘N</Kbd>}
-                  onSelect={run(showRunSheet)}
+                  onSelect={run(() => showRunSheet())}
                 />
                 <Item
                   icon="container"
@@ -114,6 +114,7 @@ export function CommandPalette() {
               </Command.Group>
               <Command.Group heading="Images" className={groupClass}>
                 <Item icon="image" label="Pull image…" onSelect={run(() => openImages("pull"))} />
+                <Item icon="image" label="Build image…" onSelect={run(() => openImages("build"))} />
                 <Item
                   icon="image"
                   label="Clean up unused images"

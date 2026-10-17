@@ -232,6 +232,21 @@ impl Docker {
         Ok(self.api.tag_image(id, Some(options)).await?)
     }
 
+    /// Writes the image to `path` as a `docker save` archive another engine can load.
+    ///
+    /// # Errors
+    /// Fails when the image doesn't exist or the file can't be written.
+    pub async fn export_image(&self, reference: &str, path: &std::path::Path) -> Result<()> {
+        use tokio::io::AsyncWriteExt;
+        let mut file = tokio::fs::File::create(path).await?;
+        let mut chunks = std::pin::pin!(self.api.export_image(reference));
+        while let Some(chunk) = chunks.next().await {
+            file.write_all(&chunk?).await?;
+        }
+        file.flush().await?;
+        Ok(())
+    }
+
     /// Deletes images no container uses. With `all` off, only dangling build layers go.
     ///
     /// # Errors

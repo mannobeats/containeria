@@ -1,4 +1,4 @@
-import { IconDownload, IconTrash } from "@tabler/icons-react";
+import { IconDownload, IconHammer, IconTrash } from "@tabler/icons-react";
 import { type ReactNode, useState } from "react";
 
 import { useContainers } from "@/features/containers/api";
@@ -12,10 +12,12 @@ import { Lede, PageHeading } from "@/ui/page-heading";
 import { Segmented } from "@/ui/segmented";
 import { HeadRow, Table } from "@/ui/table";
 import { Tile } from "@/ui/tile";
+import { Tip } from "@/ui/tooltip";
 import { UsageBar, UsageLegend } from "@/ui/usage-bar";
 
 import { useImages } from "./api";
-import { type ImageDialog, ImageDialogs } from "./image-dialogs";
+import type { ImageDialog } from "./image-actions";
+import { ImageDialogs } from "./image-dialogs";
 import { type ImageHandlers, ImageRow } from "./image-row";
 import { type ImageFilter, type ImageStats, imageStats, matchesImage, usersOf } from "./model";
 import { useImageSheet } from "./sheet-store";
@@ -133,12 +135,7 @@ function ImageList({ images, stats, onDialog, pull }: ImageListProps) {
         {visible.length === 0 ? (
           <EmptyState title="No images match this filter" />
         ) : (
-          <ImageTable
-            images={visible}
-            containers={containers ?? []}
-            onTag={(image) => onDialog({ kind: "tag", image })}
-            onDelete={(image) => onDialog({ kind: "delete", image })}
-          />
+          <ImageTable images={visible} containers={containers ?? []} onDialog={onDialog} />
         )}
       </div>
     </>
@@ -148,13 +145,22 @@ function ImageList({ images, stats, onDialog, pull }: ImageListProps) {
 export function ImagesPage() {
   const { data: images } = useImages();
   const setSheet = useImageSheet((state) => state.setSheet);
+  const openBuild = useImageSheet((state) => state.openBuild);
   const [dialog, setDialog] = useState<ImageDialog | null>(null);
   const stats = imageStats(images ?? []);
   const pull = (
-    <Button variant="brand" onClick={() => setSheet("pull")}>
-      <IconDownload />
-      Pull image
-    </Button>
+    <span className="flex gap-2">
+      <Tip label="Build from a Dockerfile, or drop one on the window">
+        <Button onClick={() => openBuild()}>
+          <IconHammer />
+          Build…
+        </Button>
+      </Tip>
+      <Button variant="brand" onClick={() => setSheet("pull")}>
+        <IconDownload />
+        Pull image
+      </Button>
+    </span>
   );
   return (
     <Page crumbs={<Crumb>Images</Crumb>}>
@@ -165,7 +171,7 @@ export function ImagesPage() {
           className="h-full"
           actions={pull}
         >
-          Images you pull or build show up here.
+          Images you pull or build show up here. Drop a Dockerfile on the window to build one.
         </EmptyState>
       ) : (
         <ImageList images={images ?? []} stats={stats} onDialog={setDialog} pull={pull} />

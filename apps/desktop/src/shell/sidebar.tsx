@@ -104,23 +104,23 @@ function EngineCard() {
     },
     serving
       ? {
-          label: "Stop engine",
+          label: "Stop Engine",
           onSelect: () => control.mutate("stop"),
           disabled: phase === "external",
         }
       : {
-          label: "Start engine",
+          label: "Start Engine",
           onSelect: () => control.mutate("start"),
           disabled: phase === "missing",
         },
     {
-      label: "Restart engine",
+      label: "Restart Engine",
       onSelect: () => control.mutate("restart"),
       disabled: phase !== "running",
     },
     { kind: "separator" },
     {
-      label: "Copy Docker socket path",
+      label: "Copy Docker Socket Path",
       onSelect: () => {
         const socket = status?.dockerSocket ?? "";
         writeText(socket)

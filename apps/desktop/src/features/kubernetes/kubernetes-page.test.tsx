@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
@@ -112,8 +112,40 @@ describe("KubernetesPage", () => {
   it("deletes a pod from its menu", async () => {
     const calls = setup();
     await userEvent.click(await screen.findByRole("button", { name: "More for checkout-7d9f-x2" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Delete pod…" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Delete Pod…" }));
     await userEvent.click(await screen.findByRole("button", { name: "Delete pod" }));
     await called(calls, "kubernetesDeletePod");
+  });
+  it("deletes a pod from its right-click menu", async () => {
+    const calls = setup();
+    fireEvent.contextMenu(await screen.findByRole("row", { name: /checkout-7d9f-x2/ }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Delete Pod…" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Delete pod" }));
+    await called(calls, "kubernetesDeletePod");
+  });
+
+  it("restarts a deployment from its right-click menu", async () => {
+    const calls = setup({ url: "/kubernetes?tab=deployments" });
+    fireEvent.contextMenu(await screen.findByRole("row", { name: /storefront/ }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Restart Rollout" }));
+    await called(calls, "kubernetesRestartDeployment");
+  });
+
+  it("copies a service address from its right-click menu", async () => {
+    const calls = setup({ url: "/kubernetes?tab=services" });
+    fireEvent.contextMenu(await screen.findByRole("row", { name: /orders-db/ }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Copy Address" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual(
+        expect.objectContaining({ args: expect.objectContaining({ text: "orders-db.shop.svc" }) }),
+      ),
+    );
+  });
+
+  it("opens a config map from its right-click menu", async () => {
+    setup({ url: "/kubernetes?tab=config" });
+    fireEvent.contextMenu(await screen.findByRole("row", { name: /db-credentials/ }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Open" }));
+    expect(await screen.findByRole("dialog")).toBeDefined();
   });
 });

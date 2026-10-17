@@ -19,6 +19,10 @@ const HANDLERS: Record<MenuCommand, (go: Go) => void> = {
     go("/images");
     useImageSheet.getState().setSheet("pull");
   },
+  buildImage: (go) => {
+    go("/images");
+    useImageSheet.getState().openBuild();
+  },
   newMachine: (go) => {
     go("/machines");
     useNewMachineSheet.getState().setOpen(true);

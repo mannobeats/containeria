@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -93,10 +93,41 @@ describe("DataPage", () => {
   it("asks before removing a saved connection", async () => {
     const calls = setup();
     await userEvent.click(await screen.findByRole("button", { name: "More for billing" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Remove connection…" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Remove Connection…" }));
     await userEvent.click(await screen.findByRole("button", { name: "Remove connection" }));
     await waitFor(() =>
       expect(calls).toContainEqual({ command: "dataRemoveConnection", args: { id: "pg" } }),
+    );
+  });
+
+  it("removes a saved connection from its right-click menu", async () => {
+    const calls = setup();
+    fireEvent.contextMenu(await screen.findByRole("row", { name: /billing/ }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Remove Connection…" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Remove connection" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({ command: "dataRemoveConnection", args: { id: "pg" } }),
+    );
+  });
+
+  it("copies a detected database's address from its right-click menu", async () => {
+    const calls = setup();
+    fireEvent.contextMenu(await screen.findByRole("row", { name: /shop-db-1/ }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Copy Address" }));
+    await waitFor(() =>
+      expect(calls.find((call) => String(call.command).endsWith("writeText"))?.args).toMatchObject({
+        text: "localhost:5433",
+      }),
+    );
+  });
+
+  it("deletes a saved query from its right-click menu after asking", async () => {
+    const calls = setup();
+    fireEvent.contextMenu(await screen.findByRole("button", { name: "Late invoices" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Delete…" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Delete query" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({ command: "dataDeleteQuery", args: { id: "s1" } }),
     );
   });
 
@@ -147,7 +178,7 @@ describe("ConnectionSheet", () => {
   it("edits a saved connection without asking for its password again", async () => {
     setup();
     await userEvent.click(await screen.findByRole("button", { name: "More for billing" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Edit connection…" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Edit Connection…" }));
     const sheet = await screen.findByRole("dialog", { name: "Edit billing" });
     expect(within(sheet).getByText("Saved in your Keychain. Type to replace it.")).toBeDefined();
     expect(within(sheet).queryByRole("button", { name: "Change engine" })).toBeNull();

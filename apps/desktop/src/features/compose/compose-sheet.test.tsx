@@ -7,7 +7,6 @@ import { mockCommands, renderWithApp, sendToChannel } from "@/test/harness";
 import { ComposeRunSheet } from "./compose-run-sheet";
 import { ComposeSheet } from "./compose-sheet";
 import { fileDraft, newDraft } from "./model";
-import { ProjectMenu } from "./project-menu";
 import { useCompose } from "./store";
 
 const sheets = (
@@ -112,44 +111,5 @@ describe("ComposeSheet", () => {
     expect(await screen.findByText("port 8080 is already allocated")).toBeDefined();
     await userEvent.click(screen.getByRole("button", { name: "Edit File" }));
     expect(await screen.findByRole("dialog", { name: "Deploy a Compose project" })).toBeDefined();
-  });
-});
-
-describe("ProjectMenu", () => {
-  it("asks before removing a project, and can take its volumes too", async () => {
-    const calls = setup();
-    renderWithApp(
-      <>
-        <ProjectMenu project="shop" />
-        {sheets}
-      </>,
-    );
-    await userEvent.click(await screen.findByRole("button", { name: "More for shop" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Remove Project…" }));
-    await userEvent.click(screen.getByRole("checkbox", { name: "Also delete its volumes" }));
-    await userEvent.click(screen.getByRole("button", { name: "Remove Project" }));
-    await waitFor(() =>
-      expect(calls).toContainEqual(
-        expect.objectContaining({
-          command: "composeAct",
-          args: expect.objectContaining({ project: "shop", verb: "downWithVolumes" }),
-        }),
-      ),
-    );
-  });
-
-  it("rebuilds a project", async () => {
-    const calls = setup();
-    renderWithApp(<ProjectMenu project="shop" />);
-    await userEvent.click(await screen.findByRole("button", { name: "More for shop" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Rebuild and Restart" }));
-    await waitFor(() =>
-      expect(calls).toContainEqual(
-        expect.objectContaining({
-          command: "composeAct",
-          args: expect.objectContaining({ verb: "rebuild" }),
-        }),
-      ),
-    );
   });
 });

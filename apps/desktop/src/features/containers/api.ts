@@ -35,6 +35,28 @@ type Act = {
   label?: string;
 };
 
+type Recreate = { id: string; name: string; pull: boolean };
+
+/**
+ * Creates a container again from its own settings, so changed engine settings or, with `pull`,
+ * a newer image take effect. Resolves to the new container's ID.
+ */
+export function useRecreate() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, pull }: Recreate) => commands.containerRecreate(id, pull),
+    onMutate: ({ name }) => toast.loading(`Recreating ${name}…`),
+    onSuccess: (_, { name }, loading) =>
+      toast.success(`Recreated ${name}`, loading === undefined ? {} : { id: loading }),
+    onError: (error, _, loading) =>
+      toast.error("Couldn't recreate the container", {
+        description: errorMessage(error),
+        ...(loading === undefined ? {} : { id: loading }),
+      }),
+    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.containers }),
+  });
+}
+
 /** Runs one action on one or more containers and says what happened. */
 export function useContainerAction() {
   const client = useQueryClient();

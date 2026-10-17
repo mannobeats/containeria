@@ -2,12 +2,14 @@ import { IconKey, IconTrash } from "@tabler/icons-react";
 import clsx from "clsx";
 import { useState } from "react";
 
+import { copyText } from "@/lib/clipboard";
 import type { RedisValue, ServerInfo } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
 import { Chip } from "@/ui/chip";
 import { ConfirmSheet } from "@/ui/confirm-sheet";
 import { EmptyState } from "@/ui/empty-state";
 import { IconAction } from "@/ui/icon-action";
+import { ContextMenu } from "@/ui/menu";
 import { SearchField } from "@/ui/search-field";
 
 import { useDeleteRedisKey, useRedisKeys, useRedisValue } from "../api";
@@ -64,35 +66,24 @@ function ValueBody({ value }: { value: RedisValue }) {
 function KeyValue({
   info,
   name,
-  onDeleted,
+  onDelete,
 }: {
   info: ServerInfo;
   name: string;
-  onDeleted: () => void;
+  onDelete: () => void;
 }) {
   const value = useRedisValue(info.id, name);
-  const remove = useDeleteRedisKey(info.id);
-  const [confirming, setConfirming] = useState(false);
   return (
     <div className="flex min-h-0 min-w-0 flex-col">
       <div className="flex shrink-0 items-center gap-3 border-b-[0.5px] border-line py-3 pr-3 pl-5">
         <b className="min-w-0 flex-1 truncate font-mono text-14 text-ink">{name}</b>
-        <IconAction label="Delete key" disabled={info.readOnly} onClick={() => setConfirming(true)}>
+        <IconAction label="Delete key" disabled={info.readOnly} onClick={onDelete}>
           <IconTrash />
         </IconAction>
       </div>
       <div className="min-h-0 flex-1 overflow-auto">
         {value.data ? <ValueBody value={value.data} /> : null}
       </div>
-      <ConfirmSheet
-        open={confirming}
-        onOpenChange={setConfirming}
-        title={`Delete ${name}?`}
-        action="Delete key"
-        onConfirm={() => remove.mutate(name, { onSuccess: onDeleted })}
-      >
-        The key and its value are removed right away.
-      </ConfirmSheet>
     </div>
   );
 }
@@ -101,6 +92,8 @@ function KeyValue({
 export function RedisView({ info }: { info: ServerInfo }) {
   const [pattern, setPattern] = useState("*");
   const [selected, setSelected] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const remove = useDeleteRedisKey(info.id);
   const keys = useRedisKeys(info.id, pattern);
   const all = keys.data?.pages.flatMap((page) => page.keys) ?? [];
   return (
@@ -119,23 +112,38 @@ export function RedisView({ info }: { info: ServerInfo }) {
       <div className="grid min-h-0 flex-1 grid-cols-[380px_minmax(0,1fr)]">
         <div className="overflow-auto border-r-[0.5px] border-line px-1.5 py-1">
           {all.map((key) => (
-            <button
+            <ContextMenu
               key={key.key}
-              type="button"
-              onClick={() => setSelected(key.key)}
-              className={clsx(
-                "flex h-8 w-full items-center gap-2 rounded-sm px-2 text-left transition-colors duration-140 hover:bg-hover",
-                selected === key.key && "bg-select",
-              )}
+              entries={[
+                { label: "Open", onSelect: () => setSelected(key.key) },
+                { kind: "separator" },
+                { label: "Copy key", onSelect: () => copyText("Key", key.key) },
+                { kind: "separator" },
+                {
+                  label: "Delete…",
+                  danger: true,
+                  disabled: info.readOnly,
+                  onSelect: () => setDeleting(key.key),
+                },
+              ]}
             >
-              <Chip tone="line" className="w-[68px] justify-center text-11">
-                {key.kind}
-              </Chip>
-              <span className="min-w-0 flex-1 truncate font-mono text-mono-12 text-ink">
-                {key.key}
-              </span>
-              <span className="text-12 text-ink-3 tabular">{ttlText(key.ttlSeconds)}</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setSelected(key.key)}
+                className={clsx(
+                  "flex h-8 w-full items-center gap-2 rounded-sm px-2 text-left transition-colors duration-140 hover:bg-hover data-[state=open]:bg-hover",
+                  selected === key.key && "bg-select",
+                )}
+              >
+                <Chip tone="line" className="w-[68px] justify-center text-11">
+                  {key.kind}
+                </Chip>
+                <span className="min-w-0 flex-1 truncate font-mono text-mono-12 text-ink">
+                  {key.key}
+                </span>
+                <span className="text-12 text-ink-3 tabular">{ttlText(key.ttlSeconds)}</span>
+              </button>
+            </ContextMenu>
           ))}
           {keys.hasNextPage ? (
             <Button
@@ -154,7 +162,7 @@ export function RedisView({ info }: { info: ServerInfo }) {
             key={selected}
             info={info}
             name={selected}
-            onDeleted={() => setSelected(null)}
+            onDelete={() => setDeleting(selected)}
           />
         ) : (
           <EmptyState
@@ -163,6 +171,22 @@ export function RedisView({ info }: { info: ServerInfo }) {
           />
         )}
       </div>
+      <ConfirmSheet
+        open={deleting !== null}
+        onOpenChange={(open) => (open ? undefined : setDeleting(null))}
+        title={`Delete ${deleting ?? "this key"}?`}
+        action="Delete key"
+        onConfirm={() => {
+          if (deleting) {
+            remove.mutate(deleting, {
+              onSuccess: () => setSelected((current) => (current === deleting ? null : current)),
+            });
+          }
+          setDeleting(null);
+        }}
+      >
+        The key and its value are removed right away.
+      </ConfirmSheet>
     </div>
   );
 }

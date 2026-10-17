@@ -14,6 +14,7 @@ import { useState } from "react";
 import type { ServerInfo } from "@/lib/ipc/bindings";
 import { ConfirmSheet } from "@/ui/confirm-sheet";
 import { IconAction } from "@/ui/icon-action";
+import { ContextMenu } from "@/ui/menu";
 
 import { EMPTY_PENDING, pendingCount } from "./model";
 import { useOpenTab } from "./tabs";
@@ -52,6 +53,22 @@ export function WorkspaceTabs({ info, tabs, active }: TabsProps) {
       }).catch(() => undefined);
     }
   };
+  const ask = (tab: Tab) => (changes(tab) > 0 ? setDiscarding(tab) : close(tab));
+  /** Tabs with staged changes stay open: closing them would throw the changes away unasked. */
+  const closeOthers = (keep: Tab) => {
+    for (const other of tabs) {
+      if (other.key !== keep.key && changes(other) === 0) {
+        closeTab(info.id, other.key);
+      }
+    }
+    if (keep.key !== active) {
+      navigate({
+        to: "/data/$connection",
+        params: { connection: info.id },
+        search: { tab: keep.key },
+      }).catch(() => undefined);
+    }
+  };
   return (
     <div
       role="tablist"
@@ -63,40 +80,51 @@ export function WorkspaceTabs({ info, tabs, active }: TabsProps) {
         const count = changes(tab);
         const selected = tab.key === active;
         return (
-          <span
+          <ContextMenu
             key={tab.key}
-            className={clsx(
-              "group/tab relative inline-flex h-[30px] max-w-[220px] shrink-0 items-center gap-1.5 rounded-t-[7px] pr-1.5 pl-2.5 text-12 font-medium transition-colors duration-140",
-              selected
-                ? "bg-bg text-ink shadow-[0_0_0_0.5px_var(--line),0_1px_0_var(--bg)] [&>a_.tabler-icon]:text-brand"
-                : "text-ink-3 hover:bg-hover hover:text-ink",
-            )}
+            entries={[
+              { label: "Close tab", onSelect: () => ask(tab) },
+              {
+                label: "Close other tabs",
+                disabled: tabs.length < 2,
+                onSelect: () => closeOthers(tab),
+              },
+            ]}
           >
-            <Link
-              role="tab"
-              aria-selected={selected}
-              to="/data/$connection"
-              params={{ connection: info.id }}
-              search={{ tab: tab.key }}
-              className="inline-flex min-w-0 items-center gap-1.5 text-inherit no-underline [&_.tabler-icon]:size-3.5"
+            <span
+              className={clsx(
+                "group/tab relative inline-flex h-[30px] max-w-[220px] shrink-0 items-center gap-1.5 rounded-t-[7px] pr-1.5 pl-2.5 text-12 font-medium transition-colors duration-140",
+                selected
+                  ? "bg-bg text-ink shadow-[0_0_0_0.5px_var(--line),0_1px_0_var(--bg)] [&>a_.tabler-icon]:text-brand"
+                  : "text-ink-3 hover:bg-hover hover:text-ink data-[state=open]:bg-hover",
+              )}
             >
-              <Icon aria-hidden />
-              <span className="truncate">{tab.title}</span>
-            </Link>
-            {count > 0 ? (
-              <span className="inline-grid h-4 min-w-4 place-items-center rounded-xs bg-brand-soft px-1 text-[10.5px] font-semibold text-brand-ink tabular">
-                {count}
-              </span>
-            ) : null}
-            <button
-              type="button"
-              aria-label={`Close ${tab.title}`}
-              onClick={() => (count > 0 ? setDiscarding(tab) : close(tab))}
-              className="inline-grid size-[18px] place-items-center rounded-xs text-ink-3 opacity-0 transition-opacity duration-140 group-hover/tab:opacity-100 hover:bg-press hover:text-ink focus-visible:opacity-100 [&_.tabler-icon]:size-3"
-            >
-              <IconX aria-hidden />
-            </button>
-          </span>
+              <Link
+                role="tab"
+                aria-selected={selected}
+                to="/data/$connection"
+                params={{ connection: info.id }}
+                search={{ tab: tab.key }}
+                className="inline-flex min-w-0 items-center gap-1.5 text-inherit no-underline [&_.tabler-icon]:size-3.5"
+              >
+                <Icon aria-hidden />
+                <span className="truncate">{tab.title}</span>
+              </Link>
+              {count > 0 ? (
+                <span className="inline-grid h-4 min-w-4 place-items-center rounded-xs bg-brand-soft px-1 text-[10.5px] font-semibold text-brand-ink tabular">
+                  {count}
+                </span>
+              ) : null}
+              <button
+                type="button"
+                aria-label={`Close ${tab.title}`}
+                onClick={() => ask(tab)}
+                className="inline-grid size-[18px] place-items-center rounded-xs text-ink-3 opacity-0 transition-opacity duration-140 group-hover/tab:opacity-100 hover:bg-press hover:text-ink focus-visible:opacity-100 [&_.tabler-icon]:size-3"
+              >
+                <IconX aria-hidden />
+              </button>
+            </span>
+          </ContextMenu>
         );
       })}
       {info.capabilities.sql ? (

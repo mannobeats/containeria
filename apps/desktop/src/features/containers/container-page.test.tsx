@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -162,7 +162,7 @@ describe("ContainerPage actions", () => {
   it("refuses an invalid image name when committing", async () => {
     const calls = renderPage();
     await userEvent.click(await screen.findByRole("button", { name: "More for shop-db-1" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Commit to image…" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Commit to Image…" }));
     const reference = await screen.findByRole("textbox", { name: "Image name and tag" });
     await userEvent.clear(reference);
     await userEvent.type(reference, "Not Valid");
@@ -227,6 +227,20 @@ describe("ContainerPage tabs", () => {
         args: { id: "db0123456789abcdef", directory: "/", sources: ["/Users/ada/notes.txt"] },
       });
     });
+  });
+
+  it("opens folders and copies paths from a file's right-click menu", async () => {
+    const calls = renderPage("files");
+    fireEvent.contextMenu(await screen.findByRole("button", { name: "hello.txt" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Copy Path" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual(
+        expect.objectContaining({ args: expect.objectContaining({ text: "/hello.txt" }) }),
+      ),
+    );
+    fireEvent.contextMenu(screen.getByRole("button", { name: "etc" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Open" }));
+    expect(await screen.findByText("hosts")).toBeDefined();
   });
 
   it("opens a shell, types into it and reconnects when it exits", async () => {

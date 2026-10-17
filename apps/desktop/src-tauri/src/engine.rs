@@ -3,7 +3,7 @@ use std::pin::pin;
 use std::sync::{Mutex, PoisonError};
 use std::time::Duration;
 
-use containeria_docker::{Compose, Docker};
+use containeria_docker::{Compose, Docker, DockerCli};
 use containeria_engine::{
     Colima, EngineConfig, Home, Instance, InstanceStatus, KubernetesAction, LogLine, Profile,
 };
@@ -62,6 +62,7 @@ pub(crate) struct Engine {
     home: Home,
     colima: Option<Colima>,
     compose: Option<Compose>,
+    docker_cli: Option<DockerCli>,
     external_socket: Option<PathBuf>,
     docker: RwLock<Option<Docker>>,
     transition: Mutex<Option<EnginePhase>>,
@@ -79,10 +80,12 @@ impl Engine {
         let external_socket = std::env::var_os("CONTAINERIA_DOCKER_SOCKET").map(PathBuf::from);
         let socket = external_socket.clone().unwrap_or_else(|| home.docker_socket());
         let compose = Compose::locate(&socket, bundled("docker-compose").as_deref());
+        let docker_cli = DockerCli::locate(&socket, bundled("docker").as_deref());
         Ok(Self {
             home,
             colima,
             compose,
+            docker_cli,
             external_socket,
             docker: RwLock::new(None),
             transition: Mutex::new(None),
@@ -208,6 +211,19 @@ impl Engine {
             CommandError::new(
                 ErrorKind::EngineMissing,
                 "Docker Compose wasn't found. Install it with `brew install docker-compose`.",
+            )
+        })
+    }
+
+    /// The Docker CLI, pointed at this engine, for builds and pushes.
+    ///
+    /// # Errors
+    /// Fails with `EngineMissing` when the CLI isn't bundled or installed.
+    pub(crate) fn docker_cli(&self) -> Result<DockerCli> {
+        self.docker_cli.clone().ok_or_else(|| {
+            CommandError::new(
+                ErrorKind::EngineMissing,
+                "The Docker command-line tool wasn't found. Install it with `brew install docker`.",
             )
         })
     }

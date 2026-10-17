@@ -13,7 +13,7 @@ const DOCS: &str = "https://github.com/mannobeats/containeria#readme";
 const ISSUES: &str = "https://github.com/mannobeats/containeria/issues/new/choose";
 
 /// File menu items the main window handles, with their ids and shortcuts.
-const COMMANDS: [(MenuCommand, &str, &str, Option<&str>); 6] = [
+const COMMANDS: [(MenuCommand, &str, &str, Option<&str>); 7] = [
     (MenuCommand::RunContainer, "command:run", "Run Container…", Some("CmdOrCtrl+N")),
     (
         MenuCommand::NewComposeProject,
@@ -28,6 +28,7 @@ const COMMANDS: [(MenuCommand, &str, &str, Option<&str>); 6] = [
         Some("CmdOrCtrl+O"),
     ),
     (MenuCommand::PullImage, "command:pull", "Pull Image…", None),
+    (MenuCommand::BuildImage, "command:build", "Build Image…", Some("CmdOrCtrl+B")),
     (MenuCommand::NewMachine, "command:machine", "New Linux Machine…", None),
     (MenuCommand::NewConnection, "command:connection", "New Database Connection…", None),
 ];

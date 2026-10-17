@@ -1,7 +1,8 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
-import { renderWithApp } from "@/test/harness";
+import { mockCommands, renderWithApp } from "@/test/harness";
 
 import { TopConsumers } from "./top-consumers";
 
@@ -26,5 +27,15 @@ describe("TopConsumers", () => {
       "/kubernetes/pods/default/web-7d9",
     );
     expect(screen.getByRole("link", { name: "proxy" }).getAttribute("href")).toBe("/containers/b");
+  });
+
+  it("opens a container's logs from its right-click menu", async () => {
+    mockCommands({});
+    const { router } = renderWithApp(
+      <TopConsumers consumers={[{ ...consumer, id: "b", name: "proxy", pod: null }]} />,
+    );
+    fireEvent.contextMenu(await screen.findByRole("row", { name: /proxy/ }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Logs" }));
+    await waitFor(() => expect(router.state.location.href).toBe("/containers/b?tab=logs"));
   });
 });

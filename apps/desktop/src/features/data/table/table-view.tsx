@@ -126,6 +126,16 @@ type GridAreaProps = {
   edits: ReturnType<typeof useTableEdits>;
 };
 
+/** Filters on one cell's value, replacing any filter already on its column. */
+function filterByValue(filters: GridView["filters"], column: Column, value: Value | null) {
+  return [
+    ...filters.filter((filter) => filter.column !== column.name),
+    value === null
+      ? { column: column.name, op: "isNull" as const, value: null }
+      : { column: column.name, op: "equals" as const, value: cellText(value) },
+  ];
+}
+
 /** The grid with its footer, the staged-changes bar and the optional row inspector. */
 function GridArea({ info, table, view, setView, page, edits }: GridAreaProps) {
   const selection = useIdSet();
@@ -136,11 +146,27 @@ function GridArea({ info, table, view, setView, page, edits }: GridAreaProps) {
   const rows = gridRows(columns, page.data?.rows ?? [], edits.pending, offset);
   const editable = page.data?.readOnlyReason === null;
   const step = (direction: 1 | -1) => setActive(stepRow(active, direction, rows.length));
+  const writes = editable
+    ? {
+        onEdit: edits.edit,
+        onDelete: (row: (typeof rows)[number]) => edits.toggleDelete([row]),
+        onAddRow: edits.addRow,
+      }
+    : {};
+  const inspector = view.inspector ? (
+    <RowInspector
+      table={table.name}
+      columns={columns}
+      row={active ? rows[active.row] : undefined}
+      onStep={step}
+      onClose={() => setView({ inspector: false })}
+    />
+  ) : null;
   return (
     <div
       className={clsx(
         "grid min-h-0 flex-1",
-        view.inspector ? "grid-cols-[minmax(0,1fr)_300px]" : "grid-cols-1",
+        inspector ? "grid-cols-[minmax(0,1fr)_300px]" : "grid-cols-1",
       )}
     >
       <div className="relative flex min-h-0 min-w-0 flex-col">
@@ -157,8 +183,13 @@ function GridArea({ info, table, view, setView, page, edits }: GridAreaProps) {
             onToggleRow={(row) => selection.toggle(row.id)}
             active={active}
             onActive={setActive}
-            onEdit={editable ? edits.edit : undefined}
+            onEdit={writes.onEdit}
             onJump={follow}
+            table={table.name}
+            onFilter={(column, value) =>
+              setView({ filters: filterByValue(view.filters, column, value), page: 0 })
+            }
+            onDelete={writes.onDelete}
           />
         ) : (
           <NoRows
@@ -177,7 +208,7 @@ function GridArea({ info, table, view, setView, page, edits }: GridAreaProps) {
             edits.toggleDelete(rows.filter((row) => selection.ids.has(row.id)));
             selection.clear();
           }}
-          onAddRow={editable ? edits.addRow : undefined}
+          onAddRow={writes.onAddRow}
         />
         <PendingBar
           count={edits.count}
@@ -189,15 +220,7 @@ function GridArea({ info, table, view, setView, page, edits }: GridAreaProps) {
           onCommit={edits.commit}
         />
       </div>
-      {view.inspector ? (
-        <RowInspector
-          table={table.name}
-          columns={columns}
-          row={active ? rows[active.row] : undefined}
-          onStep={step}
-          onClose={() => setView({ inspector: false })}
-        />
-      ) : null}
+      {inspector}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 
 import { openRowOnClick } from "./row-click";
 
@@ -26,15 +26,18 @@ export function HeadRow({ children }: { children: ReactNode }) {
   );
 }
 
-type RowProps = { dim?: boolean; children: ReactNode };
+/** Other props reach the `<tr>`, so a `ContextMenu` around the row can open on right-click. */
+type RowProps = ComponentProps<"tr"> & { dim?: boolean };
 
 /** A hoverable row. Give its first cell a `rowLink` link with `data-row-link` to open on click. */
-export function Row({ dim = false, children }: RowProps) {
+export function Row({ dim = false, className, children, ...props }: RowProps) {
   return (
     <tr
+      {...props}
       className={clsx(
-        "group/row h-9 transition-colors duration-140 hover:bg-hover [&>td]:border-b-[0.5px] [&>td]:border-line [&>td]:px-2.5 [&>td]:whitespace-nowrap",
+        "group/row h-9 transition-colors duration-140 hover:bg-hover data-[state=open]:bg-hover [&>td]:border-b-[0.5px] [&>td]:border-line [&>td]:px-2.5 [&>td]:whitespace-nowrap",
         dim && "[&>td]:text-ink-3",
+        className,
       )}
     >
       {children}

@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 
 use bollard::models::{
-    ContainerCreateBody, HostConfig, PortBinding, RestartPolicy, RestartPolicyNameEnum,
+    ContainerCreateBody, ContainerInspectResponse, HostConfig, NetworkingConfig, PortBinding,
+    RestartPolicy, RestartPolicyNameEnum,
 };
 use bollard::query_parameters::{
     CommitContainerOptionsBuilder, CreateContainerOptionsBuilder, CreateImageOptionsBuilder,
-    RenameContainerOptionsBuilder, StartContainerOptions,
+    InspectContainerOptions, RemoveContainerOptionsBuilder, RenameContainerOptionsBuilder,
+    StartContainerOptions, StopContainerOptions,
 };
 use futures::TryStreamExt;
 use serde::{Deserialize, Serialize};
@@ -177,9 +179,125 @@ impl Docker {
     }
 }
 
+/// The settings to create the same container again. Anonymous volumes become named binds so the
+/// new container keeps their data; a hostname Docker derived from the old ID is dropped.
+fn recreate_body(inspect: ContainerInspectResponse) -> Result<ContainerCreateBody> {
+    let id = inspect.id.unwrap_or_default();
+    let config =
+        inspect.config.ok_or_else(|| Error::Engine("the container has no settings".to_owned()))?;
+    let mut body: ContainerCreateBody =
+        serde_json::to_value(config).and_then(serde_json::from_value).map_err(|error| {
+            Error::Engine(format!("the container's settings can't be copied: {error}"))
+        })?;
+    if body.hostname.as_deref().is_some_and(|hostname| id.starts_with(hostname)) {
+        body.hostname = None;
+    }
+    let mut host = inspect.host_config.unwrap_or_default();
+    let anonymous = inspect.mounts.unwrap_or_default().into_iter().filter_map(|mount| {
+        let named = mount.typ.as_deref() == Some("volume");
+        Some(format!("{}:{}", mount.name.filter(|_| named)?, mount.destination?))
+    });
+    let mut binds = host.binds.take().unwrap_or_default();
+    for bind in anonymous {
+        let target = bind.split(':').nth(1).unwrap_or_default().to_owned();
+        if !binds.iter().any(|existing| existing.split(':').nth(1) == Some(target.as_str())) {
+            binds.push(bind);
+        }
+    }
+    host.binds = Some(binds);
+    body.host_config = Some(host);
+    let networks = inspect.network_settings.and_then(|settings| settings.networks);
+    body.networking_config = networks.map(|networks| NetworkingConfig {
+        endpoints_config: Some(
+            networks
+                .into_iter()
+                .map(|(name, endpoint)| {
+                    let kept = bollard::models::EndpointSettings {
+                        ipam_config: endpoint.ipam_config,
+                        aliases: endpoint.aliases,
+                        driver_opts: endpoint.driver_opts,
+                        ..Default::default()
+                    };
+                    (name, kept)
+                })
+                .collect(),
+        ),
+    });
+    Ok(body)
+}
+
+impl Docker {
+    /// Creates the container again from its own settings, keeping its name, ports, volumes and
+    /// networks. With `pull`, a newer image is fetched first. The old container is only removed
+    /// once the new one exists.
+    ///
+    /// # Errors
+    /// Fails when the container is gone or the new one can't be created; the old one then stays.
+    pub async fn recreate(&self, id: &str, pull: bool) -> Result<String> {
+        let inspect = self.api.inspect_container(id, None::<InspectContainerOptions>).await?;
+        let name = inspect.name.clone().unwrap_or_default().trim_start_matches('/').to_owned();
+        let running = inspect.state.as_ref().and_then(|state| state.running).unwrap_or(false);
+        let image =
+            inspect.config.as_ref().and_then(|config| config.image.clone()).unwrap_or_default();
+        if pull {
+            let (repo, tag) = split_reference(&image);
+            let options = CreateImageOptionsBuilder::new().from_image(repo).tag(tag).build();
+            self.api.create_image(Some(options), None, None).try_collect::<Vec<_>>().await?;
+        }
+        let body = recreate_body(inspect)?;
+        let aside = format!("{name}-replaced");
+        if running {
+            self.api.stop_container(id, None::<StopContainerOptions>).await?;
+        }
+        self.rename(id, &aside).await?;
+        let options = CreateContainerOptionsBuilder::new().name(&name).build();
+        let created = match self.api.create_container(Some(options), body).await {
+            Ok(created) => created,
+            Err(error) => {
+                self.rename(id, &name).await?;
+                if running {
+                    self.api.start_container(id, None::<StartContainerOptions>).await?;
+                }
+                return Err(error.into());
+            }
+        };
+        let options = RemoveContainerOptionsBuilder::new().force(true).v(false).build();
+        self.api.remove_container(id, Some(options)).await?;
+        if running {
+            self.api.start_container(&created.id, None::<StartContainerOptions>).await?;
+        }
+        Ok(created.id)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn recreates_with_the_same_settings_and_keeps_anonymous_volumes() {
+        let inspect: ContainerInspectResponse = serde_json::from_value(serde_json::json!({
+            "Id": "3f2a9c41d0e8aaaa",
+            "Name": "/shop-db-1",
+            "Config": {"Hostname": "3f2a9c41d0e8", "Image": "postgres:18", "Env": ["A=1"]},
+            "HostConfig": {"Binds": ["/Users/ada/seed:/seed"], "PortBindings": {"5432/tcp": [{"HostPort": "5433"}]}},
+            "Mounts": [
+                {"Type": "volume", "Name": "a1b2c3", "Destination": "/var/lib/postgresql"},
+                {"Type": "bind", "Source": "/Users/ada/seed", "Destination": "/seed"}
+            ],
+            "NetworkSettings": {"Networks": {"shop_default": {"Aliases": ["db"], "IPAddress": "172.18.0.2"}}}
+        }))
+        .unwrap();
+        let body = recreate_body(inspect).unwrap();
+        assert_eq!(body.hostname, None);
+        assert_eq!(body.image.as_deref(), Some("postgres:18"));
+        let binds = body.host_config.unwrap().binds.unwrap();
+        assert_eq!(binds, ["/Users/ada/seed:/seed", "a1b2c3:/var/lib/postgresql"]);
+        let endpoints = body.networking_config.unwrap().endpoints_config.unwrap();
+        let endpoint = &endpoints["shop_default"];
+        assert_eq!(endpoint.aliases.as_deref(), Some(&["db".to_owned()][..]));
+        assert_eq!(endpoint.ip_address, None);
+    }
 
     fn spec() -> RunSpec {
         RunSpec {

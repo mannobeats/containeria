@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
@@ -90,6 +90,16 @@ describe("PodPage", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: "Stop forwarding localhost:8080" }),
     );
+    await waitFor(() =>
+      expect(calls).toContainEqual({ command: "kubernetesStopForward", args: { stream: 8 } }),
+    );
+  });
+
+  it("stops a forward from its right-click menu", async () => {
+    forwards = [forward];
+    const calls = setup("/kubernetes/pods/shop/checkout-7d9f-x2");
+    fireEvent.contextMenu(await screen.findByText(/localhost:8080/));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Stop Forwarding" }));
     await waitFor(() =>
       expect(calls).toContainEqual({ command: "kubernetesStopForward", args: { stream: 8 } }),
     );

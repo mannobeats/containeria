@@ -18,13 +18,13 @@ export function machineMenu(machine: Machine, { open, act, remove }: Handlers): 
   const ip = machine.ipv4;
   return [
     running
-      ? { label: "Open terminal", onSelect: () => open("terminal") }
+      ? { label: "Open Terminal", onSelect: () => open("terminal") }
       : { label: "Start", onSelect: () => act("start") },
-    { label: "Browse files", onSelect: () => open("files"), disabled: !running },
+    { label: "Browse Files", onSelect: () => open("files"), disabled: !running },
     ...(ip
       ? [
           {
-            label: "Copy IP address",
+            label: "Copy IP Address",
             onSelect: () =>
               writeText(ip)
                 .then(() => toast("Copied", { description: ip }))
@@ -36,6 +36,6 @@ export function machineMenu(machine: Machine, { open, act, remove }: Handlers): 
     { label: "Restart", onSelect: () => act("restart"), disabled: !running },
     { label: "Stop", onSelect: () => act("stop"), disabled: !running },
     { kind: "separator" },
-    { label: "Delete machine…", danger: true, onSelect: remove },
+    { label: "Delete Machine…", danger: true, onSelect: remove },
   ];
 }

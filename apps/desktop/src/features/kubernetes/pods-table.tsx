@@ -11,7 +11,7 @@ import { Chip } from "@/ui/chip";
 import { type Column, ColumnTable } from "@/ui/column-table";
 import { Dash } from "@/ui/dash";
 import { IconAction } from "@/ui/icon-action";
-import { Menu } from "@/ui/menu";
+import { Menu, type MenuEntry } from "@/ui/menu";
 import { Tile } from "@/ui/tile";
 
 import type { KubeSheet } from "./kube-sheet";
@@ -45,20 +45,13 @@ function PodStatus({ pod }: { pod: PodSummary }) {
   );
 }
 
-function PodActions({ pod, open }: { pod: PodSummary; open: Open }) {
-  const navigate = useNavigate();
-  const logs = () =>
-    navigate({
-      to: "/kubernetes/pods/$namespace/$name",
-      params: { namespace: pod.namespace, name: pod.name },
-      search: { tab: "logs" },
-    });
+function PodActions({ pod, menu, logs }: { pod: PodSummary; menu: MenuEntry[]; logs: () => void }) {
   return (
     <span className="inline-flex gap-0.5 opacity-0 transition-opacity duration-140 group-focus-within/row:opacity-100 group-hover/row:opacity-100">
       <IconAction label="Logs" target={pod.name} onClick={logs}>
         <IconLogs />
       </IconAction>
-      <Menu entries={podMenu(pod, open)} align="end">
+      <Menu entries={menu} align="end">
         <Button
           variant="ghost"
           size="sm"
@@ -73,7 +66,19 @@ function PodActions({ pod, open }: { pod: PodSummary; open: Open }) {
   );
 }
 
-function columns(memory: Map<string, number>, open: Open): Column<PodSummary>[] {
+type Show = (pod: PodSummary, tab?: string) => void;
+
+function rowMenu(pod: PodSummary, show: Show, open: Open): MenuEntry[] {
+  return [
+    { label: "Open", onSelect: () => show(pod) },
+    { label: "Logs", onSelect: () => show(pod, "logs") },
+    { label: "Events", onSelect: () => show(pod, "events") },
+    { kind: "separator" },
+    ...podMenu(pod, open),
+  ];
+}
+
+function columns(memory: Map<string, number>, show: Show, open: Open): Column<PodSummary>[] {
   const bytes = (pod: PodSummary) => memory.get(`${pod.namespace}/${pod.name}`);
   return [
     { header: "Name", cell: (pod) => <PodName pod={pod} /> },
@@ -110,7 +115,9 @@ function columns(memory: Map<string, number>, open: Open): Column<PodSummary>[] 
       hiddenHeader: true,
       width: "w-[84px]",
       align: "right",
-      cell: (pod) => <PodActions pod={pod} open={open} />,
+      cell: (pod) => (
+        <PodActions pod={pod} menu={rowMenu(pod, show, open)} logs={() => show(pod, "logs")} />
+      ),
     },
   ];
 }
@@ -118,10 +125,18 @@ function columns(memory: Map<string, number>, open: Open): Column<PodSummary>[] 
 export function PodsTable({ pods, open }: { pods: PodSummary[]; open: Open }) {
   const { data: containers } = useContainers();
   const { data: metrics } = useMetrics();
+  const navigate = useNavigate();
+  const show: Show = (pod, tab) =>
+    navigate({
+      to: "/kubernetes/pods/$namespace/$name",
+      params: { namespace: pod.namespace, name: pod.name },
+      search: tab ? { tab } : {},
+    });
   return (
     <ColumnTable
       label="Pods"
-      columns={columns(podMemory(containers, metrics), open)}
+      columns={columns(podMemory(containers, metrics), show, open)}
+      menu={(pod) => rowMenu(pod, show, open)}
       rows={pods}
       rowKey={(pod) => `${pod.namespace}/${pod.name}`}
       muted={(pod) => pod.status === "Completed"}

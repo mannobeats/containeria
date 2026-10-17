@@ -112,3 +112,14 @@ pub(crate) async fn save_text(destination: PathBuf, contents: String) -> Result<
         .await
         .map_err(|error| CommandError::new(ErrorKind::Internal, error.to_string()))
 }
+
+/// Creates the container again from its own settings; with `pull`, from a newer image.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn container_recreate(
+    state: State<'_, AppState>,
+    id: String,
+    pull: bool,
+) -> Result<String> {
+    Ok(state.engine.docker().await?.recreate(&id, pull).await?)
+}

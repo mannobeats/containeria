@@ -4,22 +4,16 @@ import { useState } from "react";
 import type { Connection } from "@/lib/ipc/bindings";
 import { Crumb, Page } from "@/shell/page";
 import { Button } from "@/ui/button";
-import { ConfirmSheet } from "@/ui/confirm-sheet";
 import { EmptyState } from "@/ui/empty-state";
 import { SearchField } from "@/ui/search-field";
 import { Tile } from "@/ui/tile";
 
-import {
-  useConnections,
-  useDetected,
-  useHistory,
-  useRemoveConnection,
-  useSavedQueries,
-} from "./api";
+import { useConnections, useDetected, useHistory, useSavedQueries } from "./api";
 import { ConnectionSheet } from "./connection-sheet";
 import { useConnectionSheet } from "./connection-sheet-store";
 import { DetectedTable, SavedTable } from "./connection-tables";
 import { QueryRail } from "./query-rail";
+import { RemoveConnectionSheet } from "./remove-connection-sheet";
 import { useSqliteDrop } from "./use-sqlite-drop";
 
 function Section({
@@ -108,27 +102,6 @@ function Connections({ query, onNew, onEdit, onRemove }: ConnectionsProps) {
   );
 }
 
-function RemoveSheet({ removing, onDone }: { removing: Connection | null; onDone: () => void }) {
-  const remove = useRemoveConnection();
-  return (
-    <ConfirmSheet
-      open={removing !== null}
-      onOpenChange={(open) => (open ? undefined : onDone())}
-      title={`Remove ${removing?.name ?? "connection"}?`}
-      action="Remove connection"
-      onConfirm={() => {
-        if (removing) {
-          remove.mutate(removing.id);
-        }
-        onDone();
-      }}
-    >
-      The saved connection and its Keychain password are removed. The database itself is not
-      touched.
-    </ConfirmSheet>
-  );
-}
-
 /** All connections: databases found in containers, saved ones, and recent and saved queries. */
 export function DataPage() {
   const [query, setQuery] = useState("");
@@ -170,7 +143,7 @@ export function DataPage() {
         connection={sheet.connection}
         onOpenChange={sheet.setOpen}
       />
-      <RemoveSheet removing={removing} onDone={() => setRemoving(null)} />
+      <RemoveConnectionSheet removing={removing} onDone={() => setRemoving(null)} />
     </Page>
   );
 }

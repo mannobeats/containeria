@@ -10,6 +10,7 @@ import { Dash } from "@/ui/dash";
 import { ContextMenu } from "@/ui/menu";
 import { Tile } from "@/ui/tile";
 
+import { useRecreate } from "./api";
 import type { ContainerCallbacks } from "./container-callbacks";
 import { containerMenu } from "./container-menu";
 import { ContainerStatus } from "./container-status";
@@ -45,16 +46,18 @@ export function ContainerRow({
   const running = isRunning(container);
   const open = (tab?: string) =>
     navigate({ to: "/containers/$id", params: { id: container.id }, search: tab ? { tab } : {} });
+  const recreate = useRecreate();
   const menu = containerMenu(container, {
     open,
     act: (action) => act([container], action),
     remove: () => remove([container]),
+    recreate: (pull) => recreate.mutate({ id: container.id, name: container.name, pull }),
   });
   return (
     <ContextMenu entries={menu}>
       <tr
         className={clsx(
-          "group/row h-9 transition-colors duration-140 hover:bg-hover [&>td]:border-b-[0.5px] [&>td]:border-line",
+          "group/row h-9 transition-colors duration-140 hover:bg-hover data-[state=open]:bg-hover [&>td]:border-b-[0.5px] [&>td]:border-line",
           selected && "bg-select",
           !running && "[&>td]:text-ink-3",
         )}

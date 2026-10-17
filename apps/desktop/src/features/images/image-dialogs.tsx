@@ -3,13 +3,15 @@ import type { ImageSummary } from "@/lib/ipc/bindings";
 import { ConfirmSheet } from "@/ui/confirm-sheet";
 
 import { useRemoveImage } from "./api";
+import { BuildSheet } from "./build-sheet";
+import type { ImageDialog } from "./image-actions";
 import { type ImageStats, imageName } from "./model";
 import { PruneSheet } from "./prune-sheet";
 import { PullSheet } from "./pull-sheet";
+import { PushSheet } from "./push-sheet";
+import { ScanSheet } from "./scan-sheet";
 import { useImageSheet } from "./sheet-store";
 import { TagSheet } from "./tag-sheet";
-
-export type ImageDialog = { kind: "tag" | "delete"; image: ImageSummary };
 
 function DeleteImage({ image, onClose }: { image: ImageSummary; onClose: () => void }) {
   const remove = useRemoveImage();
@@ -30,7 +32,10 @@ function DeleteImage({ image, onClose }: { image: ImageSummary; onClose: () => v
 
 type ImageDialogsProps = { dialog: ImageDialog | null; stats: ImageStats; onClose: () => void };
 
-/** Every sheet the images page opens: pull and clean-up (also from the palette), tag and delete. */
+/**
+ * Every sheet the images page opens: pull, build and clean-up (also from the palette and a drop),
+ * tag, push, scan and delete.
+ */
 export function ImageDialogs({ dialog, stats, onClose }: ImageDialogsProps) {
   const sheet = useImageSheet((state) => state.sheet);
   const setSheet = useImageSheet((state) => state.setSheet);
@@ -49,6 +54,15 @@ export function ImageDialogs({ dialog, stats, onClose }: ImageDialogsProps) {
         onClose={onClose}
       />
       {dialog?.kind === "delete" ? <DeleteImage image={dialog.image} onClose={onClose} /> : null}
+      <PushSheet
+        reference={dialog?.kind === "push" ? (dialog.image.references[0] ?? null) : null}
+        onClose={onClose}
+      />
+      <ScanSheet
+        reference={dialog?.kind === "scan" ? (dialog.image.references[0] ?? null) : null}
+        onClose={onClose}
+      />
+      <BuildSheet />
     </>
   );
 }

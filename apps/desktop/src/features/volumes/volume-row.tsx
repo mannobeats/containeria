@@ -36,14 +36,14 @@ export function VolumeRow({
   }));
   const menu: MenuEntry[] = [
     {
-      label: "Browse files",
+      label: "Browse Files",
       onSelect: () => navigate({ to: "/volumes/$name", params: { name: volume.name } }),
     },
     { kind: "separator" },
-    { label: "Back up to .tar.gz…", onSelect: () => onBackup(volume) },
+    { label: "Back Up to .tar.gz…", onSelect: () => onBackup(volume) },
     { label: "Clone…", onSelect: () => onClone(volume) },
     { kind: "separator" },
-    { label: "Delete volume…", danger: true, onSelect: () => onDelete(volume) },
+    { label: "Delete Volume…", danger: true, onSelect: () => onDelete(volume) },
   ];
   return (
     <ContextMenu entries={menu}>

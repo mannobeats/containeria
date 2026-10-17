@@ -32,7 +32,7 @@ function NoContainers() {
       actions={
         <>
           <Button onClick={() => edit(newDraft())}>Deploy Compose</Button>
-          <Button variant="brand" onClick={showRunSheet}>
+          <Button variant="brand" onClick={() => showRunSheet()}>
             Run container
           </Button>
         </>

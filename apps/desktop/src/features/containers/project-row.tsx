@@ -1,12 +1,19 @@
-import { IconChevronDown, IconPlayerPlay, IconPlayerStop, IconRefresh } from "@tabler/icons-react";
+import {
+  IconChevronDown,
+  IconDots,
+  IconPlayerPlay,
+  IconPlayerStop,
+  IconRefresh,
+} from "@tabler/icons-react";
 import clsx from "clsx";
 
-import { ProjectMenu } from "@/features/compose/project-menu";
+import { useProjectMenu } from "@/features/compose/project-menu";
 import { segmentColor } from "@/features/metrics/segment-color";
 import { formatMemory } from "@/lib/format";
 import type { ContainerUsage } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
 import { IconAction } from "@/ui/icon-action";
+import { ContextMenu, Menu, type MenuEntry } from "@/ui/menu";
 
 import type { ContainerCallbacks } from "./container-callbacks";
 import { type ContainerGroup, isRunning } from "./model";
@@ -27,8 +34,20 @@ export function ProjectRow({ group, usage, collapsed, onCollapse, columns, act }
     (total, container) => total + (usage.get(container.id)?.memoryBytes ?? 0),
     0,
   );
-  return (
-    <tr className="group/head h-10 bg-bg [&>td]:border-b-[0.5px] [&>td]:border-line">
+  const project = useProjectMenu(label);
+  const start = () => act(group.containers, "start", label);
+  const stop = () => act(up, "stop", label);
+  const restart = () => act(group.containers, "restart", label);
+  const menu: MenuEntry[] = [
+    up.length > 0
+      ? { label: "Stop Project", icon: <IconPlayerStop />, onSelect: stop }
+      : { label: "Start Project", icon: <IconPlayerPlay />, onSelect: start },
+    { label: "Restart Project", icon: <IconRefresh />, onSelect: restart },
+    { kind: "separator" },
+    ...project.entries,
+  ];
+  const row = (
+    <tr className="group/head h-10 bg-bg data-[state=open]:bg-hover [&>td]:border-b-[0.5px] [&>td]:border-line">
       <td colSpan={columns} className="pt-1.5 pr-5 pl-3.5">
         <span className="flex items-center gap-2">
           <Button
@@ -64,34 +83,41 @@ export function ProjectRow({ group, usage, collapsed, onCollapse, columns, act }
           {group.project ? (
             <span className="ml-2 inline-flex gap-0.5 opacity-0 transition-opacity duration-140 group-focus-within/head:opacity-100 group-hover/head:opacity-100">
               {up.length > 0 ? (
-                <IconAction
-                  label="Stop project"
-                  target={label}
-                  onClick={() => act(up, "stop", label)}
-                >
+                <IconAction label="Stop project" target={label} onClick={stop}>
                   <IconPlayerStop />
                 </IconAction>
               ) : (
-                <IconAction
-                  label="Start project"
-                  target={label}
-                  onClick={() => act(group.containers, "start", label)}
-                >
+                <IconAction label="Start project" target={label} onClick={start}>
                   <IconPlayerPlay />
                 </IconAction>
               )}
-              <IconAction
-                label="Restart project"
-                target={label}
-                onClick={() => act(group.containers, "restart", label)}
-              >
+              <IconAction label="Restart project" target={label} onClick={restart}>
                 <IconRefresh />
               </IconAction>
-              <ProjectMenu project={label} />
+              <Menu entries={project.entries} align="end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  iconOnly
+                  aria-label={`More for ${label}`}
+                  className="text-ink-3 hover:text-ink"
+                >
+                  <IconDots />
+                </Button>
+              </Menu>
             </span>
           ) : null}
         </span>
       </td>
     </tr>
+  );
+  if (!group.project) {
+    return row;
+  }
+  return (
+    <>
+      <ContextMenu entries={menu}>{row}</ContextMenu>
+      {project.sheet}
+    </>
   );
 }

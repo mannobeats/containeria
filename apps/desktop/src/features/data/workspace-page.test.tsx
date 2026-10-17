@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -84,6 +84,27 @@ describe("WorkspacePage", () => {
     expect(await screen.findByText("No queries on shop-db yet")).toBeDefined();
     await userEvent.click(screen.getByRole("button", { name: "Schema diagram" }));
     expect(await screen.findByRole("tab", { name: "Schema diagram" })).toBeDefined();
+  });
+
+  it("closes the other tabs from a tab's right-click menu", async () => {
+    setup();
+    const tree = await screen.findByRole("navigation", { name: "Tables" });
+    await userEvent.click(await within(tree).findByRole("button", { name: /^users/ }));
+    await userEvent.click(within(tree).getByRole("button", { name: /^teams/ }));
+    expect(await screen.findByRole("tab", { name: "users" })).toBeDefined();
+    fireEvent.contextMenu(await screen.findByRole("tab", { name: "teams" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Close other tabs" }));
+    await waitFor(() => expect(screen.queryByRole("tab", { name: "users" })).toBeNull());
+    expect(screen.getByRole("tab", { name: "teams" })).toBeDefined();
+  });
+
+  it("opens a table's structure from the tree's right-click menu", async () => {
+    setup();
+    const tree = await screen.findByRole("navigation", { name: "Tables" });
+    fireEvent.contextMenu(await within(tree).findByRole("button", { name: /^teams/ }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Open Structure" }));
+    expect(await screen.findByRole("tab", { name: "teams" })).toBeDefined();
+    expect(useWorkspace.getState().views["pg|public.teams"]?.structure).toBe(true);
   });
 
   it("names a table tab whose table is gone", async () => {

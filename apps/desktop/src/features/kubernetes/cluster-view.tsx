@@ -57,7 +57,7 @@ function NamespaceMenu({
 }) {
   const entries: MenuEntry[] = [
     { kind: "label", label: "Namespace" },
-    { label: "All namespaces", checked: value === null, onSelect: () => onChange(null) },
+    { label: "All Namespaces", checked: value === null, onSelect: () => onChange(null) },
     { kind: "separator" },
     ...cluster.namespaces.map((namespace) => ({
       label: namespace,

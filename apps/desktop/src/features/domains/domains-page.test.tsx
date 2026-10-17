@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
@@ -111,7 +111,17 @@ describe("DomainsPage", () => {
   it("removes a custom route after confirming", async () => {
     const calls = setup(status());
     await userEvent.click(await screen.findByRole("button", { name: "More for shop.test" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Remove route…" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Remove Route…" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Remove route" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({ command: "domainsRemoveRoute", args: { host: "shop.test" } }),
+    );
+  });
+
+  it("removes a custom route from its right-click menu", async () => {
+    const calls = setup(status());
+    fireEvent.contextMenu(await screen.findByRole("row", { name: /shop\.test/ }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Remove Route…" }));
     await userEvent.click(await screen.findByRole("button", { name: "Remove route" }));
     await waitFor(() =>
       expect(calls).toContainEqual({ command: "domainsRemoveRoute", args: { host: "shop.test" } }),

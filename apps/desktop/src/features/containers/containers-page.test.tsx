@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
@@ -31,6 +31,7 @@ const pod = containerFixture({ id: "pod", name: "k8s_web", pod: "default/web" })
 function setup() {
   const calls = mockCommands({
     engineStatus: () => engineFixture(),
+    composeAct: () => 8,
     containersList: () => [shopDb, shopApi, crashed, pod],
     metricsLatest: () =>
       metricsFixture({
@@ -99,6 +100,41 @@ describe("ContainersPage", () => {
         command: "containerAct",
         args: { id: "db", action: "remove" },
       }),
+    );
+  });
+
+  it("rebuilds a project from its ⋯ menu", async () => {
+    const calls = setup();
+    await userEvent.click(await screen.findByRole("button", { name: "More for shop" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Rebuild and Restart" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual(
+        expect.objectContaining({
+          command: "composeAct",
+          args: expect.objectContaining({ project: "shop", verb: "rebuild" }),
+        }),
+      ),
+    );
+  });
+
+  it("stops a project and removes it, with its volumes, from its right-click menu", async () => {
+    const calls = setup();
+    fireEvent.contextMenu(await screen.findByRole("button", { name: "Collapse shop" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Stop Project" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({ command: "containerAct", args: { id: "db", action: "stop" } }),
+    );
+    fireEvent.contextMenu(screen.getByRole("button", { name: "Collapse shop" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Remove Project…" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Also delete its volumes" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remove Project" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual(
+        expect.objectContaining({
+          command: "composeAct",
+          args: expect.objectContaining({ project: "shop", verb: "downWithVolumes" }),
+        }),
+      ),
     );
   });
 });

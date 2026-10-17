@@ -6,6 +6,7 @@ import { plural } from "@/lib/format";
 import type { EnvVar } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
 import { IconAction } from "@/ui/icon-action";
+import { ContextMenu } from "@/ui/menu";
 
 import { isSecret } from "./detail-model";
 import { miniTable } from "./mini-table";
@@ -39,23 +40,35 @@ export function EnvSection({ env }: { env: EnvVar[] }) {
       <table className={miniTable}>
         <tbody>
           {env.map((variable) => (
-            <tr key={variable.key}>
-              <td className="w-[38%] max-w-0 truncate font-mono text-mono-12 text-ink">
-                {variable.key}
-              </td>
-              <td className="max-w-0 truncate font-mono text-mono-12 selectable">
-                {isSecret(variable) && !revealed ? "••••••••••••" : variable.value}
-              </td>
-              <td className="w-10 text-right">
-                <IconAction
-                  label="Copy"
-                  target={variable.key}
-                  onClick={() => copyText(variable.key, `${variable.key}=${variable.value}`)}
-                >
-                  <IconCopy />
-                </IconAction>
-              </td>
-            </tr>
+            <ContextMenu
+              key={variable.key}
+              entries={[
+                { label: "Copy name", onSelect: () => copyText("Name", variable.key) },
+                { label: "Copy value", onSelect: () => copyText(variable.key, variable.value) },
+                {
+                  label: "Copy name=value",
+                  onSelect: () => copyText(variable.key, `${variable.key}=${variable.value}`),
+                },
+              ]}
+            >
+              <tr>
+                <td className="w-[38%] max-w-0 truncate font-mono text-mono-12 text-ink">
+                  {variable.key}
+                </td>
+                <td className="max-w-0 truncate font-mono text-mono-12 selectable">
+                  {isSecret(variable) && !revealed ? "••••••••••••" : variable.value}
+                </td>
+                <td className="w-10 text-right">
+                  <IconAction
+                    label="Copy"
+                    target={variable.key}
+                    onClick={() => copyText(variable.key, `${variable.key}=${variable.value}`)}
+                  >
+                    <IconCopy />
+                  </IconAction>
+                </td>
+              </tr>
+            </ContextMenu>
           ))}
         </tbody>
       </table>

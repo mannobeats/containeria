@@ -70,7 +70,7 @@ the user installed:
 | Files tab: browse, download, upload | `/containers/{id}/archive` GET and PUT | Docker API | |
 | Open container files in Finder | NFS export from the VM, mounted on macOS | Spike | Not in Colima. Prototype shows the button. |
 | Inspect JSON | `/containers/{id}/json` | Docker API | |
-| Rename, recreate, commit, export | containers API | Docker API | |
+| Rename, recreate, commit, export | containers API | Built | Recreate keeps name, ports, networks and anonymous volumes; the old container goes only once the new one exists. |
 | Published ports open on localhost | Lima port forwarding | Colima | TCP by default. |
 | UDP ports | `portForwarder: grpc` | Limited | Experimental in Colima. We default to `grpc` only after testing. |
 | Port conflict detection and the "use 5433" fix | check host ports, recreate with a new mapping | We build | |
@@ -91,12 +91,12 @@ the user installed:
 
 | Feature | Source | Status | Notes |
 |---|---|---|---|
-| List, pull with layer progress, push, tag, delete | images API | Docker API | |
+| List, pull with layer progress, push, tag, delete, export | images API, `docker push` | Built | Push goes through the Docker CLI so `docker login` credentials and helpers work; export writes a `docker save` archive. |
 | Disk usage and clean-up | `/system/df`, prune APIs | Docker API | Settings → Storage: images, stopped containers, volumes and the build cache, each with its own clean-up. |
 | Layers and history | `/images/{id}/history` | Docker API | |
 | Docker Hub search | Docker Hub API | We build | |
-| Vulnerability scan | Trivy (Apache-2.0) run as a container | We build | |
-| Build from a Dockerfile | BuildKit | Docker API | |
+| Vulnerability scan | Trivy (Apache-2.0) run as a container | Built | `aquasec/trivy` pinned, docker socket mounted, database cached in the `containeria-trivy-cache` volume. |
+| Build from a Dockerfile | BuildKit through `docker build` | Built | Build sheet or drop a Dockerfile on the window; plain BuildKit progress streams into the run sheet. |
 | Volumes: list, size, used by | volumes API + `/system/df` | Docker API | |
 | Browse volume files | short-lived helper container mounting the volume | We build | |
 | Back up, clone, export a volume | helper container with tar | We build | |

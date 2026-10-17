@@ -1,0 +1,98 @@
+//! Runs against a real Docker engine with the Docker CLI and Compose installed:
+//! `CONTAINERIA_DOCKER_SOCKET=... cargo test -p containeria-docker --test tools -- --ignored`.
+//! Everything it makes is named `containeria-test-*` and removed at the end.
+
+use std::path::PathBuf;
+
+use containeria_docker::{
+    BuildSpec, Compose, ComposeFiles, ComposeVerb, ContainerAction, Docker, DockerCli, EnvVar,
+    Restart, RunSpec,
+};
+
+fn socket() -> PathBuf {
+    std::env::var_os("CONTAINERIA_DOCKER_SOCKET")
+        .map_or_else(|| PathBuf::from("/var/run/docker.sock"), PathBuf::from)
+}
+
+#[tokio::test]
+#[ignore = "needs a Docker engine"]
+async fn recreates_a_container_with_its_name_settings_and_volume_data() {
+    let docker = Docker::connect(&socket()).unwrap();
+    let name = format!("containeria-test-recreate-{}", std::process::id());
+    let spec = RunSpec {
+        image: "busybox:1.37".to_owned(),
+        name: Some(name.clone()),
+        ports: Vec::new(),
+        env: vec![EnvVar { key: "KEEP".to_owned(), value: "me".to_owned() }],
+        storage: Vec::new(),
+        restart: Restart::No,
+        command: Some(vec!["sh".into(), "-c".into(), "sleep 300".into()]),
+        platform: None,
+    };
+    let old = docker.run(&spec).await.unwrap();
+    let new = docker.recreate(&old, false).await.unwrap();
+    assert_ne!(old, new);
+    let details = docker.details(&new).await.unwrap();
+    assert_eq!(details.name, name);
+    assert!(details.env.iter().any(|var| var.key == "KEEP" && var.value == "me"));
+    assert!(docker.details(&old).await.is_err());
+    docker.act(&new, ContainerAction::Remove).await.unwrap();
+}
+
+#[tokio::test]
+#[ignore = "needs a Docker engine and the Docker CLI"]
+async fn builds_exports_and_scans_an_image() {
+    let docker = Docker::connect(&socket()).unwrap();
+    let cli = DockerCli::locate(&socket(), None).expect("docker CLI");
+    let context = tempfile::tempdir().unwrap();
+    std::fs::write(
+        context.path().join("Dockerfile"),
+        "FROM busybox:1.37\nARG WHO\nRUN echo \"hi $WHO\" > /hello\n",
+    )
+    .unwrap();
+    let tag = format!("containeria-test-build:{}", std::process::id());
+    let mut lines = Vec::new();
+    cli.build(
+        &BuildSpec {
+            context: context.path().to_string_lossy().into_owned(),
+            dockerfile: None,
+            tag: tag.clone(),
+            build_args: vec!["WHO=mac".to_owned()],
+            no_cache: true,
+            pull: false,
+        },
+        |line| lines.push(line),
+    )
+    .await
+    .unwrap();
+    assert!(lines.iter().any(|line| line.contains("naming to")), "{lines:?}");
+
+    let archive = context.path().join("image.tar");
+    docker.export_image(&tag, &archive).await.unwrap();
+    assert!(std::fs::metadata(&archive).unwrap().len() > 1024);
+
+    let report = docker.scan_image(&tag).await.unwrap();
+    assert_eq!(report.reference, tag);
+
+    docker.remove_image(&tag, true).await.unwrap();
+}
+
+#[tokio::test]
+#[ignore = "needs a Docker engine and Compose"]
+async fn deploys_previews_and_removes_a_compose_project() {
+    let compose = Compose::locate(&socket(), None).expect("docker compose");
+    let folder = tempfile::tempdir().unwrap();
+    let file = folder.path().join("compose.yaml");
+    std::fs::write(&file, "services:\n  app:\n    image: busybox:1.37\n    command: sleep 300\n")
+        .unwrap();
+    let files = ComposeFiles { files: vec![file], directory: Some(folder.path().to_path_buf()) };
+    let name = format!("containeria-test-compose-{}", std::process::id());
+    let preview = compose.preview(&files, Some(&name)).await.unwrap();
+    assert_eq!(preview.services[0].name, "app");
+    compose.run(&files, &name, ComposeVerb::Up, |_| {}).await.unwrap();
+    let docker = Docker::connect(&socket()).unwrap();
+    assert_eq!(docker.project_containers(&name).await.unwrap().len(), 1);
+    assert!(docker.compose_files(&name).await.unwrap().is_some());
+    compose.run(&ComposeFiles::default(), &name, ComposeVerb::Down, |_| {}).await.unwrap();
+    assert!(docker.project_containers(&name).await.unwrap().is_empty());
+}

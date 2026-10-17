@@ -110,13 +110,16 @@ export function QueryResults({ result, error, running, onCancel }: ResultsProps)
           rows={rows}
           offset={0}
           sort={null}
-          onSort={() => undefined}
+          onSort={undefined}
           selected={new Set()}
           onToggleRow={() => undefined}
           active={active}
           onActive={setActive}
           onEdit={undefined}
           onJump={() => undefined}
+          table={undefined}
+          onFilter={undefined}
+          onDelete={undefined}
         />
       ) : null}
     </div>

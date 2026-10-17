@@ -103,7 +103,7 @@ export function ContainersHero({ containers, ledger, hot, onHot }: HeroProps) {
           </Button>
         </Tip>
         <Tip label="Run a container" kbd="⌘N">
-          <Button variant="brand" className="ml-2" onClick={showRunSheet}>
+          <Button variant="brand" className="ml-2" onClick={() => showRunSheet()}>
             <IconPlayerPlay />
             Run container
           </Button>

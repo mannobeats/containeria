@@ -1,13 +1,14 @@
 import { IconDots, IconRotateClockwise, IconScale } from "@tabler/icons-react";
 import clsx from "clsx";
 
+import { copyText } from "@/lib/clipboard";
 import { formatAge } from "@/lib/format";
 import { commands, type DeploymentSummary } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
 import { Chip } from "@/ui/chip";
 import { type Column, ColumnTable } from "@/ui/column-table";
 import { IconAction } from "@/ui/icon-action";
-import { Menu } from "@/ui/menu";
+import { Menu, type MenuEntry } from "@/ui/menu";
 import { Meter } from "@/ui/progress";
 import { Tile } from "@/ui/tile";
 
@@ -32,37 +33,41 @@ function Ready({ deployment }: { deployment: DeploymentSummary }) {
   );
 }
 
-function Actions({ deployment, open }: { deployment: DeploymentSummary; open: Open }) {
-  const restart = useKubeAction(
-    () => commands.kubernetesRestartDeployment(deployment.namespace, deployment.name),
-    () => `Restarting ${deployment.name}`,
-  );
+type Handlers = { open: Open; restart: (deployment: DeploymentSummary) => void };
+
+function deploymentMenu(deployment: DeploymentSummary, { open, restart }: Handlers): MenuEntry[] {
+  return [
+    { label: "Scale…", onSelect: () => open({ kind: "scale", deployment }) },
+    { label: "Restart Rollout", onSelect: () => restart(deployment) },
+    { kind: "separator" },
+    { label: "Copy Name", onSelect: () => copyText("Name", deployment.name) },
+    { kind: "separator" },
+    {
+      label: "Delete Deployment…",
+      danger: true,
+      onSelect: () => open({ kind: "deleteDeployment", deployment }),
+    },
+  ];
+}
+
+function Actions({ deployment, handlers }: { deployment: DeploymentSummary; handlers: Handlers }) {
   return (
     <span className="inline-flex gap-0.5 opacity-0 transition-opacity duration-140 group-focus-within/row:opacity-100 group-hover/row:opacity-100">
       <IconAction
         label="Scale"
         target={deployment.name}
-        onClick={() => open({ kind: "scale", deployment })}
+        onClick={() => handlers.open({ kind: "scale", deployment })}
       >
         <IconScale />
       </IconAction>
       <IconAction
         label="Rollout restart"
         target={deployment.name}
-        onClick={() => restart.mutate(undefined)}
+        onClick={() => handlers.restart(deployment)}
       >
         <IconRotateClockwise />
       </IconAction>
-      <Menu
-        entries={[
-          {
-            label: "Delete deployment…",
-            danger: true,
-            onSelect: () => open({ kind: "deleteDeployment", deployment }),
-          },
-        ]}
-        align="end"
-      >
+      <Menu entries={deploymentMenu(deployment, handlers)} align="end">
         <Button
           variant="ghost"
           size="sm"
@@ -84,6 +89,12 @@ export function DeploymentsTable({
   deployments: DeploymentSummary[];
   open: Open;
 }) {
+  const restart = useKubeAction(
+    (deployment: DeploymentSummary) =>
+      commands.kubernetesRestartDeployment(deployment.namespace, deployment.name),
+    (deployment) => `Restarting ${deployment.name}`,
+  );
+  const handlers: Handlers = { open, restart: (deployment) => restart.mutate(deployment) };
   const columns: Column<DeploymentSummary>[] = [
     {
       header: "Name",
@@ -133,7 +144,7 @@ export function DeploymentsTable({
       hiddenHeader: true,
       width: "w-[112px]",
       align: "right",
-      cell: (deployment) => <Actions deployment={deployment} open={open} />,
+      cell: (deployment) => <Actions deployment={deployment} handlers={handlers} />,
     },
   ];
   return (
@@ -142,6 +153,7 @@ export function DeploymentsTable({
       columns={columns}
       rows={deployments}
       rowKey={(deployment) => `${deployment.namespace}/${deployment.name}`}
+      menu={(deployment) => deploymentMenu(deployment, handlers)}
     />
   );
 }

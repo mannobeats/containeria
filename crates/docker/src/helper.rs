@@ -29,14 +29,25 @@ impl<'a> Helper<'a> {
         binds: Vec<String>,
         command: &[&str],
     ) -> Result<Self> {
-        if docker.api.inspect_image(IMAGE).await.is_err() {
-            let options = CreateImageOptionsBuilder::new().from_image(IMAGE).build();
+        Self::create_from(docker, IMAGE, false, binds, command).await
+    }
+
+    /// A helper from another image, pulled first if it isn't there; `network` lets it download.
+    pub(crate) async fn create_from(
+        docker: &'a Docker,
+        image: &str,
+        network: bool,
+        binds: Vec<String>,
+        command: &[&str],
+    ) -> Result<Self> {
+        if docker.api.inspect_image(image).await.is_err() {
+            let options = CreateImageOptionsBuilder::new().from_image(image).build();
             docker.api.create_image(Some(options), None, None).try_collect::<Vec<_>>().await?;
         }
         let body = ContainerCreateBody {
-            image: Some(IMAGE.to_owned()),
+            image: Some(image.to_owned()),
             cmd: Some(command.iter().map(|part| (*part).to_owned()).collect()),
-            network_disabled: Some(true),
+            network_disabled: Some(!network),
             labels: Some(HashMap::from([(LABEL.to_owned(), "true".to_owned())])),
             host_config: Some(HostConfig { binds: Some(binds), ..Default::default() }),
             ..Default::default()

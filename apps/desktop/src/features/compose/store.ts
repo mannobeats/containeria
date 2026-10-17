@@ -5,7 +5,7 @@ import { create } from "zustand";
 
 import { queryClient } from "@/app/query-client";
 import { queryKeys } from "@/app/query-keys";
-import { type ComposeEvent, commands } from "@/lib/ipc/bindings";
+import { commands, type OutputEvent } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
 
 import { type ComposeDraft, fileDraft } from "./model";
@@ -13,7 +13,7 @@ import { type ComposeDraft, fileDraft } from "./model";
 /** Lines repeat word for word ("Pulling"), so each gets its own number. */
 export type OutputLine = { id: number; text: string };
 
-/** A Compose run whose output the run sheet shows. It keeps going when the sheet is hidden. */
+/** A tool run whose output the run sheet shows. It keeps going when the sheet is hidden. */
 export type ComposeRun = {
   title: string;
   /** Said in the toast when it worked, e.g. "shop is up". */
@@ -61,6 +61,7 @@ function finish(failure: string | null) {
   const { run, runVisible } = useCompose.getState();
   update(() => ({ status: failure === null ? "done" : "failed", message: failure }));
   queryClient.invalidateQueries({ queryKey: queryKeys.containers }).catch(() => undefined);
+  queryClient.invalidateQueries({ queryKey: queryKeys.images }).catch(() => undefined);
   if (run && !runVisible) {
     if (failure === null) {
       toast.success(run.done);
@@ -75,16 +76,16 @@ type RunStart = {
   title: string;
   done: string;
   draft?: ComposeDraft;
-  start: (channel: Channel<ComposeEvent>) => Promise<number>;
+  start: (channel: Channel<OutputEvent>) => Promise<number>;
 };
 
-/** Starts a Compose run and shows its output. */
+/** Starts a tool run (Compose, an image build or push) and shows its output. */
 export function startRun({ title, done, draft, start }: RunStart) {
   useCompose.setState({
     run: { title, done, lines: [], status: "running", message: null, draft: draft ?? null },
     runVisible: true,
   });
-  const channel = new Channel<ComposeEvent>((event) => {
+  const channel = new Channel<OutputEvent>((event) => {
     if (event.kind === "line") {
       update((run) => ({
         lines: [

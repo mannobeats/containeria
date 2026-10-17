@@ -15,15 +15,16 @@ import { usageById, useMetrics } from "@/features/metrics/api";
 import { MemoryLedger } from "@/features/metrics/memory-ledger";
 import { fitWindow } from "@/lib/fit-window";
 import { formatMemory, plural } from "@/lib/format";
-import { commands } from "@/lib/ipc/bindings";
+import { type ContainerSummary, commands, events } from "@/lib/ipc/bindings";
 import { logoFor } from "@/lib/logos";
 import { AppMark } from "@/ui/app-mark";
 import { Button } from "@/ui/button";
 import { IconAction } from "@/ui/icon-action";
+import { ContextMenu, type MenuEntry } from "@/ui/menu";
 import { Tile } from "@/ui/tile";
 
 const rowClass =
-  "group flex h-[30px] w-full items-center gap-2 rounded-sm px-2 text-left text-13 text-ink transition-colors duration-140 hover:bg-[light-dark(oklch(0_0_0/0.06),oklch(1_0_0/0.08))]";
+  "group flex h-[30px] w-full items-center gap-2 rounded-sm px-2 text-left text-13 text-ink transition-colors duration-140 hover:bg-[light-dark(oklch(0_0_0/0.06),oklch(1_0_0/0.08))] data-[state=open]:bg-[light-dark(oklch(0_0_0/0.06),oklch(1_0_0/0.08))]";
 
 function Section({ label, children }: { label?: string; children: ReactNode }) {
   return (
@@ -34,6 +35,14 @@ function Section({ label, children }: { label?: string; children: ReactNode }) {
       {children}
     </section>
   );
+}
+
+/** Asks the main window to show the container, then brings it forward. */
+function openInWindow(container: ContainerSummary) {
+  events.navigate
+    .emit(`/containers/${container.id}`)
+    .then(() => commands.windowShowMain())
+    .catch(() => undefined);
 }
 
 function Running() {
@@ -48,24 +57,40 @@ function Running() {
   }
   return (
     <ul className="m-0 max-h-[196px] list-none overflow-auto p-0">
-      {running.map((container) => (
-        <li key={container.id} className={rowClass}>
-          <Tile logo={logoFor(container.image)} size="sm" />
-          <span className="min-w-0 flex-1 truncate">{container.name}</span>
-          <span className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-            <IconAction
-              label="Stop"
-              target={container.name}
-              onClick={() => action.mutate({ containers: [container], action: "stop" })}
-            >
-              <IconPlayerStop />
-            </IconAction>
-          </span>
-          <span className="w-14 shrink-0 text-right text-12 text-ink-3 tabular">
-            {formatMemory(usage.get(container.id)?.memoryBytes ?? 0)}
-          </span>
-        </li>
-      ))}
+      {running.map((container) => {
+        const menu: MenuEntry[] = [
+          { label: "Open in Containeria", onSelect: () => openInWindow(container) },
+          { kind: "separator" },
+          {
+            label: "Stop",
+            onSelect: () => action.mutate({ containers: [container], action: "stop" }),
+          },
+          {
+            label: "Restart",
+            onSelect: () => action.mutate({ containers: [container], action: "restart" }),
+          },
+        ];
+        return (
+          <ContextMenu key={container.id} entries={menu}>
+            <li className={rowClass}>
+              <Tile logo={logoFor(container.image)} size="sm" />
+              <span className="min-w-0 flex-1 truncate">{container.name}</span>
+              <span className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                <IconAction
+                  label="Stop"
+                  target={container.name}
+                  onClick={() => action.mutate({ containers: [container], action: "stop" })}
+                >
+                  <IconPlayerStop />
+                </IconAction>
+              </span>
+              <span className="w-14 shrink-0 text-right text-12 text-ink-3 tabular">
+                {formatMemory(usage.get(container.id)?.memoryBytes ?? 0)}
+              </span>
+            </li>
+          </ContextMenu>
+        );
+      })}
     </ul>
   );
 }

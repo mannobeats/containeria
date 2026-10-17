@@ -12,7 +12,9 @@ import {
 import clsx from "clsx";
 import { useState } from "react";
 
+import { copyText } from "@/lib/clipboard";
 import type { Namespace, ServerInfo, Table } from "@/lib/ipc/bindings";
+import { ContextMenu, type MenuEntry } from "@/ui/menu";
 import { SearchField } from "@/ui/search-field";
 import { Tile } from "@/ui/tile";
 import { Tip } from "@/ui/tooltip";
@@ -20,10 +22,11 @@ import { Tip } from "@/ui/tooltip";
 import { engineLogo } from "./engines";
 import { compactCount, tableKey } from "./model";
 import { tableTab, useOpenTab } from "./tabs";
+import { useOpenQuery } from "./use-open-query";
 import { nextQueryTab, useWorkspace } from "./workspace-store";
 
 const rowClass =
-  "flex h-[26px] w-full items-center gap-[7px] rounded-sm px-2 text-left text-13 text-ink-2 transition-colors duration-140 hover:bg-hover hover:text-ink [&_.tabler-icon]:size-3.5 [&_.tabler-icon]:text-ink-3";
+  "flex h-[26px] w-full items-center gap-[7px] rounded-sm px-2 text-left text-13 text-ink-2 transition-colors duration-140 hover:bg-hover hover:text-ink data-[state=open]:bg-hover [&_.tabler-icon]:size-3.5 [&_.tabler-icon]:text-ink-3";
 
 function matches(table: Table, needle: string): boolean {
   return (
@@ -39,9 +42,10 @@ type GroupProps = {
   active: string | undefined;
   needle: string;
   onOpen: (table: Table) => void;
+  menu: (table: Table) => MenuEntry[];
 };
 
-function Group({ namespace, first, active, needle, onOpen }: GroupProps) {
+function Group({ namespace, first, active, needle, onOpen, menu }: GroupProps) {
   const tables = namespace.tables.filter(
     (table) => table.kind !== "view" && matches(table, needle),
   );
@@ -72,23 +76,24 @@ function Group({ namespace, first, active, needle, onOpen }: GroupProps) {
         </span>
       </summary>
       {[...tables, ...views].map((table) => (
-        <button
-          key={tableKey(table)}
-          type="button"
-          onClick={() => onOpen(table)}
-          className={clsx(
-            rowClass,
-            "pl-7",
-            `table:${tableKey(table)}` === active &&
-              "bg-select font-medium text-ink [&_.tabler-icon]:text-brand",
-          )}
-        >
-          {table.kind === "view" ? <IconEye aria-hidden /> : <IconTable aria-hidden />}
-          <span className="truncate">{table.name}</span>
-          <span className="ml-auto text-12 font-[450] text-ink-3 tabular">
-            {compactCount(table.rowEstimate)}
-          </span>
-        </button>
+        <ContextMenu key={tableKey(table)} entries={menu(table)}>
+          <button
+            type="button"
+            onClick={() => onOpen(table)}
+            className={clsx(
+              rowClass,
+              "pl-7",
+              `table:${tableKey(table)}` === active &&
+                "bg-select font-medium text-ink [&_.tabler-icon]:text-brand",
+            )}
+          >
+            {table.kind === "view" ? <IconEye aria-hidden /> : <IconTable aria-hidden />}
+            <span className="truncate">{table.name}</span>
+            <span className="ml-auto text-12 font-[450] text-ink-3 tabular">
+              {compactCount(table.rowEstimate)}
+            </span>
+          </button>
+        </ContextMenu>
       ))}
       {namespace.functions.slice(0, 50).map((name) => (
         <Tip key={name} label={name} side="right">
@@ -117,7 +122,27 @@ type SchemaTreeProps = { info: ServerInfo; namespaces: Namespace[]; active: stri
 export function SchemaTree({ info, namespaces, active }: SchemaTreeProps) {
   const [needle, setNeedle] = useState("");
   const open = useOpenTab(info.id);
+  const openQuery = useOpenQuery();
   const tabs = useWorkspace((state) => state.tabs[info.id]);
+  const setView = useWorkspace((state) => state.setView);
+  const openAs = (table: Table, structure: boolean) => {
+    setView(`${info.id}|${tableKey(table)}`, { structure });
+    open(tableTab(tableKey(table)));
+  };
+  const menu = (table: Table): MenuEntry[] => [
+    { label: "Open", onSelect: () => openAs(table, false) },
+    { label: "Open Structure", onSelect: () => openAs(table, true) },
+    ...(info.capabilities.sql
+      ? [
+          {
+            label: "New Query",
+            onSelect: () => openQuery(info.id, `select * from ${tableKey(table)} limit 100;`),
+          },
+        ]
+      : []),
+    { kind: "separator" },
+    { label: "Copy Name", onSelect: () => copyText("Name", table.name) },
+  ];
   return (
     <aside className="flex min-h-0 flex-col border-r-[0.5px] border-line bg-panel-solid">
       <div className="flex items-center gap-2.5 px-4 pt-3 pb-2">
@@ -142,6 +167,7 @@ export function SchemaTree({ info, namespaces, active }: SchemaTreeProps) {
             active={active}
             needle={needle.trim().toLowerCase()}
             onOpen={(table) => open(tableTab(tableKey(table)))}
+            menu={menu}
           />
         ))}
       </nav>

@@ -53,6 +53,8 @@ export function CellEditor({ column, value, onDone }: CellEditorProps) {
       setText(event.target.value),
     onKeyDown,
     onBlur: () => onDone(text),
+    // The grid's own menu stays out of the way of the text field's Cut, Copy and Paste.
+    onContextMenu: (event: React.MouseEvent) => event.stopPropagation(),
     className: clsx(
       "absolute top-0 left-0 z-[6] w-full border-0 bg-surface px-[9px] font-mono text-mono-13 text-ink shadow-[inset_0_0_0_2px_var(--brand),var(--shadow-2)] outline-none",
       long

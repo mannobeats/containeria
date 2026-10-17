@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 use tauri::ipc::Channel;
 
+use crate::commands::streams::OutputEvent;
 use crate::error::{CommandError, ErrorKind, Result};
 use crate::state::AppState;
 
@@ -27,15 +28,6 @@ pub(crate) enum ComposeSource {
 pub(crate) struct ComposeDocument {
     pub(crate) path: String,
     pub(crate) text: String,
-}
-
-/// What a Compose run reports, ending with `done` or `failed`.
-#[derive(Debug, Clone, Serialize, specta::Type)]
-#[serde(tag = "kind", rename_all = "camelCase")]
-pub(crate) enum ComposeEvent {
-    Line { text: String },
-    Done,
-    Failed { message: String },
 }
 
 fn invalid(message: impl Into<String>) -> CommandError {
@@ -166,7 +158,7 @@ pub(crate) async fn compose_deploy(
     state: State<'_, AppState>,
     source: ComposeSource,
     name: String,
-    channel: Channel<ComposeEvent>,
+    channel: Channel<OutputEvent>,
 ) -> Result<u32> {
     let name = checked_name(&name)?.to_owned();
     let compose = state.engine.compose()?;
@@ -175,10 +167,10 @@ pub(crate) async fn compose_deploy(
     Ok(state.streams.spawn(async move {
         let result = compose
             .run(&files, &name, ComposeVerb::Up, |text| {
-                let _ = channel.send(ComposeEvent::Line { text });
+                let _ = channel.send(OutputEvent::Line { text });
             })
             .await;
-        let _ = channel.send(finished(result));
+        let _ = channel.send(OutputEvent::finished(result));
     }))
 }
 
@@ -189,7 +181,7 @@ pub(crate) async fn compose_act(
     state: State<'_, AppState>,
     project: String,
     verb: ComposeVerb,
-    channel: Channel<ComposeEvent>,
+    channel: Channel<OutputEvent>,
 ) -> Result<u32> {
     let compose = state.engine.compose()?;
     let docker = state.engine.docker().await?;
@@ -203,19 +195,12 @@ pub(crate) async fn compose_act(
     }
     Ok(state.streams.spawn(async move {
         let mut send = |text| {
-            let _ = channel.send(ComposeEvent::Line { text });
+            let _ = channel.send(OutputEvent::Line { text });
         };
         let mut result = compose.run(&files, &project, verb, &mut send).await;
         if verb == ComposeVerb::Pull && result.is_ok() {
             result = compose.run(&files, &project, ComposeVerb::Up, &mut send).await;
         }
-        let _ = channel.send(finished(result));
+        let _ = channel.send(OutputEvent::finished(result));
     }))
-}
-
-fn finished(result: containeria_docker::Result<()>) -> ComposeEvent {
-    match result {
-        Ok(()) => ComposeEvent::Done,
-        Err(error) => ComposeEvent::Failed { message: error.to_string() },
-    }
 }

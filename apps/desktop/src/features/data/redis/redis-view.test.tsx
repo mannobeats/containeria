@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
@@ -75,6 +75,19 @@ describe("RedisView", () => {
       expect(calls).toContainEqual({
         command: "dataRedisDelete",
         args: { id: "pg", key: "user:1" },
+      }),
+    );
+  });
+
+  it("deletes a key from its right-click menu after asking", async () => {
+    const calls = setup();
+    fireEvent.contextMenu(await screen.findByRole("button", { name: /queue/ }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Delete…" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Delete key" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        command: "dataRedisDelete",
+        args: { id: "pg", key: "queue" },
       }),
     );
   });

@@ -3,16 +3,18 @@ import { useEffect, useRef, useState } from "react";
 import type { Column, Sort, Value } from "@/lib/ipc/bindings";
 
 import { GridHeader } from "./grid-header";
+import type { RowActions } from "./grid-menu";
 import { type CellPosition, columnWidth, moveFrom, type GridRow as Row } from "./grid-model";
 import { GridRow } from "./grid-row";
 
-type DataGridProps = {
+type DataGridProps = RowActions & {
   label: string;
   columns: Column[];
   rows: Row[];
   offset: number;
   sort: Sort | null;
-  onSort: (sort: Sort | null) => void;
+  /** `undefined` when the rows can't be sorted. */
+  onSort: ((sort: Sort | null) => void) | undefined;
   selected: ReadonlySet<string>;
   onToggleRow: (row: Row) => void;
   active: CellPosition | null;
@@ -86,6 +88,9 @@ export function DataGrid({
   onActive,
   onEdit,
   onJump,
+  table,
+  onFilter,
+  onDelete,
 }: DataGridProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const [widths, setWidths] = useState(() => columns.map(columnWidth));
@@ -152,6 +157,7 @@ export function DataGrid({
                 onEdit={onEdit ? (column, text) => onEdit(row, column, text) : undefined}
                 onStopEdit={() => setEditing(false)}
                 onJump={onJump}
+                actions={{ table, onEdit, onFilter, onDelete }}
               />
             );
           })}

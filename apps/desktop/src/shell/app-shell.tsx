@@ -7,6 +7,7 @@ import { ComposeRunSheet } from "@/features/compose/compose-run-sheet";
 import { ComposeSheet } from "@/features/compose/compose-sheet";
 import { RunSheet } from "@/features/containers/run/run-sheet";
 import { EngineGate } from "@/features/engine/engine-gate";
+import { DockerfileDropTarget } from "@/features/images/dockerfile-drop-target";
 import { useFirstLaunch } from "@/features/welcome/use-first-launch";
 import { Toaster } from "@/ui/toaster";
 import { TooltipProvider } from "@/ui/tooltip";
@@ -63,6 +64,7 @@ export function AppShell() {
       <ComposeSheet />
       <ComposeRunSheet />
       <ComposeDropTarget />
+      <DockerfileDropTarget />
       <Toaster />
     </TooltipProvider>
   );

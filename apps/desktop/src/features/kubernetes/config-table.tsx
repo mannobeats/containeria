@@ -1,7 +1,9 @@
+import { copyText } from "@/lib/clipboard";
 import { formatAge } from "@/lib/format";
 import type { ConfigSummary } from "@/lib/ipc/bindings";
 import { Chip } from "@/ui/chip";
 import { type Column, ColumnTable } from "@/ui/column-table";
+import type { MenuEntry } from "@/ui/menu";
 import { Tile } from "@/ui/tile";
 
 import type { KubeSheet } from "./kube-sheet";
@@ -13,6 +15,11 @@ export function ConfigTable({
   config: ConfigSummary[];
   open: (sheet: KubeSheet) => void;
 }) {
+  const menu = (item: ConfigSummary): MenuEntry[] => [
+    { label: "Open", onSelect: () => open({ kind: "config", config: item }) },
+    { kind: "separator" },
+    { label: "Copy Name", onSelect: () => copyText("Name", item.name) },
+  ];
   const columns: Column<ConfigSummary>[] = [
     {
       header: "Name",
@@ -66,6 +73,7 @@ export function ConfigTable({
       columns={columns}
       rows={config}
       rowKey={(item) => `${item.kind}/${item.namespace}/${item.name}`}
+      menu={menu}
     />
   );
 }

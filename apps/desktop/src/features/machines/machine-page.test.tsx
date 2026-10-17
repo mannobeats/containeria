@@ -141,7 +141,7 @@ describe("MachineView", () => {
   it("leaves after deleting the machine", async () => {
     const { calls, onLeave } = setup("overview");
     await userEvent.click(await screen.findByRole("button", { name: "More for ubuntu-dev" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Delete machine…" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Delete Machine…" }));
     const sheet = await screen.findByRole("dialog", { name: "Delete ubuntu-dev?" });
     await userEvent.click(within(sheet).getByRole("button", { name: "Delete machine" }));
     await waitFor(() => expect(calls.map((call) => call.command)).toContain("machineDelete"));

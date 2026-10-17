@@ -34,6 +34,7 @@ pub(crate) enum MenuCommand {
     NewComposeProject,
     OpenComposeFile,
     PullImage,
+    BuildImage,
     NewMachine,
     NewConnection,
 }

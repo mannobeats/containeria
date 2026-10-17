@@ -1,7 +1,8 @@
 import { IconLink, IconPlugConnectedX, IconTrash } from "@tabler/icons-react";
-import { getRouteApi, Link } from "@tanstack/react-router";
+import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
+import { copyText } from "@/lib/clipboard";
 import type { NetworkDetail, NetworkEndpoint } from "@/lib/ipc/bindings";
 import { Crumb, Page } from "@/shell/page";
 import { ParentCrumb } from "@/shell/parent-crumb";
@@ -11,6 +12,7 @@ import { Dash } from "@/ui/dash";
 import { EmptyState } from "@/ui/empty-state";
 import { IconAction } from "@/ui/icon-action";
 import { Kv } from "@/ui/kv";
+import { ContextMenu, type MenuEntry } from "@/ui/menu";
 import { ResourceHeader } from "@/ui/resource-header";
 import { HeadRow, Row, RowActions, Table } from "@/ui/table";
 import { Tile } from "@/ui/tile";
@@ -22,13 +24,25 @@ import { DeleteNetworkSheet } from "./delete-network-sheet";
 const route = getRouteApi("/networks/$id");
 
 function Endpoints({ detail }: { detail: NetworkDetail }) {
+  const navigate = useNavigate();
   const disconnect = useDisconnectNetwork();
-  const leave = (endpoint: NetworkEndpoint) =>
+  const leave = (container: string) =>
     disconnect.mutate({
       network: detail.network.id,
-      container: endpoint.containerId,
+      container,
       networkName: detail.network.name,
     });
+  const menu = ({ containerId, container, ipv4 }: NetworkEndpoint): MenuEntry[] => [
+    {
+      label: "Open",
+      onSelect: () => navigate({ to: "/containers/$id", params: { id: containerId } }),
+    },
+    { kind: "separator" },
+    ...(ipv4 ? [{ label: "Copy IP Address", onSelect: () => copyText("IP address", ipv4) }] : []),
+    { label: "Copy Name", onSelect: () => copyText("Name", container) },
+    { kind: "separator" },
+    { label: "Disconnect", danger: true, onSelect: () => leave(containerId) },
+  ];
   if (detail.endpoints.length === 0) {
     return (
       <EmptyState
@@ -56,30 +70,32 @@ function Endpoints({ detail }: { detail: NetworkDetail }) {
       </HeadRow>
       <tbody>
         {detail.endpoints.map((endpoint) => (
-          <Row key={endpoint.containerId}>
-            <td className="max-w-0">
-              <Link
-                to="/containers/$id"
-                params={{ id: endpoint.containerId }}
-                className={rowLink}
-                data-row-link
-              >
-                <Tile />
-                <span className="truncate text-ink">{endpoint.container}</span>
-              </Link>
-            </td>
-            <td className="font-mono text-mono-12">{endpoint.ipv4 ?? <Dash />}</td>
-            <td className="font-mono text-mono-12 text-ink-3">{endpoint.mac ?? <Dash />}</td>
-            <RowActions>
-              <IconAction
-                label="Disconnect"
-                target={endpoint.container}
-                onClick={() => leave(endpoint)}
-              >
-                <IconPlugConnectedX />
-              </IconAction>
-            </RowActions>
-          </Row>
+          <ContextMenu key={endpoint.containerId} entries={menu(endpoint)}>
+            <Row>
+              <td className="max-w-0">
+                <Link
+                  to="/containers/$id"
+                  params={{ id: endpoint.containerId }}
+                  className={rowLink}
+                  data-row-link
+                >
+                  <Tile />
+                  <span className="truncate text-ink">{endpoint.container}</span>
+                </Link>
+              </td>
+              <td className="font-mono text-mono-12">{endpoint.ipv4 ?? <Dash />}</td>
+              <td className="font-mono text-mono-12 text-ink-3">{endpoint.mac ?? <Dash />}</td>
+              <RowActions>
+                <IconAction
+                  label="Disconnect"
+                  target={endpoint.container}
+                  onClick={() => leave(endpoint.containerId)}
+                >
+                  <IconPlugConnectedX />
+                </IconAction>
+              </RowActions>
+            </Row>
+          </ContextMenu>
         ))}
       </tbody>
     </Table>

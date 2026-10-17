@@ -82,7 +82,7 @@ describe("MachinesPage", () => {
   it("asks before deleting a machine", async () => {
     const calls = setup();
     await userEvent.click(await screen.findByRole("button", { name: "More for ubuntu-dev" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Delete machine…" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Delete Machine…" }));
     const sheet = await screen.findByRole("dialog", { name: "Delete ubuntu-dev?" });
     await userEvent.click(within(sheet).getByRole("button", { name: "Delete machine" }));
     await waitFor(() =>

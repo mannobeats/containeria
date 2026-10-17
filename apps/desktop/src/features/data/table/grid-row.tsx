@@ -1,12 +1,14 @@
 import { IconLink, IconPlus } from "@tabler/icons-react";
 import clsx from "clsx";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { Column, Value } from "@/lib/ipc/bindings";
+import { ContextMenu } from "@/ui/menu";
 import { Tip } from "@/ui/tooltip";
 
 import { cellText } from "../model";
 import { CellEditor, CellValue } from "./cell-value";
+import { cellMenu, type RowActions } from "./grid-menu";
 import type { GridRow as Row } from "./grid-model";
 
 type CellProps = {
@@ -21,6 +23,8 @@ type CellProps = {
   onEdit: ((text: string | null) => void) | undefined;
   onStopEdit: () => void;
   onJump: () => void;
+  /** Right-click: the row's menu opens for this cell. */
+  onMenu: () => void;
 };
 
 function cellClass({ active, editing, edited }: Pick<CellProps, "active" | "editing" | "edited">) {
@@ -50,6 +54,7 @@ function Cell(props: CellProps) {
     onEdit,
     onStopEdit,
     onJump,
+    onMenu,
   } = props;
   const button = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -77,6 +82,7 @@ function Cell(props: CellProps) {
           tabIndex={active ? 0 : -1}
           onClick={() => onSelect(false)}
           onDoubleClick={() => onSelect(true)}
+          onContextMenu={onMenu}
           onKeyDown={onKey}
           className={clsx(
             "block h-7 w-full truncate px-2.5 outline-none",
@@ -95,6 +101,7 @@ function Cell(props: CellProps) {
             tabIndex={-1}
             aria-label={`Open the ${column.references.table} row`}
             onClick={onJump}
+            onContextMenu={onMenu}
             className="absolute top-1/2 right-1 grid size-5 -translate-y-1/2 place-items-center rounded-xs bg-brand-soft text-brand-ink opacity-0 transition-opacity duration-140 group-hover/row:opacity-100 [&_.tabler-icon]:size-3"
           >
             <IconLink />
@@ -118,11 +125,12 @@ type RowProps = {
   onEdit: ((column: Column, text: string | null) => void) | undefined;
   onStopEdit: () => void;
   onJump: (column: Column, value: Value) => void;
+  actions: RowActions;
 };
 
 function rowClass(row: Row, selected: boolean) {
   return clsx(
-    "group/row",
+    "group/row data-[state=open]:[&>td]:bg-hover",
     selected && "[&>td]:bg-select",
     row.added !== null && "[&>td]:bg-ok-soft/75",
     row.deleted &&
@@ -144,46 +152,52 @@ export function GridRow({
   onEdit,
   onStopEdit,
   onJump,
+  actions,
 }: RowProps) {
+  const [menuColumn, setMenuColumn] = useState<number>();
   return (
-    <tr className={rowClass(row, selected)}>
-      <td
-        className={clsx(
-          "sticky left-0 z-[2] h-7 w-[52px] border-r-[0.5px] border-b-[0.5px] border-r-line-strong border-b-line px-0 text-right font-mono text-mono-12",
-          selected ? "bg-brand text-white" : "bg-panel-solid text-ink-3 group-hover/row:bg-hover",
-        )}
-      >
-        <button
-          type="button"
-          tabIndex={-1}
-          aria-pressed={selected}
-          aria-label={`Select row ${number}`}
-          onClick={onToggle}
-          className="h-7 w-full px-2 text-right"
-        >
-          {row.added === null ? (
-            number
-          ) : (
-            <IconPlus className="ml-auto size-3 text-ok-ink" aria-label="New row" />
+    <ContextMenu entries={cellMenu(columns, row, menuColumn, actions)}>
+      <tr className={rowClass(row, selected)}>
+        <td
+          className={clsx(
+            "sticky left-0 z-[2] h-7 w-[52px] border-r-[0.5px] border-b-[0.5px] border-r-line-strong border-b-line px-0 text-right font-mono text-mono-12",
+            selected ? "bg-brand text-white" : "bg-panel-solid text-ink-3 group-hover/row:bg-hover",
           )}
-        </button>
-      </td>
-      {columns.map((column, position) => (
-        <Cell
-          key={column.name}
-          column={column}
-          value={row.values[position] ?? null}
-          active={activeColumn === position}
-          editing={editing && activeColumn === position}
-          edited={column.name in row.edited}
-          before={row.edited[column.name] ?? null}
-          onSelect={(edit) => onSelect(position, edit)}
-          onKey={onKey}
-          onEdit={onEdit ? (text) => onEdit(column, text) : undefined}
-          onStopEdit={onStopEdit}
-          onJump={() => onJump(column, row.values[position] ?? null)}
-        />
-      ))}
-    </tr>
+        >
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-pressed={selected}
+            aria-label={`Select row ${number}`}
+            onClick={onToggle}
+            onContextMenu={() => setMenuColumn(undefined)}
+            className="h-7 w-full px-2 text-right"
+          >
+            {row.added === null ? (
+              number
+            ) : (
+              <IconPlus className="ml-auto size-3 text-ok-ink" aria-label="New row" />
+            )}
+          </button>
+        </td>
+        {columns.map((column, position) => (
+          <Cell
+            key={column.name}
+            column={column}
+            value={row.values[position] ?? null}
+            active={activeColumn === position}
+            editing={editing && activeColumn === position}
+            edited={column.name in row.edited}
+            before={row.edited[column.name] ?? null}
+            onSelect={(edit) => onSelect(position, edit)}
+            onKey={onKey}
+            onEdit={onEdit ? (text) => onEdit(column, text) : undefined}
+            onStopEdit={onStopEdit}
+            onJump={() => onJump(column, row.values[position] ?? null)}
+            onMenu={() => setMenuColumn(position)}
+          />
+        ))}
+      </tr>
+    </ContextMenu>
   );
 }

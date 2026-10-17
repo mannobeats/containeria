@@ -70,13 +70,13 @@ describe("NetworksPage", () => {
     const calls = setup();
     await userEvent.click(await screen.findByRole("button", { name: "More for bridge" }));
     expect(
-      (await screen.findByRole("menuitem", { name: /can't be deleted/ })).getAttribute(
+      (await screen.findByRole("menuitem", { name: /can't be deleted/i })).getAttribute(
         "aria-disabled",
       ),
     ).toBe("true");
     await userEvent.keyboard("{Escape}");
     await userEvent.click(screen.getByRole("button", { name: "More for shop_default" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Delete network…" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Delete Network…" }));
     await userEvent.click(await screen.findByRole("button", { name: "Delete network" }));
     await waitFor(() =>
       expect(calls).toContainEqual({ command: "networkRemove", args: { id: "n1" } }),

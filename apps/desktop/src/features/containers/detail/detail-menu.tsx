@@ -9,7 +9,7 @@ import { ConfirmSheet } from "@/ui/confirm-sheet";
 import { Menu, type MenuEntry } from "@/ui/menu";
 import { PromptSheet } from "@/ui/prompt-sheet";
 
-import { useContainerAction } from "../api";
+import { useContainerAction, useRecreate } from "../api";
 import { useCommit, useExport, useRename } from "./api";
 
 type Dialog = "rename" | "commit" | "delete" | null;
@@ -22,6 +22,15 @@ export function DetailMenu({ details }: { details: ContainerDetails }) {
   const [dialog, setDialog] = useState<Dialog>(null);
   const navigate = useNavigate();
   const action = useContainerAction();
+  const recreate = useRecreate();
+  const recreateWith = (pull: boolean) =>
+    recreate.mutate(
+      { id: details.id, name: details.name, pull },
+      {
+        onSuccess: (id) =>
+          navigate({ to: "/containers/$id", params: { id } }).catch(() => undefined),
+      },
+    );
   const rename = useRename(details.id);
   const commit = useCommit(details.id);
   const exportFiles = useExport(details.id, details.name);
@@ -30,7 +39,7 @@ export function DetailMenu({ details }: { details: ContainerDetails }) {
   const entries: MenuEntry[] = [
     { label: "Copy ID", onSelect: () => copyText("ID", details.id.slice(0, 12)) },
     {
-      label: "Copy docker exec command",
+      label: "Copy docker exec Command",
       onSelect: () => copyText("Command", `docker exec -it ${details.name} sh`),
     },
     { kind: "separator" },
@@ -47,9 +56,12 @@ export function DetailMenu({ details }: { details: ContainerDetails }) {
       onSelect: () => action.mutate({ containers: target, action: "kill" }),
     },
     { kind: "separator" },
+    { label: "Recreate", onSelect: () => recreateWith(false) },
+    { label: "Recreate with Latest Image", onSelect: () => recreateWith(true) },
+    { kind: "separator" },
     { label: "Rename…", onSelect: () => setDialog("rename") },
-    { label: "Commit to image…", onSelect: () => setDialog("commit") },
-    { label: "Export filesystem…", onSelect: () => exportFiles.mutate() },
+    { label: "Commit to Image…", onSelect: () => setDialog("commit") },
+    { label: "Export Filesystem…", onSelect: () => exportFiles.mutate() },
     { kind: "separator" },
     { label: "Delete…", danger: true, onSelect: () => setDialog("delete") },
   ];

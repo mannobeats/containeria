@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -57,6 +57,18 @@ describe("TrayView", () => {
     await userEvent.click(screen.getByRole("button", { name: "Stop shop-db-1" }));
     await waitFor(() =>
       expect(calls).toContainEqual({ command: "containerAct", args: { id: "db", action: "stop" } }),
+    );
+  });
+
+  it("restarts a container from its right-click menu", async () => {
+    const calls = renderTray("running");
+    fireEvent.contextMenu(await screen.findByText("shop-db-1"));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Restart" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        command: "containerAct",
+        args: { id: "db", action: "restart" },
+      }),
     );
   });
 

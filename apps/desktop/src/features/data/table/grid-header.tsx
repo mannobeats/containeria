@@ -3,13 +3,16 @@ import clsx from "clsx";
 
 import type { Column, Sort } from "@/lib/ipc/bindings";
 
+import { ContextMenu } from "@/ui/menu";
+
+import { headerMenu } from "./grid-menu";
 import { nextSort } from "./grid-model";
 
 type HeaderProps = {
   columns: Column[];
   widths: number[];
   sort: Sort | null;
-  onSort: (sort: Sort | null) => void;
+  onSort: ((sort: Sort | null) => void) | undefined;
   onResize: (index: number, width: number) => void;
 };
 
@@ -70,7 +73,7 @@ function ColumnHeading({ column, sorted }: { column: Column; sorted: Sort | null
   );
 }
 
-/** Column names and types; click to sort, drag an edge to resize. */
+/** Column names and types; click to sort, drag an edge to resize, right-click for more. */
 export function GridHeader({ columns, widths, sort, onSort, onResize }: HeaderProps) {
   return (
     <thead>
@@ -81,30 +84,31 @@ export function GridHeader({ columns, widths, sort, onSort, onResize }: HeaderPr
         {columns.map((column, index) => {
           const sorted = sort?.column === column.name ? sort : null;
           return (
-            <th
-              key={column.name}
-              scope="col"
-              aria-sort={ariaSort(sorted)}
-              className="sticky top-0 z-[3] h-10 border-r-[0.5px] border-b-[0.5px] border-r-line border-b-line-strong bg-bg p-0 text-left font-sans"
-            >
-              <button
-                type="button"
-                onClick={() => onSort(nextSort(sort, column.name))}
-                className={clsx(
-                  "relative flex h-10 w-full flex-col justify-center gap-0.5 px-2.5 pr-5 text-left transition-colors duration-140 hover:bg-hover",
-                  column.kind === "number" && "items-end",
-                )}
+            <ContextMenu key={column.name} entries={headerMenu(column, sort, onSort)}>
+              <th
+                scope="col"
+                aria-sort={ariaSort(sorted)}
+                className="sticky top-0 z-[3] h-10 border-r-[0.5px] border-b-[0.5px] border-r-line border-b-line-strong bg-bg p-0 text-left font-sans"
               >
-                <ColumnHeading column={column} sorted={sorted} />
-              </button>
-              <span
-                aria-hidden
-                onPointerDown={(event) =>
-                  startResize(event, widths[index] ?? 120, (width) => onResize(index, width))
-                }
-                className="absolute top-0 -right-[3px] bottom-0 z-[4] w-1.5 cursor-col-resize hover:bg-[linear-gradient(var(--brand),var(--brand))] hover:bg-size-[2px_100%] hover:bg-center hover:bg-no-repeat"
-              />
-            </th>
+                <button
+                  type="button"
+                  onClick={() => onSort?.(nextSort(sort, column.name))}
+                  className={clsx(
+                    "relative flex h-10 w-full flex-col justify-center gap-0.5 px-2.5 pr-5 text-left transition-colors duration-140 hover:bg-hover",
+                    column.kind === "number" && "items-end",
+                  )}
+                >
+                  <ColumnHeading column={column} sorted={sorted} />
+                </button>
+                <span
+                  aria-hidden
+                  onPointerDown={(event) =>
+                    startResize(event, widths[index] ?? 120, (width) => onResize(index, width))
+                  }
+                  className="absolute top-0 -right-[3px] bottom-0 z-[4] w-1.5 cursor-col-resize hover:bg-[linear-gradient(var(--brand),var(--brand))] hover:bg-size-[2px_100%] hover:bg-center hover:bg-no-repeat"
+                />
+              </th>
+            </ContextMenu>
           );
         })}
       </tr>

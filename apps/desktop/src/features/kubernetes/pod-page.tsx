@@ -1,6 +1,8 @@
 import { IconArrowsExchange, IconDots, IconX } from "@tabler/icons-react";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
+import { copyText } from "@/lib/clipboard";
 import { formatAge, plural } from "@/lib/format";
 import type { Cluster, PodSummary } from "@/lib/ipc/bindings";
 import { Crumb, Page } from "@/shell/page";
@@ -9,7 +11,7 @@ import { Button } from "@/ui/button";
 import { Chip } from "@/ui/chip";
 import { EmptyState } from "@/ui/empty-state";
 import { IconAction } from "@/ui/icon-action";
-import { Menu } from "@/ui/menu";
+import { ContextMenu, Menu, type MenuEntry } from "@/ui/menu";
 import { TabPanel, Tabs } from "@/ui/tabs";
 import { Tile } from "@/ui/tile";
 
@@ -39,20 +41,35 @@ const asPodTab = (value: string | undefined): PodTab =>
 function Forwards({ pod }: { pod: PodSummary }) {
   const forwards = usePodForwards(pod);
   const stop = useStopForward();
-  return forwards.map((forward) => (
-    <span key={forward.stream} className="inline-flex items-center gap-1 text-12 text-ink-2">
-      <code className="font-mono text-mono-12">
-        localhost:{forward.localPort} → {forward.podPort}
-      </code>
-      <IconAction
-        label="Stop forwarding"
-        target={`localhost:${forward.localPort}`}
-        onClick={() => stop.mutate(forward.stream)}
-      >
-        <IconX />
-      </IconAction>
-    </span>
-  ));
+  return forwards.map((forward) => {
+    const address = `localhost:${forward.localPort}`;
+    const menu: MenuEntry[] = [
+      {
+        label: "Open in Browser",
+        onSelect: () => openUrl(`http://${address}`).catch(() => undefined),
+      },
+      { kind: "separator" },
+      { label: "Copy Address", onSelect: () => copyText("Address", address) },
+      { kind: "separator" },
+      { label: "Stop Forwarding", onSelect: () => stop.mutate(forward.stream) },
+    ];
+    return (
+      <ContextMenu key={forward.stream} entries={menu}>
+        <span className="inline-flex items-center gap-1 text-12 text-ink-2">
+          <code className="font-mono text-mono-12">
+            {address} → {forward.podPort}
+          </code>
+          <IconAction
+            label="Stop forwarding"
+            target={address}
+            onClick={() => stop.mutate(forward.stream)}
+          >
+            <IconX />
+          </IconAction>
+        </span>
+      </ContextMenu>
+    );
+  });
 }
 
 function PodHeader({

@@ -80,6 +80,8 @@ export const commands = {
 	containerCommit: (id: string, reference: string) => __TAURI_INVOKE<string>("container_commit", { id, reference }),
 	/**  Writes text the user chose to save, such as logs, to the path they picked in a save dialog. */
 	saveText: (destination: string, contents: string) => __TAURI_INVOKE<null>("save_text", { destination, contents }),
+	/**  Creates the container again from its own settings; with `pull`, from a newer image. */
+	containerRecreate: (id: string, pull: boolean) => __TAURI_INVOKE<string>("container_recreate", { id, pull }),
 	/**
 	 *  Opens a terminal in the container, or a busybox debug shell beside it when `debug` is set.
 	 *  Output streams into `channel`; type with `shell_input`, resize with `shell_resize`.
@@ -97,9 +99,9 @@ export const commands = {
 	/**  The file a running project came from, to edit and deploy again. */
 	composeProjectFile: (project: string) => __TAURI_INVOKE<ComposeDocument>("compose_project_file", { project }),
 	/**  Saves the definition, then brings the project up, streaming Compose's output. */
-	composeDeploy: (source: ComposeSource, name: string, channel: Channel<ComposeEvent>) => __TAURI_INVOKE<number>("compose_deploy", { source, name, channel }),
+	composeDeploy: (source: ComposeSource, name: string, channel: Channel<OutputEvent>) => __TAURI_INVOKE<number>("compose_deploy", { source, name, channel }),
 	/**  Rebuilds, updates or removes a project Compose started, streaming its output. */
-	composeAct: (project: string, verb: ComposeVerb, channel: Channel<ComposeEvent>) => __TAURI_INVOKE<number>("compose_act", { project, verb, channel }),
+	composeAct: (project: string, verb: ComposeVerb, channel: Channel<OutputEvent>) => __TAURI_INVOKE<number>("compose_act", { project, verb, channel }),
 	domainsStatus: () => __TAURI_INVOKE<DomainsStatus>("domains_status"),
 	/**  Turns domains on or off. On starts the DNS server and the proxy at once. */
 	domainsSetEnabled: (enabled: boolean) => __TAURI_INVOKE<null>("domains_set_enabled", { enabled }),
@@ -145,6 +147,14 @@ export const commands = {
 	/**  Deletes images no container uses; with `all` off, only dangling build layers. */
 	imagesPrune: (all: boolean) => __TAURI_INVOKE<PruneReport>("images_prune", { all }),
 	hubSearch: (term: string) => __TAURI_INVOKE<HubImage[]>("hub_search", { term }),
+	/**  Builds an image from a folder and Dockerfile, streaming `BuildKit`'s progress. */
+	imageBuild: (spec: BuildSpec, channel: Channel<OutputEvent>) => __TAURI_INVOKE<number>("image_build", { spec, channel }),
+	/**  Pushes an image with the logins `docker login` saved, streaming the registry's progress. */
+	imagePush: (reference: string, channel: Channel<OutputEvent>) => __TAURI_INVOKE<number>("image_push", { reference, channel }),
+	/**  Saves an image as a `.tar` archive another engine can load. */
+	imageExport: (reference: string, path: string) => __TAURI_INVOKE<null>("image_export", { reference, path }),
+	/**  Scans an image for known vulnerabilities with Trivy. */
+	imageScan: (reference: string) => __TAURI_INVOKE<ScanReport>("image_scan", { reference }),
 	volumesList: () => __TAURI_INVOKE<VolumeSummary[]>("volumes_list"),
 	volumeCreate: (name: string) => __TAURI_INVOKE<null>("volume_create", { name }),
 	volumeRemove: (name: string) => __TAURI_INVOKE<null>("volume_remove", { name }),
@@ -243,6 +253,20 @@ export type About = {
 
 export type Appearance = "system" | "light" | "dark";
 
+/**  What to build: the folder sent to the builder, the Dockerfile in it, and the name to give. */
+export type BuildSpec = {
+	context: string,
+	/**  Relative to `context`, or absolute; `Dockerfile` in the context when empty. */
+	dockerfile: string | null,
+	tag: string,
+	/**  Build arguments as `KEY=value`. */
+	buildArgs?: string[],
+	/**  Ignore the build cache. */
+	noCache?: boolean,
+	/**  Pull newer base images. */
+	pull?: boolean,
+};
+
 /**  What the UI may offer for an engine. */
 export type Capabilities = {
 	/**  Runs SQL in the editor. */
@@ -303,9 +327,6 @@ export type ComposeDocument = {
 	path: string,
 	text: string,
 };
-
-/**  What a Compose run reports, ending with `done` or `failed`. */
-export type ComposeEvent = { kind: "line"; text: string } | { kind: "done" } | { kind: "failed"; message: string };
 
 /**  What a deploy will create, read from the files before anything runs. */
 export type ComposePreview = {
@@ -886,7 +907,7 @@ export type MachinesStatus = {
 };
 
 /**  A File menu command the main window carries out, such as opening a sheet. */
-export type MenuCommand = "runContainer" | "newComposeProject" | "openComposeFile" | "pullImage" | "newMachine" | "newConnection";
+export type MenuCommand = "runContainer" | "newComposeProject" | "openComposeFile" | "pullImage" | "buildImage" | "newMachine" | "newConnection";
 
 export type Metrics = {
 	sampledAtMs: number | null,
@@ -981,6 +1002,12 @@ export type NetworkSummary = {
 };
 
 export type ObjectKind = "container" | "image" | "volume" | "network";
+
+/**
+ *  What a command-line tool reports while it runs (Compose, a build, a push), ending with `done`
+ *  or `failed`.
+ */
+export type OutputEvent = { kind: "line"; text: string } | { kind: "done" } | { kind: "failed"; message: string };
 
 export type PodSummary = {
 	namespace: string,
@@ -1163,6 +1190,12 @@ export type SavedQuery = {
 	sql: string,
 };
 
+export type ScanReport = {
+	reference: string,
+	/**  Worst first. */
+	vulnerabilities: Vulnerability[],
+};
+
 export type SegmentKind = "project" | "standalone" | "kubernetes";
 
 /**  An open connection, as the workspace header and the safe-mode banner show it. */
@@ -1202,6 +1235,8 @@ export type SettingsPane = "general" | "engine" | "storage" | "kubernetes" | "do
 
 /**  Switches the open Settings window to a pane. */
 export type SettingsPaneShown = SettingsPane;
+
+export type Severity = "critical" | "high" | "medium" | "low" | "unknown";
 
 /**  What a terminal receives: text to draw, then one `closed` when the shell exits. */
 export type ShellEvent = { kind: "output"; text: string } | { kind: "closed" };
@@ -1303,6 +1338,19 @@ export type VolumeUser = {
 	container: string,
 	mountedAt: string,
 	running: boolean,
+};
+
+export type Vulnerability = {
+	id: string,
+	package: string,
+	installed: string,
+	/**  The version that fixes it, when one exists. */
+	fixed: string | null,
+	severity: Severity,
+	title: string | null,
+	url: string | null,
+	/**  The layer or file it was found in, such as `debian 13.1` or `app/package-lock.json`. */
+	target: string,
 };
 
 /* Tauri Specta runtime */

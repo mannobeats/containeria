@@ -11,6 +11,7 @@ import { type DragDropEvent, getCurrentWebview } from "@tauri-apps/api/webview";
 import clsx from "clsx";
 import { useState } from "react";
 
+import { copyText } from "@/lib/clipboard";
 import { formatBytes, formatRelative } from "@/lib/format";
 import type { FileEntry } from "@/lib/ipc/bindings";
 import { useTauriEvent } from "@/lib/ipc/use-tauri-event";
@@ -19,6 +20,7 @@ import { Banner } from "@/ui/banner";
 import { Button } from "@/ui/button";
 import { EmptyState } from "@/ui/empty-state";
 import { IconAction } from "@/ui/icon-action";
+import { ContextMenu, type MenuEntry } from "@/ui/menu";
 import { Skeleton } from "@/ui/progress";
 import { useDownload, useFiles, useUpload } from "./api";
 
@@ -56,41 +58,55 @@ function Breadcrumb({ path, onOpen }: { path: string; onOpen: (path: string) => 
   );
 }
 
-type RowProps = { entry: FileEntry; onOpen: () => void; onDownload: () => void };
+type RowProps = {
+  entry: FileEntry;
+  path: string;
+  onOpen: () => void;
+  onDownload: () => void;
+};
 
-function Row({ entry, onOpen, onDownload }: RowProps) {
+function Row({ entry, path, onOpen, onDownload }: RowProps) {
   const Icon = kindIcon[entry.kind];
   const folder = entry.kind === "directory";
+  const menu: MenuEntry[] = [
+    ...(folder ? [{ label: "Open", onSelect: onOpen }] : []),
+    { label: folder ? "Download as .tar…" : "Download…", onSelect: onDownload },
+    { kind: "separator" },
+    { label: "Copy Path", onSelect: () => copyText("Path", path) },
+    { label: "Copy Name", onSelect: () => copyText("Name", entry.name) },
+  ];
   return (
-    <tr className="group h-[30px] hover:bg-hover [&>td]:border-b-[0.5px] [&>td]:border-line [&>td]:px-2.5">
-      <td className="max-w-0 pl-4!">
-        <button
-          type="button"
-          onClick={folder ? onOpen : onDownload}
-          className={clsx(
-            "flex min-w-0 items-center gap-2 text-left",
-            folder ? "text-brand-ink" : "text-ink",
-          )}
-        >
-          <Icon aria-hidden className={folder ? "text-brand" : "text-ink-3"} />
-          <span className="truncate">{entry.name}</span>
-        </button>
-      </td>
-      <td className="text-right text-ink-3 tabular">{folder ? "—" : formatBytes(entry.size)}</td>
-      <td className="text-ink-3">{entry.modified > 0 ? formatRelative(entry.modified) : "—"}</td>
-      <td className="font-mono text-mono-12 text-ink-3">{entry.permissions}</td>
-      <td className="pr-3! text-right">
-        <span className="opacity-0 transition-opacity duration-140 group-focus-within:opacity-100 group-hover:opacity-100">
-          <IconAction
-            label={folder ? "Save as .tar" : "Save"}
-            target={entry.name}
-            onClick={onDownload}
+    <ContextMenu entries={menu}>
+      <tr className="group h-[30px] hover:bg-hover data-[state=open]:bg-hover [&>td]:border-b-[0.5px] [&>td]:border-line [&>td]:px-2.5">
+        <td className="max-w-0 pl-4!">
+          <button
+            type="button"
+            onClick={folder ? onOpen : onDownload}
+            className={clsx(
+              "flex min-w-0 items-center gap-2 text-left",
+              folder ? "text-brand-ink" : "text-ink",
+            )}
           >
-            <IconDownload />
-          </IconAction>
-        </span>
-      </td>
-    </tr>
+            <Icon aria-hidden className={folder ? "text-brand" : "text-ink-3"} />
+            <span className="truncate">{entry.name}</span>
+          </button>
+        </td>
+        <td className="text-right text-ink-3 tabular">{folder ? "—" : formatBytes(entry.size)}</td>
+        <td className="text-ink-3">{entry.modified > 0 ? formatRelative(entry.modified) : "—"}</td>
+        <td className="font-mono text-mono-12 text-ink-3">{entry.permissions}</td>
+        <td className="pr-3! text-right">
+          <span className="opacity-0 transition-opacity duration-140 group-focus-within:opacity-100 group-hover:opacity-100">
+            <IconAction
+              label={folder ? "Save as .tar" : "Save"}
+              target={entry.name}
+              onClick={onDownload}
+            >
+              <IconDownload />
+            </IconAction>
+          </span>
+        </td>
+      </tr>
+    </ContextMenu>
   );
 }
 
@@ -125,13 +141,26 @@ export function FilesTab({ id }: { id: string }) {
           </Button>
         </span>
       </div>
-      <FileList
-        state={files}
-        onOpen={(entry) => setPath(childPath(path, entry.name))}
-        onDownload={(entry) =>
-          download.mutate({ path: childPath(path, entry.name), folder: entry.kind === "directory" })
-        }
-      />
+      <ContextMenu
+        entries={[
+          { label: "Upload…", onSelect: () => upload.mutate({ directory: path }) },
+          { label: "Refresh", onSelect: () => files.refetch() },
+        ]}
+      >
+        <div className="flex min-h-0 flex-1 flex-col">
+          <FileList
+            state={files}
+            path={path}
+            onOpen={(entry) => setPath(childPath(path, entry.name))}
+            onDownload={(entry) =>
+              download.mutate({
+                path: childPath(path, entry.name),
+                folder: entry.kind === "directory",
+              })
+            }
+          />
+        </div>
+      </ContextMenu>
       {dragging ? (
         <div className="pointer-events-none absolute inset-2 z-[5] flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-brand bg-[color-mix(in_oklch,var(--brand-soft)_85%,transparent)] text-brand-ink animate-fade">
           <IconUpload aria-hidden className="size-7" />
@@ -144,11 +173,12 @@ export function FilesTab({ id }: { id: string }) {
 
 type ListProps = {
   state: ReturnType<typeof useFiles>;
+  path: string;
   onOpen: (entry: FileEntry) => void;
   onDownload: (entry: FileEntry) => void;
 };
 
-function FileList({ state, onOpen, onDownload }: ListProps) {
+function FileList({ state, path, onOpen, onDownload }: ListProps) {
   if (state.isPending) {
     return <Skeleton className="m-4 w-64" />;
   }
@@ -192,6 +222,7 @@ function FileList({ state, onOpen, onDownload }: ListProps) {
             <Row
               key={entry.name}
               entry={entry}
+              path={childPath(path, entry.name)}
               onOpen={() => onOpen(entry)}
               onDownload={() => onDownload(entry)}
             />

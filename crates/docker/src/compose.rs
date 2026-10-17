@@ -4,16 +4,14 @@
 
 use std::collections::{BTreeMap, HashMap};
 use std::env;
-use std::io;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
-
-use serde::{Deserialize, Serialize};
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::Command;
 
 use bollard::query_parameters::ListContainersOptionsBuilder;
+use serde::{Deserialize, Serialize};
+use tokio::process::Command;
 
+use crate::cli;
 use crate::containers::COMPOSE_PROJECT;
 use crate::{Docker, Error, Result};
 
@@ -21,12 +19,8 @@ const CONFIG_FILES: &str = "com.docker.compose.project.config_files";
 const WORKING_DIR: &str = "com.docker.compose.project.working_dir";
 
 /// Where Homebrew and Docker's own installers put the Compose plugin, on Apple silicon and Intel.
-const PLUGIN_DIRS: [&str; 3] =
-    ["/opt/homebrew/lib/docker/cli-plugins", "/usr/local/lib/docker/cli-plugins", "/usr/local/bin"];
-
-/// Folders the tools Compose runs (`docker buildx` for builds) are found in. Apps opened from
-/// Finder get only the system `PATH`.
-const TOOL_DIRS: [&str; 2] = ["/opt/homebrew/bin", "/usr/local/bin"];
+const PLUGIN_DIRS: [&str; 2] =
+    ["/opt/homebrew/lib/docker/cli-plugins", "/usr/local/lib/docker/cli-plugins"];
 
 /// A project's definition: its files, and the folder relative paths in them start from.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -160,19 +154,13 @@ impl Compose {
     pub fn locate(socket: &Path, bundled: Option<&Path>) -> Option<Self> {
         let plugin = env::home_dir().map(|home| home.join(".docker/cli-plugins/docker-compose"));
         let installed = PLUGIN_DIRS.iter().map(|dir| Path::new(dir).join("docker-compose"));
-        let on_path = env::var_os("PATH")
-            .into_iter()
-            .flat_map(|path| env::split_paths(&path).collect::<Vec<_>>())
-            .map(|dir| dir.join("docker-compose"));
-        env::var_os("CONTAINERIA_COMPOSE")
-            .map(PathBuf::from)
-            .into_iter()
-            .chain(bundled.map(Path::to_path_buf))
-            .chain(plugin)
-            .chain(installed)
-            .chain(on_path)
-            .find(|candidate| candidate.is_file())
-            .map(|bin| Self { bin, socket: socket.to_path_buf() })
+        cli::locate(
+            "CONTAINERIA_COMPOSE",
+            bundled,
+            plugin.into_iter().chain(installed),
+            "docker-compose",
+        )
+        .map(|bin| Self { bin, socket: socket.to_path_buf() })
     }
 
     /// Reads and checks the files, without touching the engine.
@@ -202,59 +190,26 @@ impl Compose {
         files: &ComposeFiles,
         name: &str,
         verb: ComposeVerb,
-        mut on_line: impl FnMut(String),
+        on_line: impl FnMut(String),
     ) -> Result<()> {
-        let mut child = self
-            .command(files, Some(name), verb.args())?
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?;
-        let stdout = child.stdout.take().ok_or_else(|| io::Error::other("stdout was not piped"))?;
-        let stderr = child.stderr.take().ok_or_else(|| io::Error::other("stderr was not piped"))?;
-        let mut stdout = BufReader::new(stdout).lines();
-        let mut stderr = BufReader::new(stderr).lines();
-        let (mut out_open, mut err_open) = (true, true);
-        let mut last = String::new();
-        while out_open || err_open {
-            let line = tokio::select! {
-                line = stdout.next_line(), if out_open => line?.or_else(|| { out_open = false; None }),
-                line = stderr.next_line(), if err_open => line?.or_else(|| { err_open = false; None }),
-            };
-            if let Some(line) = line.filter(|line| !line.trim().is_empty()) {
-                last.clone_from(&line);
-                on_line(line);
-            }
-        }
-        if child.wait().await?.success() {
-            return Ok(());
-        }
-        Err(Error::Engine(if last.is_empty() { "Compose failed".to_owned() } else { last }))
+        cli::stream(self.command(files, Some(name), verb.args())?, "Compose", on_line).await
     }
 
     fn command(&self, files: &ComposeFiles, name: Option<&str>, args: &[&str]) -> Result<Command> {
-        let mut command = Command::new(&self.bin);
-        command.args(["--ansi", "never", "--progress", "plain"]);
+        let mut flags: Vec<OsString> =
+            ["--ansi", "never", "--progress", "plain"].map(OsString::from).into();
         if let Some(name) = name {
-            command.args(["--project-name", name]);
+            flags.extend(["--project-name".into(), name.into()]);
         }
         for file in &files.files {
-            command.arg("--file").arg(file);
+            flags.extend(["--file".into(), file.into()]);
         }
         if let Some(directory) = &files.directory {
-            command.arg("--project-directory").arg(directory);
+            flags.extend(["--project-directory".into(), directory.into()]);
         }
-        let path = TOOL_DIRS.map(PathBuf::from).into_iter().chain(
-            env::var_os("PATH")
-                .into_iter()
-                .flat_map(|path| env::split_paths(&path).collect::<Vec<_>>()),
-        );
-        command
-            .args(args)
-            .env("DOCKER_HOST", format!("unix://{}", self.socket.display()))
-            .env("PATH", env::join_paths(path).map_err(io::Error::other)?)
-            .env("COMPOSE_MENU", "false")
-            .stdin(Stdio::null())
-            .kill_on_drop(true);
+        flags.extend(args.iter().map(OsString::from));
+        let mut command = cli::command(&self.bin, &self.socket, flags)?;
+        command.env("COMPOSE_MENU", "false");
         Ok(command)
     }
 }

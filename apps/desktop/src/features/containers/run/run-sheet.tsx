@@ -123,15 +123,17 @@ function Form({
   );
 }
 
-/** Pick an image, publish ports, set variables and storage, and run it: `docker run` with a face. */
-export function RunSheet() {
+function RunSheetBody() {
   const id = useId();
   const open = useRunSheet((state) => state.open);
   const hide = useRunSheet((state) => state.hide);
   const navigate = useNavigate();
   const run = useRunContainer();
   const { data: containers } = useContainers();
-  const [form, setForm] = useState<RunForm>(emptyForm);
+  const [form, setForm] = useState<RunForm>(() => ({
+    ...emptyForm,
+    image: useRunSheet.getState().image,
+  }));
   const [submitted, setSubmitted] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   useEffect(() => {
@@ -205,4 +207,10 @@ export function RunSheet() {
       </form>
     </Sheet>
   );
+}
+
+/** Pick an image, publish ports, set variables and storage, and run it: `docker run` with a face. */
+export function RunSheet() {
+  const session = useRunSheet((state) => state.session);
+  return <RunSheetBody key={session} />;
 }

@@ -78,6 +78,15 @@ export function asTsv(columns: Column[], rows: GridRow[]): string {
   return [header, ...lines].join("\n");
 }
 
+/** One row as a JSON object of column to value, for "Copy as JSON". */
+export function asJson(columns: Column[], row: GridRow): string {
+  return JSON.stringify(
+    Object.fromEntries(columns.map((column, index) => [column.name, row.values[index] ?? null])),
+    null,
+    2,
+  );
+}
+
 /** The selected rows as SQL inserts, for "Copy as insert". Display text only. */
 export function asInserts(table: string, columns: Column[], rows: GridRow[]): string {
   const names = columns.map((column) => `"${column.name.replace(/"/g, '""')}"`).join(", ");

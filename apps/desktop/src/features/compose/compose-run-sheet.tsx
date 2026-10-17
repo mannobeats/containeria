@@ -19,10 +19,10 @@ function Output({ lines }: { lines: OutputLine[] }) {
     <div
       ref={log}
       role="log"
-      aria-label="Compose output"
+      aria-label="Output"
       className="selectable h-[280px] overflow-auto rounded-md bg-term-bg px-3 py-2 font-mono text-mono-12 leading-[1.55] text-term-fg"
     >
-      {lines.length === 0 ? <p className="m-0 opacity-60">Starting Compose…</p> : null}
+      {lines.length === 0 ? <p className="m-0 opacity-60">Starting…</p> : null}
       {lines.map((line) => (
         <p key={line.id} className="m-0 break-all whitespace-pre-wrap">
           {line.text}
@@ -60,12 +60,12 @@ function Footer({ run }: { run: ComposeRun }) {
 
 function status(run: ComposeRun): string {
   if (run.status === "running") {
-    return "Compose is working. Hide this and it carries on.";
+    return "Working. Hide this and it carries on.";
   }
-  return run.status === "done" ? run.done : (run.message ?? "Compose failed");
+  return run.status === "done" ? run.done : (run.message ?? "It failed");
 }
 
-/** Compose's own output while it deploys, rebuilds or removes a project. */
+/** A tool's own output while it deploys a project, builds or pushes an image. */
 export function ComposeRunSheet() {
   const run = useCompose((state) => state.run);
   const visible = useCompose((state) => state.runVisible);

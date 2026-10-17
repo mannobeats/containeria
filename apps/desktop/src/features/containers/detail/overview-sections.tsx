@@ -8,6 +8,7 @@ import { Banner } from "@/ui/banner";
 import { CxIcon } from "@/ui/cx-icon";
 import { IconAction } from "@/ui/icon-action";
 import { Kv } from "@/ui/kv";
+import { ContextMenu } from "@/ui/menu";
 
 import { miniTable } from "./mini-table";
 
@@ -118,21 +119,31 @@ export function PortsSection({ details }: { details: ContainerDetails }) {
             </tr>
           </thead>
           <tbody>
-            {published.map((port) => (
-              <tr key={`${port.host}-${port.container}-${port.protocol}`}>
-                <td className="font-mono text-mono-13">localhost:{port.host}</td>
-                <td className="font-mono text-mono-13">{port.container}</td>
-                <td className="uppercase">{port.protocol}</td>
-                <td className="text-right">
-                  <IconAction
-                    label={`Open localhost:${port.host}`}
-                    onClick={() => openUrl(`http://localhost:${port.host}`).catch(() => undefined)}
-                  >
-                    <IconExternalLink />
-                  </IconAction>
-                </td>
-              </tr>
-            ))}
+            {published.map((port) => {
+              const url = `http://localhost:${port.host}`;
+              const open = () => openUrl(url).catch(() => undefined);
+              return (
+                <ContextMenu
+                  key={`${port.host}-${port.container}-${port.protocol}`}
+                  entries={[
+                    { label: "Open in browser", onSelect: open },
+                    { kind: "separator" },
+                    { label: "Copy URL", onSelect: () => copyText("URL", url) },
+                  ]}
+                >
+                  <tr>
+                    <td className="font-mono text-mono-13">localhost:{port.host}</td>
+                    <td className="font-mono text-mono-13">{port.container}</td>
+                    <td className="uppercase">{port.protocol}</td>
+                    <td className="text-right">
+                      <IconAction label={`Open localhost:${port.host}`} onClick={open}>
+                        <IconExternalLink />
+                      </IconAction>
+                    </td>
+                  </tr>
+                </ContextMenu>
+              );
+            })}
           </tbody>
         </table>
       )}

@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -110,6 +110,60 @@ describe("TableView", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: /^email/ }));
     await waitFor(() => expect(lastRequest(calls)).toMatchObject({ sort: { descending: true } }));
+  });
+});
+
+describe("TableView right-click menus", () => {
+  const menuOn = async (name: string) =>
+    fireEvent.contextMenu(await screen.findByRole("button", { name }));
+
+  it("sets a cell to NULL and deletes a row through staged changes", async () => {
+    setup();
+    await menuOn("ada@example.com");
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Set to NULL" }));
+    await menuOn("Select row 2");
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Delete Row" }));
+    const bar = await screen.findByRole("status");
+    expect(bar.textContent).toContain("1 edited · 1 deleted");
+  });
+
+  it("filters by the right-clicked value", async () => {
+    const calls = setup();
+    await menuOn("ada@example.com");
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Filter by This Value" }));
+    await waitFor(() =>
+      expect(lastRequest(calls)).toMatchObject({
+        filters: [{ column: "email", op: "equals", value: "ada@example.com" }],
+      }),
+    );
+  });
+
+  it("copies the right-clicked value", async () => {
+    const calls = setup();
+    await menuOn("ada@example.com");
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Copy Value" }));
+    await waitFor(() =>
+      expect(calls.find((call) => String(call.command).endsWith("writeText"))?.args).toMatchObject({
+        text: "ada@example.com",
+      }),
+    );
+  });
+
+  it("sorts from a column header's menu", async () => {
+    const calls = setup();
+    fireEvent.contextMenu(await screen.findByRole("columnheader", { name: /^email/ }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Sort Descending" }));
+    await waitFor(() =>
+      expect(lastRequest(calls)).toMatchObject({ sort: { column: "email", descending: true } }),
+    );
+  });
+
+  it("offers no edits on a read-only table", async () => {
+    setup({ page: pageFixture({ readOnlyReason: "users has no primary key." }) });
+    await menuOn("ada@example.com");
+    expect(await screen.findByRole("menuitem", { name: "Copy Row as JSON" })).toBeDefined();
+    expect(screen.queryByRole("menuitem", { name: "Set to NULL" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Delete Row" })).toBeNull();
   });
 });
 

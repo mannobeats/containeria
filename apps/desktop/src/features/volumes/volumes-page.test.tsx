@@ -74,7 +74,7 @@ describe("VolumesPage", () => {
     );
 
     await userEvent.click(screen.getByRole("button", { name: "More for old_cache" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Delete volume…" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Delete Volume…" }));
     await userEvent.click(await screen.findByRole("button", { name: "Delete volume" }));
     await waitFor(() =>
       expect(calls).toContainEqual({ command: "volumeRemove", args: { name: "old_cache" } }),

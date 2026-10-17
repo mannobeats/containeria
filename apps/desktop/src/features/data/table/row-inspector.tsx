@@ -17,7 +17,7 @@ import { IconAction } from "@/ui/icon-action";
 
 import { cellText } from "../model";
 import { CellValue } from "./cell-value";
-import { asInserts, type GridRow } from "./grid-model";
+import { asInserts, asJson, type GridRow } from "./grid-model";
 
 type InspectorProps = {
   table: string;
@@ -102,21 +102,7 @@ export function RowInspector({ table, columns, row, onStep, onClose }: Inspector
         })}
       </div>
       <div className="flex shrink-0 gap-1.5 border-t-[0.5px] border-line px-3.5 py-2.5">
-        <Button
-          size="sm"
-          onClick={() =>
-            copy(
-              "as JSON",
-              JSON.stringify(
-                Object.fromEntries(
-                  columns.map((column, index) => [column.name, row.values[index] ?? null]),
-                ),
-                null,
-                2,
-              ),
-            )
-          }
-        >
+        <Button size="sm" onClick={() => copy("as JSON", asJson(columns, row))}>
           <IconBraces />
           Copy as JSON
         </Button>

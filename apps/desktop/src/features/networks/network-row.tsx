@@ -40,7 +40,7 @@ export function NetworkRow({ network, containers, onDelete }: NetworkRowProps) {
     ...(subnet
       ? [
           {
-            label: "Copy subnet",
+            label: "Copy Subnet",
             onSelect: () =>
               writeText(subnet)
                 .then(() => toast("Copied", { description: subnet }))
@@ -50,8 +50,8 @@ export function NetworkRow({ network, containers, onDelete }: NetworkRowProps) {
       : []),
     { kind: "separator" },
     network.builtIn
-      ? { label: "Built-in networks can't be deleted", disabled: true, onSelect: () => undefined }
-      : { label: "Delete network…", danger: true, onSelect: () => onDelete(network) },
+      ? { label: "Built-in Networks Can't Be Deleted", disabled: true, onSelect: () => undefined }
+      : { label: "Delete Network…", danger: true, onSelect: () => onDelete(network) },
   ];
   return (
     <ContextMenu entries={menu}>

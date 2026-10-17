@@ -1,10 +1,12 @@
 import { IconExternalLink, IconLock } from "@tabler/icons-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
+import { copyText } from "@/lib/clipboard";
 import type { IngressSummary, ServiceSummary } from "@/lib/ipc/bindings";
 import { Chip } from "@/ui/chip";
 import { type Column, ColumnTable } from "@/ui/column-table";
 import { Dash } from "@/ui/dash";
+import type { MenuEntry } from "@/ui/menu";
 import { Tile } from "@/ui/tile";
 
 const open = (url: string) => () => {
@@ -22,6 +24,23 @@ function Name({ name }: { name: string }) {
   );
 }
 
+const clusterName = (service: ServiceSummary) => `${service.name}.${service.namespace}.svc`;
+
+function serviceMenu(service: ServiceSummary): MenuEntry[] {
+  const { fromMac, clusterIp } = service;
+  return [
+    ...(fromMac
+      ? [
+          { label: "Open in Browser", onSelect: open(`http://${fromMac}`) },
+          { kind: "separator" as const },
+        ]
+      : []),
+    { label: "Copy Name", onSelect: () => copyText("Name", service.name) },
+    { label: "Copy Address", onSelect: () => copyText("Address", fromMac ?? clusterName(service)) },
+    ...(clusterIp ? [{ label: "Copy Cluster IP", onSelect: () => copyText("IP", clusterIp) }] : []),
+  ];
+}
+
 function FromMac({ service }: { service: ServiceSummary }) {
   if (service.fromMac) {
     return (
@@ -31,9 +50,7 @@ function FromMac({ service }: { service: ServiceSummary }) {
       </button>
     );
   }
-  return (
-    <code className="font-mono text-mono-12 text-ink-3">{`${service.name}.${service.namespace}.svc`}</code>
-  );
+  return <code className="font-mono text-mono-12 text-ink-3">{clusterName(service)}</code>;
 }
 
 export function ServicesTable({ services }: { services: ServiceSummary[] }) {
@@ -77,11 +94,24 @@ export function ServicesTable({ services }: { services: ServiceSummary[] }) {
       columns={columns}
       rows={services}
       rowKey={(service) => `${service.namespace}/${service.name}`}
+      menu={serviceMenu}
     />
   );
 }
 
 type Route = IngressSummary["routes"][number] & { ingress: IngressSummary };
+
+const routeUrl = (route: Route) =>
+  `${route.ingress.tls ? "https" : "http"}://${route.host}${route.path}`;
+
+function routeMenu(route: Route): MenuEntry[] {
+  return [
+    { label: "Open in Browser", onSelect: open(routeUrl(route)) },
+    { kind: "separator" },
+    { label: "Copy URL", onSelect: () => copyText("URL", routeUrl(route)) },
+    { label: "Copy Name", onSelect: () => copyText("Name", route.ingress.name) },
+  ];
+}
 
 export function IngressTable({ ingresses }: { ingresses: IngressSummary[] }) {
   const routes: Route[] = ingresses.flatMap((ingress) =>
@@ -97,11 +127,7 @@ export function IngressTable({ ingresses }: { ingresses: IngressSummary[] }) {
     {
       header: "Host",
       cell: (route) => (
-        <button
-          type="button"
-          className={linkClass}
-          onClick={open(`${route.ingress.tls ? "https" : "http"}://${route.host}${route.path}`)}
-        >
+        <button type="button" className={linkClass} onClick={open(routeUrl(route))}>
           {route.host}
         </button>
       ),
@@ -137,6 +163,7 @@ export function IngressTable({ ingresses }: { ingresses: IngressSummary[] }) {
       rowKey={(route) =>
         `${route.ingress.namespace}/${route.ingress.name}/${route.host}${route.path}`
       }
+      menu={routeMenu}
     />
   );
 }

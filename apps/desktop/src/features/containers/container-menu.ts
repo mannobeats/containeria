@@ -10,12 +10,13 @@ type Handlers = {
   open: (tab?: string) => void;
   act: (action: ContainerAction) => void;
   remove: () => void;
+  recreate: (pull: boolean) => void;
 };
 
 /** The same menu on the row's ⋯ button and on right-click. */
 export function containerMenu(
   container: ContainerSummary,
-  { open, act, remove }: Handlers,
+  { open, act, remove, recreate }: Handlers,
 ): MenuEntry[] {
   const running = isRunning(container);
   const port = container.ports.find((candidate) => candidate.host !== null);
@@ -33,7 +34,7 @@ export function containerMenu(
           },
         ]
       : []),
-    { label: "Copy name", onSelect: () => copyText("Name", container.name) },
+    { label: "Copy Name", onSelect: () => copyText("Name", container.name) },
     { label: "Copy ID", onSelect: () => copyText("ID", container.id.slice(0, 12)) },
     { kind: "separator" },
     running
@@ -44,6 +45,9 @@ export function containerMenu(
       ? { label: "Resume", onSelect: () => act("resume") }
       : { label: "Pause", onSelect: () => act("pause"), disabled: !running },
     { label: "Kill", onSelect: () => act("kill"), disabled: !running },
+    { kind: "separator" },
+    { label: "Recreate", onSelect: () => recreate(false) },
+    { label: "Recreate with Latest Image", onSelect: () => recreate(true) },
     { kind: "separator" },
     { label: "Delete…", danger: true, onSelect: remove },
   ];

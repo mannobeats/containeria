@@ -4,12 +4,22 @@ import { create } from "zustand";
 import { queryKeys } from "@/app/query-keys";
 import { commands, type RunSpec } from "@/lib/ipc/bindings";
 
-type RunSheetState = { open: boolean; show: () => void; hide: () => void };
+type RunSheetState = {
+  open: boolean;
+  /** The image to start from, as when "Run…" is picked on an image. */
+  image: string;
+  /** Counts each opening, so the form starts fresh every time. */
+  session: number;
+  show: (image?: string) => void;
+  hide: () => void;
+};
 
-/** The Run container sheet opens from the containers list, ⌘N and the command palette. */
+/** The Run container sheet opens from the containers list, ⌘N, an image and the palette. */
 export const useRunSheet = create<RunSheetState>((set) => ({
   open: false,
-  show: () => set({ open: true }),
+  image: "",
+  session: 0,
+  show: (image = "") => set((state) => ({ open: true, image, session: state.session + 1 })),
   hide: () => set({ open: false }),
 }));
 

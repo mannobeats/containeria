@@ -1,7 +1,5 @@
 import { IconDots, IconTrash } from "@tabler/icons-react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import { toast } from "sonner";
 
 import { formatBytes, formatRelative, plural } from "@/lib/format";
 import type { ContainerSummary, ImageSummary } from "@/lib/ipc/bindings";
@@ -12,24 +10,16 @@ import { rowLink } from "@/ui/classes";
 import { Dash } from "@/ui/dash";
 import { FaceStack } from "@/ui/face-stack";
 import { IconAction } from "@/ui/icon-action";
-import { ContextMenu, Menu, type MenuEntry } from "@/ui/menu";
+import { ContextMenu, Menu } from "@/ui/menu";
 import { Row, RowActions } from "@/ui/table";
 import { Tile } from "@/ui/tile";
 
+import { type ImageDialog, imageMenu } from "./image-actions";
 import { imageName, shortId } from "./model";
 
-export type ImageHandlers = {
-  onTag: (image: ImageSummary) => void;
-  onDelete: (image: ImageSummary) => void;
-};
+export type ImageHandlers = { onDialog: (dialog: ImageDialog) => void };
 
 type ImageRowProps = ImageHandlers & { image: ImageSummary; users: ContainerSummary[] };
-
-function copy(value: string) {
-  writeText(value)
-    .then(() => toast("Copied", { description: value }))
-    .catch(() => undefined);
-}
 
 function UsedBy({ image, users }: { image: ImageSummary; users: ContainerSummary[] }) {
   if (users.length === 0 && image.containers > 0) {
@@ -44,25 +34,14 @@ function UsedBy({ image, users }: { image: ImageSummary; users: ContainerSummary
   return <FaceStack faces={faces} />;
 }
 
-export function ImageRow({ image, users, onTag, onDelete }: ImageRowProps) {
+export function ImageRow({ image, users, onDialog }: ImageRowProps) {
   const navigate = useNavigate();
   const name = imageName(image);
-  const reference = image.references[0] ?? shortId(image.id);
   const inUse = image.containers > 0;
-  const menu: MenuEntry[] = [
-    { label: "Open", onSelect: () => navigate({ to: "/images/$id", params: { id: image.id } }) },
-    { label: "Copy reference", onSelect: () => copy(reference) },
-    { label: "Copy ID", onSelect: () => copy(image.id) },
-    { kind: "separator" },
-    { label: "Tag…", onSelect: () => onTag(image), disabled: image.dangling },
-    { kind: "separator" },
-    {
-      label: inUse ? "Delete (in use)" : "Delete image…",
-      danger: true,
-      disabled: inUse,
-      onSelect: () => onDelete(image),
-    },
-  ];
+  const menu = imageMenu(image, {
+    open: () => navigate({ to: "/images/$id", params: { id: image.id } }),
+    onDialog,
+  });
   return (
     <ContextMenu entries={menu}>
       <Row dim={image.dangling}>
@@ -97,7 +76,7 @@ export function ImageRow({ image, users, onTag, onDelete }: ImageRowProps) {
             label={inUse ? "In use, stop its containers first" : "Delete"}
             target={name}
             disabled={inUse}
-            onClick={() => onDelete(image)}
+            onClick={() => onDialog({ kind: "delete", image })}
           >
             <IconTrash />
           </IconAction>
