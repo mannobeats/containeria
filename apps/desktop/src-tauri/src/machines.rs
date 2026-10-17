@@ -73,6 +73,7 @@ impl MachinesEngine {
         on_line: impl FnMut(LogLine),
     ) -> Result<()> {
         let colima = self.colima()?;
+        crate::storage::ensure_data_ready(&self.home)?;
         let path = self.home.config_file(Profile::Machines);
         if EngineConfig::load(&path)?.is_none() {
             settings.save_machines(&path, self.supports_vms)?;

@@ -41,6 +41,7 @@ the user installed:
 | Engine status and uptime | `colima status --json` | Colima | |
 | CPU and memory limits | `cpu`, `memory` in colima.yaml | Colima | Applied on restart. The prototype's restart banner matches this. |
 | Disk size | `disk` | Limited | Can grow, never shrink. Prototype already says so. |
+| Data location | `LIMA_HOME` moved, a link left in its place | Built | Settings → Storage moves every VM disk to another folder or drive (APFS or Mac OS Extended) and back. Copies only the data in sparse disks, swaps the link in one rename, and starts again what was running. Lima follows the link, so the new path must leave room for its 104-byte socket paths. |
 | VM type | `vmType: vz` or `krunkit` | Limited | Fixed when the engine is created. Changing it means re-creating the engine (data kept by export and import). |
 | Rosetta for amd64 images | `rosetta: true` | Colima | VZ only, Apple Silicon. |
 | amd64 without Rosetta | `binfmt: true` (QEMU) | Colima | Slower. Used automatically on krunkit. |
@@ -91,7 +92,7 @@ the user installed:
 | Feature | Source | Status | Notes |
 |---|---|---|---|
 | List, pull with layer progress, push, tag, delete | images API | Docker API | |
-| Disk usage and clean-up | `/system/df`, prune APIs | Docker API | |
+| Disk usage and clean-up | `/system/df`, prune APIs | Docker API | Settings → Storage: images, stopped containers, volumes and the build cache, each with its own clean-up. |
 | Layers and history | `/images/{id}/history` | Docker API | |
 | Docker Hub search | Docker Hub API | We build | |
 | Vulnerability scan | Trivy (Apache-2.0) run as a container | We build | |

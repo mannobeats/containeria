@@ -1159,6 +1159,7 @@ dependencies = [
 name = "containeria-engine"
 version = "0.1.0"
 dependencies = [
+ "rustix",
  "serde",
  "serde_json",
  "specta",

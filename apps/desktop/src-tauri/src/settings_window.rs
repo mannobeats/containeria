@@ -18,6 +18,7 @@ pub(crate) enum SettingsPane {
     #[default]
     General,
     Engine,
+    Storage,
     Kubernetes,
     Docker,
     About,
@@ -29,6 +30,7 @@ impl SettingsPane {
         match self {
             Self::General => "General",
             Self::Engine => "Engine",
+            Self::Storage => "Storage",
             Self::Kubernetes => "Kubernetes",
             Self::Docker => "Docker",
             Self::About => "About",

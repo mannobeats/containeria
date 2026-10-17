@@ -19,6 +19,10 @@ pub enum Error {
     #[error("the engine settings could not be written: {0}")]
     Config(#[from] yaml_serde::Error),
 
+    /// The data can't move there; the message says why, for the user.
+    #[error("{0}")]
+    Storage(String),
+
     #[error(transparent)]
     Io(#[from] io::Error),
 }

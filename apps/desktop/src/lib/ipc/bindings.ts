@@ -40,6 +40,21 @@ export const commands = {
 	/**  Matches the native materials, the sidebar and the menu bar popover, to the page's appearance. */
 	appSetAppearance: (appearance: Appearance) => __TAURI_INVOKE<null>("app_set_appearance", { appearance }),
 	appQuit: () => __TAURI_INVOKE<null>("app_quit"),
+	/**  Where the engine's disks live and how much room they take. */
+	storageLocation: () => __TAURI_INVOKE<DataLocation>("storage_location"),
+	/**  The folder the data would move to inside `folder` (the default with none), or why it can't. */
+	storageCheck: (folder: string | null) => __TAURI_INVOKE<string>("storage_check", { folder }),
+	/**
+	 *  Stops the VMs, moves their disks into `folder` (back to the default with none), and starts
+	 *  again whatever was running.
+	 */
+	storageMove: (folder: string | null, channel: Channel<MoveEvent>) => __TAURI_INVOKE<number>("storage_move", { folder, channel }),
+	/**  Where the engine's disk space goes. */
+	storageUsage: () => __TAURI_INVOKE<DiskUsage>("storage_usage"),
+	/**  Deletes every stopped container. */
+	containersPrune: () => __TAURI_INVOKE<PruneReport>("containers_prune"),
+	/**  Deletes the build cache no build is using. */
+	buildCachePrune: () => __TAURI_INVOKE<PruneReport>("build_cache_prune"),
 	dockerDesktopDetect: () => __TAURI_INVOKE<DockerDesktop>("docker_desktop_detect"),
 	/**
 	 *  Copies images from Docker Desktop into Containeria's engine, one at a time, reporting each.
@@ -444,6 +459,16 @@ export type CustomRoute = {
 	https: boolean,
 };
 
+/**  Where the engine's disks are. */
+export type DataLocation = {
+	path: string,
+	isDefault: boolean,
+	/**  False when the data lives on a drive that isn't connected. */
+	available: boolean,
+	/**  Space the disks really take, not the size they can grow to. */
+	sizeBytes: number,
+};
+
 export type DeploymentSummary = {
 	namespace: string,
 	name: string,
@@ -470,6 +495,14 @@ export type Detected = {
 	database: string | null,
 	/**  The environment variable the password came from, shown as "from `POSTGRES_PASSWORD`". */
 	passwordSource: string | null,
+};
+
+/**  Where the engine's disk space goes, as `docker system df` reports it. */
+export type DiskUsage = {
+	images: UsageGroup,
+	containers: UsageGroup,
+	volumes: UsageGroup,
+	buildCache: UsageGroup,
 };
 
 export type Distro = {
@@ -883,6 +916,19 @@ export type Mount = {
 
 export type MountKind = "volume" | "bind" | "tmpfs" | "other";
 
+/**  What a move reports, ending with `done` or `failed`. */
+export type MoveEvent = { kind: "stopping" } | { kind: "copying"; progress: MoveProgress } | { kind: "starting" } | 
+/**  The data moved. `restartError` says what didn't start again, if anything. */
+{ kind: "done"; location: DataLocation; restartError: string | null } | 
+/**  The data stayed where it was. */
+{ kind: "failed"; message: string };
+
+/**  How far a move is, in bytes of disk data. */
+export type MoveProgress = {
+	copiedBytes: number,
+	totalBytes: number,
+};
+
 /**  One schema, database or keyspace with what's inside it. */
 export type Namespace = {
 	name: string,
@@ -1152,7 +1198,7 @@ export type ServiceSummary = {
 };
 
 /**  A tab in the Settings window's toolbar. */
-export type SettingsPane = "general" | "engine" | "kubernetes" | "docker" | "about";
+export type SettingsPane = "general" | "engine" | "storage" | "kubernetes" | "docker" | "about";
 
 /**  Switches the open Settings window to a pane. */
 export type SettingsPaneShown = SettingsPane;
@@ -1200,6 +1246,16 @@ export type TableKind = "table" | "view" | "collection";
 export type TableRef = {
 	schema: string | null,
 	name: string,
+};
+
+/**  One kind of thing taking space in the engine. */
+export type UsageGroup = {
+	count: number,
+	/**  How many are used by a container, or for the build cache, in use by a build. */
+	active: number,
+	sizeBytes: number,
+	/**  What a clean-up would free. */
+	reclaimableBytes: number,
 };
 
 /**

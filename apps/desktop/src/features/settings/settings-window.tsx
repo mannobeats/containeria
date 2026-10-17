@@ -2,6 +2,7 @@ import {
   IconAdjustments,
   IconBrandDocker,
   IconCpu,
+  IconDatabase,
   IconInfoCircle,
   type IconProps,
 } from "@tabler/icons-react";
@@ -10,6 +11,7 @@ import clsx from "clsx";
 import type { ComponentType } from "react";
 
 import { useEngineEvents } from "@/app/use-engine-events";
+import { StoragePane } from "@/features/storage/storage-pane";
 import { fitWindow } from "@/lib/fit-window";
 import { commands, events, type SettingsPane } from "@/lib/ipc/bindings";
 import { useTauriEvent } from "@/lib/ipc/use-tauri-event";
@@ -36,6 +38,7 @@ type Pane = {
 const PANES: Pane[] = [
   { id: "general", label: "General", icon: IconAdjustments, component: GeneralPane },
   { id: "engine", label: "Engine", icon: IconCpu, component: EnginePane },
+  { id: "storage", label: "Storage", icon: IconDatabase, component: StoragePane },
   { id: "kubernetes", label: "Kubernetes", icon: KubeIcon, component: KubernetesPane },
   { id: "docker", label: "Docker", icon: IconBrandDocker, component: DockerPane },
   { id: "about", label: "About", icon: IconInfoCircle, component: AboutPane },

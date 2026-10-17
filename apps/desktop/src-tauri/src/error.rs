@@ -62,6 +62,7 @@ impl From<containeria_engine::Error> for CommandError {
         let kind = match error {
             containeria_engine::Error::ColimaMissing { .. } => ErrorKind::EngineMissing,
             containeria_engine::Error::Command { .. } => ErrorKind::Engine,
+            containeria_engine::Error::Storage(_) => ErrorKind::InvalidInput,
             _ => ErrorKind::Internal,
         };
         Self::new(kind, error.to_string())

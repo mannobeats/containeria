@@ -3,7 +3,7 @@ use tauri_specta::{Builder, Commands, ErrorHandlingMode, collect_commands, colle
 
 use crate::commands::{
     compose, container_detail, containers, data, domains, engine, images, kubernetes, machines,
-    metrics, networks, run, settings, shell, streams, volumes, welcome,
+    metrics, networks, run, settings, shell, storage, streams, volumes, welcome,
 };
 use crate::events::{
     DockerChanged, EngineChanged, KubeChanged, MachinesChanged, MenuCommand, MetricsUpdated,
@@ -54,6 +54,12 @@ fn commands() -> Commands<Wry> {
         settings::settings_pane,
         settings::app_set_appearance,
         settings::app_quit,
+        storage::storage_location,
+        storage::storage_check,
+        storage::storage_move,
+        storage::storage_usage,
+        storage::containers_prune,
+        storage::build_cache_prune,
         welcome::docker_desktop_detect,
         welcome::docker_desktop_import_images,
         containers::containers_list,

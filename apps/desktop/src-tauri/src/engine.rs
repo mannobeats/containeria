@@ -130,6 +130,7 @@ impl Engine {
 
     pub(crate) async fn start(&self, app: &AppHandle, on_line: impl FnMut(LogLine)) -> Result<()> {
         let colima = self.colima()?;
+        crate::storage::ensure_data_ready(&self.home)?;
         if EngineConfig::load(&self.home.config_file(Profile::Containers))?.is_none() {
             self.save_config(&EngineConfig::default())?;
         }

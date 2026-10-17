@@ -164,6 +164,7 @@
     -webkit-font-smoothing: antialiased;
     font-feature-settings: "ss01", "cv11";
     overflow: hidden;
+    -webkit-user-select: none;
     user-select: none;
     cursor: default;
   }
@@ -191,6 +192,7 @@
   textarea,
   [contenteditable],
   .selectable {
+    -webkit-user-select: text;
     user-select: text;
   }
   a,

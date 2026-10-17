@@ -15,6 +15,7 @@ mod preferences;
 mod settings_window;
 mod shells;
 mod state;
+mod storage;
 mod streams;
 mod tray;
 

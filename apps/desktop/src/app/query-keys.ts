@@ -10,6 +10,7 @@ export const queryKeys = {
   networks: ["networks"],
   domains: ["domains"],
   kubernetes: ["kubernetes"],
+  storage: ["storage"],
 } as const;
 
 export const keyForKind: Record<ObjectKind, readonly string[]> = {
