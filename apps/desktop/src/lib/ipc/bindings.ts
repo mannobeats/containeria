@@ -29,6 +29,10 @@ export const commands = {
 	about: () => __TAURI_INVOKE<About>("about"),
 	/**  Brings the main window forward, for the menu bar popover. */
 	windowShowMain: () => __TAURI_INVOKE<null>("window_show_main"),
+	/**  Sizes the menu bar popover to its content. */
+	trayFit: (height: number) => __TAURI_INVOKE<null>("tray_fit", { height }),
+	/**  Matches the native materials, the sidebar and the menu bar popover, to the page's appearance. */
+	appSetAppearance: (appearance: Appearance) => __TAURI_INVOKE<null>("app_set_appearance", { appearance }),
 	appQuit: () => __TAURI_INVOKE<null>("app_quit"),
 	dockerDesktopDetect: () => __TAURI_INVOKE<DockerDesktop>("docker_desktop_detect"),
 	/**
@@ -203,6 +207,8 @@ export type About = {
 	/**  `None` while the engine is stopped. */
 	engine: EngineInfo | null,
 };
+
+export type Appearance = "system" | "light" | "dark";
 
 /**  What the UI may offer for an engine. */
 export type Capabilities = {

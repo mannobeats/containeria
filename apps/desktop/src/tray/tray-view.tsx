@@ -93,13 +93,22 @@ function Header() {
   );
 }
 
+/** Keeps the popover window exactly as tall as the page, so no empty glass shows below it. */
+function fitWindow(node: HTMLDivElement) {
+  const observer = new ResizeObserver(() => {
+    commands.trayFit(node.offsetHeight).catch(() => undefined);
+  });
+  observer.observe(node);
+  return () => observer.disconnect();
+}
+
 /** The menu bar popover: the engine at a glance, what runs, and the way back to the window. */
 export function TrayView() {
   useEngineEvents();
   const { data: metrics } = useMetrics();
   const ledger = metrics?.ledger;
   return (
-    <div className="m-1 overflow-hidden rounded-lg bg-[light-dark(oklch(0.985_0_0/0.93),oklch(0.24_0.005_255/0.92))] text-ink-2 shadow-3 backdrop-blur-xl">
+    <div ref={fitWindow} className="text-ink-2">
       <Header />
       <div className="px-3.5 pb-3">
         <span className="mb-1.5 flex justify-between text-12 text-ink-3">

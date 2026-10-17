@@ -1,6 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { EnginePhase } from "@/lib/ipc/bindings";
 import { containerFixture, engineFixture, metricsFixture } from "@/test/fixtures";
@@ -25,6 +25,30 @@ function renderTray(phase: EnginePhase) {
 const names = (calls: { command: string }[]) => calls.map((call) => call.command);
 
 describe("TrayView", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("sizes its window to the content", async () => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        readonly #report: () => void;
+        constructor(report: () => void) {
+          this.#report = report;
+        }
+        observe() {
+          this.#report();
+        }
+        disconnect() {
+          return undefined;
+        }
+      },
+    );
+    const calls = renderTray("running");
+    await waitFor(() => expect(names(calls)).toContain("trayFit"));
+  });
+
   it("lists what runs and stops a container", async () => {
     const calls = renderTray("running");
     expect(await screen.findByText("Engine running · 1 container")).toBeDefined();

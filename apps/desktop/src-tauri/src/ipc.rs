@@ -45,6 +45,8 @@ fn commands() -> Commands<Wry> {
         settings::host_info,
         settings::about,
         settings::window_show_main,
+        settings::tray_fit,
+        settings::app_set_appearance,
         settings::app_quit,
         welcome::docker_desktop_detect,
         welcome::docker_desktop_import_images,

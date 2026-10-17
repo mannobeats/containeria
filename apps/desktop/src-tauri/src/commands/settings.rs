@@ -1,7 +1,7 @@
 use containeria_docker::EngineInfo;
 use containeria_engine::Host;
-use serde::Serialize;
-use tauri::{AppHandle, State};
+use serde::{Deserialize, Serialize};
+use tauri::{AppHandle, State, Theme};
 
 use crate::error::Result;
 use crate::preferences::Preferences;
@@ -62,6 +62,33 @@ pub(crate) async fn about(app: AppHandle, state: State<'_, AppState>) -> Result<
 #[specta::specta]
 pub(crate) async fn window_show_main(app: AppHandle) -> Result<()> {
     tray::show_main(&app);
+    Ok(())
+}
+
+/// Sizes the menu bar popover to its content.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn tray_fit(app: AppHandle, height: u32) -> Result<()> {
+    Ok(tray::fit(&app, height)?)
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum Appearance {
+    System,
+    Light,
+    Dark,
+}
+
+/// Matches the native materials, the sidebar and the menu bar popover, to the page's appearance.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn app_set_appearance(app: AppHandle, appearance: Appearance) -> Result<()> {
+    app.set_theme(match appearance {
+        Appearance::System => None,
+        Appearance::Light => Some(Theme::Light),
+        Appearance::Dark => Some(Theme::Dark),
+    });
     Ok(())
 }
 

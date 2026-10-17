@@ -1,8 +1,10 @@
 use tauri::image::Image;
 use tauri::tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent};
+use tauri::utils::config::WindowEffectsConfig;
+use tauri::window::{Effect, EffectState};
 use tauri::{
-    AppHandle, LogicalPosition, Manager, Rect, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
-    WindowEvent,
+    AppHandle, LogicalPosition, LogicalSize, Manager, Rect, WebviewUrl, WebviewWindow,
+    WebviewWindowBuilder, WindowEvent,
 };
 
 use crate::state::AppState;
@@ -10,16 +12,28 @@ use crate::state::AppState;
 const TRAY: &str = "main";
 const POPOVER: &str = "tray";
 const POPOVER_WIDTH: f64 = 340.0;
-const POPOVER_HEIGHT: f64 = 440.0;
+/// A first guess; the popover sizes itself to its content once it renders.
+const POPOVER_HEIGHT: f64 = 320.0;
 
 /// The menu bar item: a template icon, the engine's memory beside it, and a popover on click.
 pub(crate) fn install(app: &AppHandle) -> tauri::Result<()> {
+    // The popover material draws the panel, its rounded corners and, through them, the system
+    // shadow; the window itself stays exactly the size of what it shows.
+    let material = WindowEffectsConfig {
+        effects: vec![Effect::Popover],
+        state: Some(EffectState::Active),
+        radius: Some(10.0),
+        color: None,
+        interactive: false,
+    };
     let popover = WebviewWindowBuilder::new(app, POPOVER, WebviewUrl::App("tray.html".into()))
         .title("Containeria")
         .inner_size(POPOVER_WIDTH, POPOVER_HEIGHT)
         .resizable(false)
         .decorations(false)
         .transparent(true)
+        .effects(material)
+        .shadow(true)
         .always_on_top(true)
         .skip_taskbar(true)
         .visible(false)
@@ -79,6 +93,14 @@ fn place_under(popover: &WebviewWindow, rect: Rect) -> tauri::Result<()> {
     let size = rect.size.to_logical::<f64>(scale);
     let x = position.x + size.width / 2.0 - POPOVER_WIDTH / 2.0;
     popover.set_position(LogicalPosition::new(x, position.y + size.height + 4.0))
+}
+
+/// Fits the popover to its content's height, measured by the page.
+pub(crate) fn fit(app: &AppHandle, height: u32) -> tauri::Result<()> {
+    match app.get_webview_window(POPOVER) {
+        Some(popover) => popover.set_size(LogicalSize::new(POPOVER_WIDTH, f64::from(height))),
+        None => Ok(()),
+    }
 }
 
 /// Brings the main window back, from the popover, the Dock or a menu.

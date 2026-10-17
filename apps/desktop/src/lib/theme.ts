@@ -1,6 +1,8 @@
 import { useSyncExternalStore } from "react";
 
-export type Appearance = "system" | "light" | "dark";
+import { type Appearance, commands } from "@/lib/ipc/bindings";
+
+export type { Appearance } from "@/lib/ipc/bindings";
 
 const KEY = "containeria.appearance";
 const media = matchMedia("(prefers-color-scheme: dark)");
@@ -21,9 +23,19 @@ export function applyAppearance(appearance: Appearance = getAppearance()) {
     root.dataset.theme = appearance;
     localStorage.setItem(KEY, appearance);
   }
+  commands.appSetAppearance(appearance).catch(() => undefined);
   for (const listener of listeners) {
     listener();
   }
+}
+
+/** Re-applies the appearance when another window, such as the main one, changes it. */
+export function followAppearance() {
+  addEventListener("storage", (event) => {
+    if (event.key === KEY) {
+      applyAppearance();
+    }
+  });
 }
 
 function isDark(): boolean {
