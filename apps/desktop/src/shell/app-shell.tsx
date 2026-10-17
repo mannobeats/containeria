@@ -2,6 +2,7 @@ import { Outlet, useMatches } from "@tanstack/react-router";
 import clsx from "clsx";
 
 import { useEngineEvents } from "@/app/use-engine-events";
+import { RunSheet } from "@/features/containers/run/run-sheet";
 import { isServing, useEngineStatus } from "@/features/engine/api";
 import { EngineOff } from "@/features/engine/engine-off";
 import { Toaster } from "@/ui/toaster";
@@ -57,6 +58,7 @@ export function AppShell() {
         </div>
       </div>
       <CommandPalette />
+      <RunSheet />
       <Toaster />
     </TooltipProvider>
   );

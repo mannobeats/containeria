@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useEffectEvent } from "react";
 
+import { useRunSheet } from "@/features/containers/run/api";
 import { applyAppearance, useIsDark } from "@/lib/theme";
 
 import { SECTIONS } from "./sections";
@@ -22,6 +23,7 @@ export function useShortcuts() {
     }
     const actions: Record<string, () => void> = {
       k: () => ui.setPaletteOpen(!ui.paletteOpen),
+      n: useRunSheet.getState().show,
       "\\": ui.toggleSidebar,
       ",": () => navigate({ to: "/settings" }).catch(() => undefined),
     };

@@ -7,6 +7,7 @@ import {
   RouterProvider,
   type StaticDataRouteOption,
 } from "@tanstack/react-router";
+import type { Channel } from "@tauri-apps/api/core";
 import { clearMocks, mockIPC } from "@tauri-apps/api/mocks";
 import { cleanup, render } from "@testing-library/react";
 import { domMax, LazyMotion } from "motion/react";
@@ -54,24 +55,32 @@ export function mockCommands(handlers: Handlers): Call[] {
   return calls;
 }
 
+/** Pushes a message into a `Channel` a mocked command received, as Rust would. */
+export function sendToChannel<T>(channel: unknown, message: T) {
+  (channel as Channel<T>).onmessage(message);
+}
+
 type RenderOptions = {
   /** Rendered as the root route, with `ui` as the page inside its `<Outlet />`. */
   shell?: () => ReactNode;
   staticData?: StaticDataRouteOption;
+  /** The route `ui` is mounted at, for pages that read params: `containers/$id`. */
+  path?: string;
+  /** Where the app starts: `/containers/abc?tab=logs`. */
+  url?: string;
 };
 
 /** Renders `ui` inside the app's providers and a router that accepts any path. */
-export function renderWithApp(ui: ReactNode, { shell, staticData = {} }: RenderOptions = {}) {
+export function renderWithApp(
+  ui: ReactNode,
+  { shell, staticData = {}, path = "$", url = "/test" }: RenderOptions = {},
+) {
   const root = createRootRoute(shell ? { component: shell } : {});
-  const page = createRoute({
-    getParentRoute: () => root,
-    path: "$",
-    staticData,
-    component: () => ui,
-  });
+  const page = createRoute({ getParentRoute: () => root, path, staticData, component: () => ui });
+  const elsewhere = createRoute({ getParentRoute: () => root, path: "$", component: () => null });
   const router = createRouter({
-    routeTree: root.addChildren([page]),
-    history: createMemoryHistory({ initialEntries: ["/test"] }),
+    routeTree: root.addChildren(path === "$" ? [page] : [page, elsewhere]),
+    history: createMemoryHistory({ initialEntries: [url] }),
   });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const result = render(

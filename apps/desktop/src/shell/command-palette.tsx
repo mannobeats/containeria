@@ -4,6 +4,7 @@ import { Dialog } from "radix-ui";
 import type { ReactNode } from "react";
 
 import { useContainers } from "@/features/containers/api";
+import { useRunSheet } from "@/features/containers/run/api";
 import { isServing, useEngineControl, useEngineStatus } from "@/features/engine/api";
 import { applyAppearance, useIsDark } from "@/lib/theme";
 import { CxIcon, type CxIconName } from "@/ui/cx-icon";
@@ -47,6 +48,7 @@ export function CommandPalette() {
   const control = useEngineControl();
   const { data: containers } = useContainers();
   const dark = useIsDark();
+  const showRunSheet = useRunSheet((state) => state.show);
   const run = (action: () => void) => () => {
     setOpen(false);
     action();
@@ -80,6 +82,14 @@ export function CommandPalette() {
                     onSelect={run(() => navigate({ to: section.to }))}
                   />
                 ))}
+              </Command.Group>
+              <Command.Group heading="Actions" className={groupClass}>
+                <Item
+                  icon="container"
+                  label="Run container…"
+                  hint={<Kbd>⌘N</Kbd>}
+                  onSelect={run(showRunSheet)}
+                />
               </Command.Group>
               <Command.Group heading="Engine" className={groupClass}>
                 {isServing(engine?.phase) ? (

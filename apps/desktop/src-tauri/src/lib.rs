@@ -6,6 +6,7 @@ mod error;
 mod events;
 mod ipc;
 mod metrics;
+mod shells;
 mod state;
 mod streams;
 
@@ -15,6 +16,7 @@ use tauri::Manager;
 
 use crate::engine::Engine;
 use crate::metrics::Sampler;
+use crate::shells::Shells;
 use crate::state::AppState;
 use crate::streams::Streams;
 
@@ -51,7 +53,12 @@ pub fn run() -> tauri::Result<()> {
             tauri::async_runtime::spawn(
                 async move { sampler.run(engine_for_sampler, handle).await },
             );
-            app.manage(AppState { engine, metrics, streams: Streams::default() });
+            app.manage(AppState {
+                engine,
+                metrics,
+                streams: Streams::default(),
+                shells: Shells::default(),
+            });
             Ok(())
         })
         .run(tauri::generate_context!())

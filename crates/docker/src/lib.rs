@@ -2,7 +2,12 @@
 //! small, fully populated types the app shows.
 
 mod containers;
+mod details;
 mod events;
+mod files;
+mod logs;
+mod run;
+mod shell;
 mod stats;
 
 use std::path::Path;
@@ -10,7 +15,12 @@ use std::path::Path;
 use bollard::API_DEFAULT_VERSION;
 
 pub use containers::{ContainerAction, ContainerState, ContainerSummary, Port, PortProtocol};
+pub use details::{ContainerDetails, EnvVar, Health, HealthCheck, HealthStatus, Mount, MountKind};
 pub use events::{DockerEvent, ObjectKind};
+pub use files::{FileEntry, FileKind};
+pub use logs::{Level, LogEntry, LogStream};
+pub use run::{HubImage, PortMapping, Restart, RunSpec, StorageMapping};
+pub use shell::{Shell, ShellTarget, Utf8Decoder};
 pub use stats::{CpuCounters, StatsSample, Usage};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -25,6 +35,9 @@ pub enum Error {
 
     #[error("{0}")]
     Engine(String),
+
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
 }
 
 impl From<bollard::errors::Error> for Error {
