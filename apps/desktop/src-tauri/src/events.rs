@@ -22,3 +22,7 @@ pub(crate) struct MetricsUpdated(pub(crate) Metrics);
 /// The native menu asks the main window to open a view, such as `/settings`.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
 pub(crate) struct Navigate(pub(crate) String);
+
+/// Something in the Kubernetes cluster changed, or it came or went; refetch the cluster.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+pub(crate) struct KubeChanged;

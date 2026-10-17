@@ -91,6 +91,14 @@ pub struct RuntimeInfo {
     pub kubernetes: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KubernetesAction {
+    Start,
+    Stop,
+    /// Deletes every Kubernetes object and starts a fresh cluster; images stay cached.
+    Reset,
+}
+
 /// The Colima CLI, run against Containeria's own Colima home.
 #[derive(Debug, Clone)]
 pub struct Colima {
@@ -178,6 +186,23 @@ impl Colima {
     /// Fails with Colima's last error line when the delete fails.
     pub async fn delete(&self, profile: Profile, on_line: impl FnMut(LogLine)) -> Result<()> {
         self.stream("delete", profile, ["delete", "--force"], on_line).await
+    }
+
+    /// Starts, stops or resets k3s inside the running containers VM, without restarting the VM.
+    ///
+    /// # Errors
+    /// Fails with Colima's last error line.
+    pub async fn kubernetes(
+        &self,
+        action: KubernetesAction,
+        on_line: impl FnMut(LogLine),
+    ) -> Result<()> {
+        let (name, verb) = match action {
+            KubernetesAction::Start => ("kubernetes start", "start"),
+            KubernetesAction::Stop => ("kubernetes stop", "stop"),
+            KubernetesAction::Reset => ("kubernetes reset", "reset"),
+        };
+        self.stream(name, Profile::Containers, ["kubernetes", verb], on_line).await
     }
 
     fn command<I, S>(&self, profile: Profile, args: I) -> Result<Command>

@@ -6,6 +6,7 @@ mod engine;
 mod error;
 mod events;
 mod ipc;
+mod kubernetes;
 mod machines;
 mod menu;
 mod metrics;
@@ -21,6 +22,7 @@ use containeria_net::Domains;
 use tauri::{AppHandle, Manager, RunEvent, Window, WindowEvent};
 
 use crate::engine::Engine;
+use crate::kubernetes::Kubernetes;
 use crate::machines::MachinesEngine;
 use crate::metrics::Sampler;
 use crate::preferences::PreferencesStore;
@@ -64,6 +66,12 @@ pub fn run() -> tauri::Result<()> {
             tauri::async_runtime::spawn(
                 async move { sampler.run(engine_for_sampler, handle).await },
             );
+            let kubernetes = Arc::new(Kubernetes::default());
+            let (kube_watcher, engine_for_kube, handle) =
+                (Arc::clone(&kubernetes), Arc::clone(&engine), app.handle().clone());
+            tauri::async_runtime::spawn(async move {
+                kube_watcher.watch(&engine_for_kube, handle).await;
+            });
             let domains = Arc::new(Domains::open(&Home::from_env()?.root().join("net"))?);
             let (supervised, engine_for_domains) = (Arc::clone(&domains), Arc::clone(&engine));
             tauri::async_runtime::spawn(domains::supervise(supervised, engine_for_domains));
@@ -71,6 +79,7 @@ pub fn run() -> tauri::Result<()> {
             app.manage(AppState {
                 engine,
                 domains,
+                kubernetes,
                 machines,
                 metrics,
                 preferences,

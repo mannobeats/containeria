@@ -122,11 +122,26 @@ const routeTree = root.addChildren([
   page("networks/$id", "Network", () =>
     import("@/features/networks/network-page").then((module) => ({ default: module.NetworkPage })),
   ),
-  page("kubernetes", "Kubernetes", () =>
-    import("@/features/kubernetes/kubernetes-page").then((module) => ({
-      default: module.KubernetesPage,
-    })),
-  ),
+  createRoute({
+    getParentRoute: () => root,
+    path: "kubernetes",
+    staticData: { needsEngine: true, title: "Kubernetes" },
+    validateSearch: tabSearch,
+    component: lazyRouteComponent(() =>
+      import("@/features/kubernetes/kubernetes-page").then((module) => ({
+        default: module.KubernetesPage,
+      })),
+    ),
+  }),
+  createRoute({
+    getParentRoute: () => root,
+    path: "kubernetes/pods/$namespace/$name",
+    staticData: { needsEngine: true, title: "Pod" },
+    validateSearch: tabSearch,
+    component: lazyRouteComponent(() =>
+      import("@/features/kubernetes/pod-page").then((module) => ({ default: module.PodPage })),
+    ),
+  }),
   page(
     "machines",
     "Linux machines",

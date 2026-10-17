@@ -50,6 +50,19 @@ export function formatRelative(epochSeconds: number, now: number = Date.now()): 
   return relative.format(Math.round(delta / step[1]), step[0]);
 }
 
+const AGE_UNITS: [string, number][] = [
+  ["d", 86_400],
+  ["h", 3600],
+  ["m", 60],
+];
+
+/** Seconds since the epoch → kubectl's AGE column: "6d", "3h", "12m", "40s". */
+export function formatAge(epochSeconds: number, now: number = Date.now()): string {
+  const seconds = Math.max(0, Math.floor(now / 1000 - epochSeconds));
+  const unit = AGE_UNITS.find(([, size]) => seconds >= size);
+  return unit ? `${Math.floor(seconds / unit[1])}${unit[0]}` : `${seconds}s`;
+}
+
 export function plural(count: number, one: string, many = `${one}s`): string {
   return `${count} ${count === 1 ? one : many}`;
 }

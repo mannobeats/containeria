@@ -2,10 +2,12 @@ use tauri::Wry;
 use tauri_specta::{Builder, ErrorHandlingMode, collect_commands, collect_events};
 
 use crate::commands::{
-    containers, domains, engine, images, machines, metrics, networks, settings, streams, volumes,
-    welcome,
+    containers, domains, engine, images, kubernetes, machines, metrics, networks, settings,
+    streams, volumes, welcome,
 };
-use crate::events::{DockerChanged, EngineChanged, MachinesChanged, MetricsUpdated, Navigate};
+use crate::events::{
+    DockerChanged, EngineChanged, KubeChanged, MachinesChanged, MetricsUpdated, Navigate,
+};
 
 /// Every command and event the UI can use. `bindings.ts` is generated from this list.
 pub(crate) fn builder() -> Builder<Wry> {
@@ -76,13 +78,30 @@ pub(crate) fn builder() -> Builder<Wry> {
             networks::network_remove,
             networks::network_connect,
             networks::network_disconnect,
+            kubernetes::kubernetes_cluster,
+            kubernetes::kubernetes_set_enabled,
+            kubernetes::kubernetes_reset,
+            kubernetes::kubernetes_delete_pod,
+            kubernetes::kubernetes_delete_deployment,
+            kubernetes::kubernetes_restart_deployment,
+            kubernetes::kubernetes_scale_deployment,
+            kubernetes::kubernetes_apply,
+            kubernetes::kubernetes_yaml,
+            kubernetes::kubernetes_events,
+            kubernetes::kubernetes_config_value,
+            kubernetes::kubernetes_logs,
+            kubernetes::kubernetes_port_forward,
+            kubernetes::kubernetes_forwards,
+            kubernetes::kubernetes_stop_forward,
         ])
+        .events(collect_events![EngineChanged, DockerChanged, MetricsUpdated, KubeChanged])
         .events(collect_events![
             EngineChanged,
             DockerChanged,
             MetricsUpdated,
             Navigate,
-            MachinesChanged
+            MachinesChanged,
+            KubeChanged
         ])
 }
 

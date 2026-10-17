@@ -106,12 +106,34 @@ export const commands = {
 	networkRemove: (id: string) => __TAURI_INVOKE<null>("network_remove", { id }),
 	networkConnect: (network: string, container: string) => __TAURI_INVOKE<null>("network_connect", { network, container }),
 	networkDisconnect: (network: string, container: string) => __TAURI_INVOKE<null>("network_disconnect", { network, container }),
+	kubernetesCluster: () => __TAURI_INVOKE<Cluster>("kubernetes_cluster"),
+	/**  Turns Kubernetes on or off now and for every later start. */
+	kubernetesSetEnabled: (enabled: boolean, progress: Channel<LogLine>) => __TAURI_INVOKE<null>("kubernetes_set_enabled", { enabled, progress }),
+	/**  Deletes every Kubernetes object and starts a fresh cluster. Docker is untouched. */
+	kubernetesReset: (progress: Channel<LogLine>) => __TAURI_INVOKE<null>("kubernetes_reset", { progress }),
+	kubernetesDeletePod: (namespace: string, name: string) => __TAURI_INVOKE<null>("kubernetes_delete_pod", { namespace, name }),
+	kubernetesDeleteDeployment: (namespace: string, name: string) => __TAURI_INVOKE<null>("kubernetes_delete_deployment", { namespace, name }),
+	kubernetesRestartDeployment: (namespace: string, name: string) => __TAURI_INVOKE<null>("kubernetes_restart_deployment", { namespace, name }),
+	kubernetesScaleDeployment: (namespace: string, name: string, replicas: number) => __TAURI_INVOKE<null>("kubernetes_scale_deployment", { namespace, name, replicas }),
+	/**  Server-side applies a manifest; returns what changed, one `kind/name configured` per object. */
+	kubernetesApply: (manifest: string, namespace: string, dryRun: boolean) => __TAURI_INVOKE<string[]>("kubernetes_apply", { manifest, namespace, dryRun }),
+	kubernetesYaml: (kind: ResourceKind, namespace: string, name: string) => __TAURI_INVOKE<string>("kubernetes_yaml", { kind, namespace, name }),
+	kubernetesEvents: (namespace: string, name: string) => __TAURI_INVOKE<KubeEvent[]>("kubernetes_events", { namespace, name }),
+	kubernetesConfigValue: (kind: ConfigKind, namespace: string, name: string, key: string) => __TAURI_INVOKE<string>("kubernetes_config_value", { kind, namespace, name, key }),
+	/**  Streams a pod's log lines into `channel`, starting with the last 500. */
+	kubernetesLogs: (namespace: string, pod: string, container: string | null, channel: Channel<string>) => __TAURI_INVOKE<number>("kubernetes_logs", { namespace, pod, container, channel }),
+	/**  Forwards `localhost:local_port` to a pod until stopped with `kubernetes_stop_forward`. */
+	kubernetesPortForward: (namespace: string, pod: string, localPort: number, podPort: number) => __TAURI_INVOKE<PortForward>("kubernetes_port_forward", { namespace, pod, localPort, podPort }),
+	/**  Port forwards started in this session that are still running. */
+	kubernetesForwards: () => __TAURI_INVOKE<PortForward[]>("kubernetes_forwards"),
+	kubernetesStopForward: (stream: number) => __TAURI_INVOKE<null>("kubernetes_stop_forward", { stream }),
 };
 
 /** Events */
 export const events = {
 	dockerChanged: makeEvent<DockerChanged>("docker-changed"),
 	engineChanged: makeEvent<EngineChanged>("engine-changed"),
+	kubeChanged: makeEvent<KubeChanged>("kube-changed"),
 	machinesChanged: makeEvent<MachinesChanged>("machines-changed"),
 	metricsUpdated: makeEvent<MetricsUpdated>("metrics-updated"),
 	navigate: makeEvent<Navigate>("navigate"),
@@ -125,10 +147,33 @@ export type About = {
 	engine: EngineInfo | null,
 };
 
+/**  Everything the Kubernetes view shows, read in one pass. */
+export type Cluster = {
+	version: string,
+	namespaces: string[],
+	pods: PodSummary[],
+	deployments: DeploymentSummary[],
+	services: ServiceSummary[],
+	ingresses: IngressSummary[],
+	config: ConfigSummary[],
+};
+
 /**  The one error shape every command rejects with. */
 export type CommandError = {
 	kind: ErrorKind,
 	message: string,
+};
+
+export type ConfigKind = "configMap" | "secret";
+
+/**  A config map or secret. Only key names cross to the UI; secret values on request. */
+export type ConfigSummary = {
+	namespace: string,
+	name: string,
+	kind: ConfigKind,
+	secretType: string | null,
+	keys: string[],
+	createdAt: number,
 };
 
 /**  What the user can do to a container from the list. */
@@ -174,6 +219,17 @@ export type CustomRoute = {
 	container: string,
 	port: number,
 	https: boolean,
+};
+
+export type DeploymentSummary = {
+	namespace: string,
+	name: string,
+	ready: number,
+	desired: number,
+	upToDate: number,
+	available: number,
+	images: string[],
+	createdAt: number,
 };
 
 export type Distro = {
@@ -277,7 +333,9 @@ export type EngineStatus = {
 };
 
 /**  What the UI can do about a failure: each kind gets its own empty state or action. */
-export type ErrorKind = "engineMissing" | "engineStopped" | "notFound" | 
+export type ErrorKind = "engineMissing" | "engineStopped" | 
+/**  Kubernetes is off, still starting, or its API server doesn't answer. */
+"kubernetesUnavailable" | "notFound" | 
 /**  The user dismissed a macOS permission prompt; nothing to report. */
 "cancelled" | "invalidInput" | "engine" | "internal";
 
@@ -341,6 +399,20 @@ export type ImportProgress = {
 
 export type ImportState = "copying" | "done" | "failed";
 
+export type IngressRoute = {
+	host: string,
+	path: string,
+	backend: string,
+};
+
+export type IngressSummary = {
+	namespace: string,
+	name: string,
+	class: string | null,
+	tls: boolean,
+	routes: IngressRoute[],
+};
+
 /**  One line of `colima list --json`. */
 export type Instance = {
 	status: InstanceStatus,
@@ -352,6 +424,17 @@ export type Instance = {
 };
 
 export type InstanceStatus = "running" | "stopped" | "broken" | "unknown";
+
+/**  Something in the Kubernetes cluster changed, or it came or went; refetch the cluster. */
+export type KubeChanged = null;
+
+export type KubeEvent = {
+	warning: boolean,
+	reason: string,
+	message: string,
+	count: number,
+	lastSeen: number,
+};
 
 export type Kubernetes = {
 	enabled: boolean,
@@ -492,10 +575,36 @@ export type NetworkSummary = {
 
 export type ObjectKind = "container" | "image" | "volume" | "network";
 
+export type PodSummary = {
+	namespace: string,
+	name: string,
+	/**  The STATUS column of `kubectl get pods`: a container's waiting reason, or the phase. */
+	status: string,
+	/**  Set when the status means the pod is failing, like `CrashLoopBackOff`. */
+	problem: string | null,
+	ready: number,
+	containers: string[],
+	restarts: number,
+	node: string | null,
+	ip: string | null,
+	/**  `Kind/name` of the controller that owns the pod. */
+	owner: string | null,
+	createdAt: number,
+};
+
 export type Port = {
 	container: number,
 	host: number | null,
 	protocol: PortProtocol,
+};
+
+/**  A running `localhost` → pod tunnel. `stream` stops it with `kubernetes_stop_forward`. */
+export type PortForward = {
+	stream: number,
+	namespace: string,
+	pod: string,
+	localPort: number,
+	podPort: number,
 };
 
 export type PortProtocol = "tcp" | "udp" | "sctp";
@@ -539,6 +648,9 @@ export type ResolverState = "installed" |
 /**  The file exists but points somewhere else, usually an old port. */
 "stale" | "missing";
 
+/**  Objects whose YAML the UI can show. */
+export type ResourceKind = "pod" | "deployment" | "service";
+
 /**  Why a route can't be reached right now. */
 export type RouteDown = 
 /**  The container is stopped or gone. */
@@ -549,6 +661,23 @@ export type RouteDown =
 export type RouteKind = "container" | "custom";
 
 export type SegmentKind = "project" | "standalone" | "kubernetes";
+
+export type ServicePort = {
+	port: number,
+	target: string,
+	protocol: string,
+	nodePort: number | null,
+};
+
+export type ServiceSummary = {
+	namespace: string,
+	name: string,
+	kind: string,
+	clusterIp: string | null,
+	ports: ServicePort[],
+	/**  `localhost:port` for a `LoadBalancer` service: k3s binds it in the VM and Lima forwards it. */
+	fromMac: string | null,
+};
 
 /**  One stats reading, already turned into the numbers the UI draws. */
 export type StatsSample = {

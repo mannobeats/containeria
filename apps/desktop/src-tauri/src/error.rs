@@ -8,6 +8,8 @@ pub(crate) type Result<T, E = CommandError> = std::result::Result<T, E>;
 pub(crate) enum ErrorKind {
     EngineMissing,
     EngineStopped,
+    /// Kubernetes is off, still starting, or its API server doesn't answer.
+    KubernetesUnavailable,
     NotFound,
     /// The user dismissed a macOS permission prompt; nothing to report.
     Cancelled,
@@ -80,6 +82,19 @@ impl From<containeria_machines::Error> for CommandError {
                 ErrorKind::Engine
             }
             containeria_machines::Error::Protocol(_) => ErrorKind::Internal,
+        };
+        Self::new(kind, error.to_string())
+    }
+}
+
+impl From<containeria_kube::Error> for CommandError {
+    fn from(error: containeria_kube::Error) -> Self {
+        let kind = match error {
+            containeria_kube::Error::Unreachable(_) => ErrorKind::KubernetesUnavailable,
+            containeria_kube::Error::NotFound(_) => ErrorKind::NotFound,
+            containeria_kube::Error::Manifest(_) | containeria_kube::Error::Api(_) => {
+                ErrorKind::Engine
+            }
         };
         Self::new(kind, error.to_string())
     }

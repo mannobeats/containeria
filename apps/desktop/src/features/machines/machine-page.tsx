@@ -194,7 +194,11 @@ export function MachinePage() {
     <MachineView
       name={name}
       tab={isTab(tab) ? tab : "overview"}
-      onTab={(next) => navigate({ search: { tab: next } }).catch(() => undefined)}
+      onTab={(next) =>
+        navigate({ to: "/machines/$name", params: { name }, search: { tab: next } }).catch(
+          () => undefined,
+        )
+      }
       onLeave={() => navigate({ to: "/machines" }).catch(() => undefined)}
     />
   );

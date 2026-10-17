@@ -1,6 +1,24 @@
 import { describe, expect, it } from "vitest";
 
-import { formatBytes, formatMemory, formatPercent, formatRelative, plural } from "./format";
+import {
+  formatAge,
+  formatBytes,
+  formatMemory,
+  formatPercent,
+  formatRelative,
+  plural,
+} from "./format";
+
+describe("formatAge", () => {
+  it("shows the largest whole unit, like kubectl", () => {
+    const now = 1_000_000_000_000;
+    expect(formatAge(now / 1000 - 40, now)).toBe("40s");
+    expect(formatAge(now / 1000 - 12 * 60, now)).toBe("12m");
+    expect(formatAge(now / 1000 - 3 * 3600 - 5, now)).toBe("3h");
+    expect(formatAge(now / 1000 - 6 * 86_400, now)).toBe("6d");
+    expect(formatAge(now / 1000 + 30, now)).toBe("0s");
+  });
+});
 
 describe("formatBytes", () => {
   it("uses decimal units with one decimal under 100", () => {
