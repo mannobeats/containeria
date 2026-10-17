@@ -54,6 +54,20 @@ impl From<containeria_docker::Error> for CommandError {
     }
 }
 
+impl From<containeria_machines::Error> for CommandError {
+    fn from(error: containeria_machines::Error) -> Self {
+        let kind = match error {
+            containeria_machines::Error::Unreachable(_) => ErrorKind::EngineStopped,
+            containeria_machines::Error::NotFound(_) => ErrorKind::NotFound,
+            containeria_machines::Error::Invalid(_) | containeria_machines::Error::Incus(_) => {
+                ErrorKind::Engine
+            }
+            containeria_machines::Error::Protocol(_) => ErrorKind::Internal,
+        };
+        Self::new(kind, error.to_string())
+    }
+}
+
 impl From<tauri::Error> for CommandError {
     fn from(error: tauri::Error) -> Self {
         Self::new(ErrorKind::Internal, error.to_string())

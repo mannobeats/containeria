@@ -23,6 +23,7 @@ tauri-build = { workspace = true, features = [] }
 [dependencies]
 containeria-docker.workspace = true
 containeria-engine.workspace = true
+containeria-machines.workspace = true
 futures.workspace = true
 serde.workspace = true
 serde_json.workspace = true

@@ -24,12 +24,38 @@ export const commands = {
 	containerAct: (id: string, action: ContainerAction) => __TAURI_INVOKE<null>("container_act", { id, action }),
 	/**  Streams stats readings into `channel` until cancelled with `stream_cancel`. */
 	containerStats: (id: string, channel: Channel<StatsSample>) => __TAURI_INVOKE<number>("container_stats", { id, channel }),
+	machinesStatus: () => __TAURI_INVOKE<MachinesStatus>("machines_status"),
+	machinesStart: (progress: Channel<LogLine>) => __TAURI_INVOKE<null>("machines_start", { progress }),
+	machinesStop: (progress: Channel<LogLine>) => __TAURI_INVOKE<null>("machines_stop", { progress }),
+	machinesList: () => __TAURI_INVOKE<Machine[]>("machines_list"),
+	machineGet: (name: string) => __TAURI_INVOKE<Machine>("machine_get", { name }),
+	machineDistros: () => __TAURI_INVOKE<Distro[]>("machine_distros"),
+	/**
+	 *  Creates a machine, first setting up and starting the machines VM if this is the first one.
+	 *  `progress` gets sentences for the sheet: the VM booting, then the image download.
+	 */
+	machineCreate: (request: CreateMachine, progress: Channel<string>) => __TAURI_INVOKE<null>("machine_create", { request, progress }),
+	machineAct: (name: string, action: MachineAction) => __TAURI_INVOKE<null>("machine_act", { name, action }),
+	machineDelete: (name: string) => __TAURI_INVOKE<null>("machine_delete", { name }),
+	machineFiles: (name: string, path: string) => __TAURI_INVOKE<FileEntry[]>("machine_files", { name, path }),
+	/**  Copies a file out of the machine to `destination`, a path the user picked on the Mac. */
+	machineFileDownload: (name: string, path: string, destination: string) => __TAURI_INVOKE<null>("machine_file_download", { name, path, destination }),
+	/**  Copies `source`, a file the user picked on the Mac, into `directory` in the machine. */
+	machineFileUpload: (name: string, source: string, directory: string) => __TAURI_INVOKE<null>("machine_file_upload", { name, source, directory }),
+	/**
+	 *  Opens a root login shell and streams its output into `output` until it exits or is cancelled
+	 *  with `stream_cancel`. Returns the id `machine_shell_input` and `machine_shell_resize` take.
+	 */
+	machineShell: (name: string, cols: number, rows: number, output: Channel<string>) => __TAURI_INVOKE<number>("machine_shell", { name, cols, rows, output }),
+	machineShellInput: (id: number, data: string) => __TAURI_INVOKE<null>("machine_shell_input", { id, data }),
+	machineShellResize: (id: number, cols: number, rows: number) => __TAURI_INVOKE<null>("machine_shell_resize", { id, cols, rows }),
 };
 
 /** Events */
 export const events = {
 	dockerChanged: makeEvent<DockerChanged>("docker-changed"),
 	engineChanged: makeEvent<EngineChanged>("engine-changed"),
+	machinesChanged: makeEvent<MachinesChanged>("machines-changed"),
 	metricsUpdated: makeEvent<MetricsUpdated>("metrics-updated"),
 };
 
@@ -64,6 +90,25 @@ export type ContainerUsage = {
 	/**  `None` on the first reading: CPU needs two. */
 	cpuPercent: number | null,
 	memoryBytes: number,
+};
+
+/**  What the new-machine sheet asks for. */
+export type CreateMachine = {
+	name: string,
+	distro: string,
+	release: string,
+	kind: MachineKind,
+	cpus: number,
+	memoryGib: number,
+	mountHome: boolean,
+};
+
+export type Distro = {
+	/**  The images server's name for it, also the hint for its logo. */
+	id: string,
+	name: string,
+	/**  Newest first; the first is the default. */
+	releases: Release[],
 };
 
 /**  Something in Docker changed; refetch lists of that kind. */
@@ -113,6 +158,15 @@ export type EngineStatus = {
 /**  What the UI can do about a failure: each kind gets its own empty state or action. */
 export type ErrorKind = "engineMissing" | "engineStopped" | "notFound" | "engine" | "internal";
 
+export type FileEntry = {
+	name: string,
+	path: string,
+	kind: FileKind,
+	sizeBytes: number,
+};
+
+export type FileKind = "file" | "directory" | "symlink";
+
 /**  One line of `colima list --json`. */
 export type Instance = {
 	status: InstanceStatus,
@@ -153,6 +207,45 @@ export type LogLine = {
 	message: string,
 };
 
+export type Machine = {
+	name: string,
+	/**  As the image names it: "Ubuntu", "Debian", "Archlinux". */
+	distro: string,
+	release: string,
+	kind: MachineKind,
+	state: MachineState,
+	ipv4: string | null,
+	memoryBytes: number,
+	/**  CPU time since start; two readings give a percentage. */
+	cpuSeconds: number | null,
+	processes: number,
+	cpuLimit: string | null,
+	memoryLimit: string | null,
+	/**  The Mac folder mounted into the machine, if any. */
+	home: string | null,
+	createdAt: string,
+};
+
+export type MachineAction = "start" | "stop" | "restart";
+
+export type MachineKind = 
+/**  A system container: shares the engine's kernel, boots in about a second. */
+"container" | 
+/**  A full VM with its own kernel. Needs nested virtualization (M3 or newer). */
+"vm";
+
+export type MachineState = "running" | "stopped" | "frozen" | "error" | "busy";
+
+/**  The machines VM or a machine changed; refetch machines. */
+export type MachinesChanged = null;
+
+export type MachinesStatus = {
+	phase: EnginePhase,
+	instance: Instance | null,
+	/**  Full VMs need nested virtualization: an M3 or newer Mac on macOS 15 or newer. */
+	supportsVms: boolean,
+};
+
 export type Metrics = {
 	sampledAtMs: number | null,
 	containers: ContainerUsage[],
@@ -171,6 +264,12 @@ export type Port = {
 };
 
 export type PortProtocol = "tcp" | "udp" | "sctp";
+
+/**  A release of a distribution, as aliased on images.linuxcontainers.org (`ubuntu/24.04`). */
+export type Release = {
+	alias: string,
+	label: string,
+};
 
 export type SegmentKind = "project" | "standalone" | "kubernetes";
 

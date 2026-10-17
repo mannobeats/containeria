@@ -5,15 +5,18 @@ mod engine;
 mod error;
 mod events;
 mod ipc;
+mod machines;
 mod metrics;
 mod state;
 mod streams;
 
 use std::sync::Arc;
 
+use containeria_engine::Home;
 use tauri::Manager;
 
 use crate::engine::Engine;
+use crate::machines::MachinesEngine;
 use crate::metrics::Sampler;
 use crate::state::AppState;
 use crate::streams::Streams;
@@ -43,6 +46,7 @@ pub fn run() -> tauri::Result<()> {
             ipc.mount_events(app);
             let bundled = app.path().resource_dir().ok().map(|dir| dir.join("bin/colima"));
             let engine = Arc::new(Engine::new(bundled.as_deref())?);
+            let machines = MachinesEngine::new(Home::from_env()?, bundled.as_deref());
             let metrics = Arc::new(Sampler::default());
             let (watcher, handle) = (Arc::clone(&engine), app.handle().clone());
             tauri::async_runtime::spawn(async move { watcher.watch(handle).await });
@@ -51,7 +55,7 @@ pub fn run() -> tauri::Result<()> {
             tauri::async_runtime::spawn(
                 async move { sampler.run(engine_for_sampler, handle).await },
             );
-            app.manage(AppState { engine, metrics, streams: Streams::default() });
+            app.manage(AppState { engine, machines, metrics, streams: Streams::default() });
             Ok(())
         })
         .run(tauri::generate_context!())

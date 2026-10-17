@@ -101,11 +101,18 @@ impl EngineConfig {
     /// # Errors
     /// Fails when the folder or file can't be written.
     pub fn save(&self, path: &Path, profile: Profile) -> Result<()> {
-        if let Some(dir) = path.parent() {
-            std::fs::create_dir_all(dir)?;
-        }
-        std::fs::write(path, self.to_colima_yaml(profile)?)?;
-        Ok(())
+        write(path, &ColimaFile::new(self, profile))
+    }
+
+    /// Writes the machines profile's `colima.yaml` with these resources. Full VMs inside Incus need
+    /// nested virtualization, which Apple Virtualization offers only on M3 or newer.
+    ///
+    /// # Errors
+    /// Fails when the folder or file can't be written.
+    pub fn save_machines(&self, path: &Path, nested_virtualization: bool) -> Result<()> {
+        let mut file = ColimaFile::new(self, Profile::Machines);
+        file.nested_virtualization = nested_virtualization && self.vm_type == VmType::Vz;
+        write(path, &file)
     }
 
     /// Renders the settings in Colima's own config format.
@@ -115,6 +122,14 @@ impl EngineConfig {
     pub fn to_colima_yaml(&self, profile: Profile) -> Result<String> {
         Ok(yaml_serde::to_string(&ColimaFile::new(self, profile))?)
     }
+}
+
+fn write(path: &Path, file: &ColimaFile) -> Result<()> {
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+    std::fs::write(path, yaml_serde::to_string(file)?)?;
+    Ok(())
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -127,6 +142,8 @@ struct ColimaFile {
     vm_type: String,
     rosetta: bool,
     binfmt: bool,
+    #[serde(default)]
+    nested_virtualization: bool,
     runtime: String,
     auto_activate: bool,
     hostname: String,
@@ -163,6 +180,7 @@ impl ColimaFile {
             vm_type: config.vm_type.colima_name().to_owned(),
             rosetta: is_vz && config.rosetta,
             binfmt: !(is_vz && config.rosetta),
+            nested_virtualization: false,
             runtime: profile.runtime().to_owned(),
             auto_activate: config.set_docker_context && profile == Profile::Containers,
             hostname: profile.name().to_owned(),
@@ -240,6 +258,19 @@ mod tests {
         assert!(yaml.contains("runtime: incus"));
         assert!(yaml.contains("autoActivate: false"));
         assert!(yaml.contains("enabled: false"));
+    }
+
+    #[test]
+    fn machines_get_nested_virtualization_only_on_apple_virtualization() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("containeria-machines/colima.yaml");
+        EngineConfig::default().save_machines(&path, true).unwrap();
+        let yaml = std::fs::read_to_string(&path).unwrap();
+        assert!(yaml.contains("nestedVirtualization: true"));
+        assert!(yaml.contains("runtime: incus"));
+        let krunkit = EngineConfig { vm_type: VmType::Krunkit, ..EngineConfig::default() };
+        krunkit.save_machines(&path, true).unwrap();
+        assert!(std::fs::read_to_string(&path).unwrap().contains("nestedVirtualization: false"));
     }
 
     #[test]
