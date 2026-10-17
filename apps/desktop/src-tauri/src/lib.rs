@@ -57,43 +57,65 @@ pub fn run() -> tauri::Result<()> {
         .on_window_event(on_window_event)
         .setup(move |app| {
             ipc.mount_events(app);
-            let bundled = app.path().resource_dir().ok().map(|dir| dir.join("bin/colima"));
-            let engine = Arc::new(Engine::new(bundled.as_deref())?);
-            let machines = MachinesEngine::new(Home::from_env()?, bundled.as_deref());
-            let metrics = Arc::new(Sampler::default());
-            let (watcher, handle) = (Arc::clone(&engine), app.handle().clone());
-            tauri::async_runtime::spawn(async move { watcher.watch(handle).await });
-            let (sampler, engine_for_sampler, handle) =
-                (Arc::clone(&metrics), Arc::clone(&engine), app.handle().clone());
-            tauri::async_runtime::spawn(
-                async move { sampler.run(engine_for_sampler, handle).await },
-            );
-            let kubernetes = Arc::new(Kubernetes::default());
-            let (kube_watcher, engine_for_kube, handle) =
-                (Arc::clone(&kubernetes), Arc::clone(&engine), app.handle().clone());
-            tauri::async_runtime::spawn(async move {
-                kube_watcher.watch(&engine_for_kube, handle).await;
-            });
-            let domains = Arc::new(Domains::open(&Home::from_env()?.root().join("net"))?);
-            let (supervised, engine_for_domains) = (Arc::clone(&domains), Arc::clone(&engine));
-            tauri::async_runtime::spawn(domains::supervise(supervised, engine_for_domains));
-            let preferences = PreferencesStore::open(engine.home().root());
-            app.manage(AppState {
-                engine,
-                domains,
-                kubernetes,
-                machines,
-                metrics,
-                preferences,
-                shells: Shells::default(),
-                streams: Streams::default(),
-            });
+            let state = app_state(app.handle())?;
+            let background = Background::from(&state);
+            // Registered before any task starts: the tasks read it through the app handle.
+            app.manage(state);
+            background.spawn(app.handle());
             tray::install(app.handle())?;
             Ok(())
         })
         .build(tauri::generate_context!())?
         .run(|app, event| on_run_event(app, &event));
     Ok(())
+}
+
+fn app_state(app: &AppHandle) -> Result<AppState, Box<dyn std::error::Error>> {
+    let bundled = app.path().resource_dir().ok().map(|dir| dir.join("bin/colima"));
+    let home = Home::from_env()?;
+    let engine = Arc::new(Engine::new(bundled.as_deref())?);
+    Ok(AppState {
+        machines: MachinesEngine::new(home.clone(), bundled.as_deref()),
+        domains: Arc::new(Domains::open(&home.root().join("net"))?),
+        kubernetes: Arc::new(Kubernetes::default()),
+        metrics: Arc::new(Sampler::default()),
+        preferences: PreferencesStore::open(engine.home().root()),
+        engine,
+        shells: Shells::default(),
+        streams: Streams::default(),
+    })
+}
+
+/// The long-running tasks: Docker events, metrics, Kubernetes watches and the domains service.
+struct Background {
+    engine: Arc<Engine>,
+    metrics: Arc<Sampler>,
+    kubernetes: Arc<Kubernetes>,
+    domains: Arc<Domains>,
+}
+
+impl From<&AppState> for Background {
+    fn from(state: &AppState) -> Self {
+        Self {
+            engine: Arc::clone(&state.engine),
+            metrics: Arc::clone(&state.metrics),
+            kubernetes: Arc::clone(&state.kubernetes),
+            domains: Arc::clone(&state.domains),
+        }
+    }
+}
+
+impl Background {
+    fn spawn(self, app: &AppHandle) {
+        let Self { engine, metrics, kubernetes, domains } = self;
+        let (watcher, handle) = (Arc::clone(&engine), app.clone());
+        tauri::async_runtime::spawn(async move { watcher.watch(handle).await });
+        let (sampled, handle) = (Arc::clone(&engine), app.clone());
+        tauri::async_runtime::spawn(async move { metrics.run(sampled, handle).await });
+        let (for_kube, handle) = (Arc::clone(&engine), app.clone());
+        tauri::async_runtime::spawn(async move { kubernetes.watch(&for_kube, handle).await });
+        tauri::async_runtime::spawn(domains::supervise(domains, engine));
+    }
 }
 
 /// Closing the main window hides it while Containeria stays in the menu bar.

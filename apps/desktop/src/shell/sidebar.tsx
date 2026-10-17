@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { toast } from "sonner";
 
 import { useContainers } from "@/features/containers/api";
+import { isCrashed } from "@/features/containers/model";
 import { isServing, useEngineControl, useEngineStatus } from "@/features/engine/api";
 import { useImages } from "@/features/images/api";
 import { useFailingPods } from "@/features/kubernetes/api";
@@ -14,7 +15,7 @@ import { MemoryLedger } from "@/features/metrics/memory-ledger";
 import { useNetworks } from "@/features/networks/api";
 import { useVolumes } from "@/features/volumes/api";
 import { formatMemory, plural } from "@/lib/format";
-import type { EnginePhase, EngineStatus } from "@/lib/ipc/bindings";
+import type { ContainerSummary, EnginePhase, EngineStatus } from "@/lib/ipc/bindings";
 import { AppMark } from "@/ui/app-mark";
 import { Button } from "@/ui/button";
 import { CxIcon, type CxIconName } from "@/ui/cx-icon";
@@ -178,6 +179,25 @@ function FailingPods() {
   ) : null;
 }
 
+/** Running containers, with a warning when one crashed. Nothing until the list has loaded. */
+function containersCount(containers: ContainerSummary[] | undefined): ReactNode {
+  if (!containers) {
+    return undefined;
+  }
+  const visible = containers.filter((container) => container.pod === null);
+  const running = visible.filter((container) => container.state === "running").length;
+  const crashed = visible.filter(isCrashed).length;
+  if (crashed === 0) {
+    return running;
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {running}
+      <IconAlertTriangle aria-label={`${crashed} crashed`} className="size-3.5 text-bad-ink" />
+    </span>
+  );
+}
+
 export function Sidebar() {
   const toggle = useUi((state) => state.toggleSidebar);
   const openPalette = useUi((state) => state.setPaletteOpen);
@@ -185,11 +205,6 @@ export function Sidebar() {
   const { data: images } = useImages();
   const { data: volumes } = useVolumes();
   const { data: networks } = useNetworks();
-  const visible = containers?.filter((container) => container.pod === null) ?? [];
-  const running = visible.filter((container) => container.state === "running").length;
-  const crashed = visible.filter(
-    (container) => container.state === "dead" || /^Exited \([1-9]/.test(container.status),
-  ).length;
   return (
     <aside className="flex min-h-0 min-w-0 flex-col border-r-[0.5px] border-[light-dark(oklch(0_0_0/0.1),oklch(0_0_0/0.5))] bg-panel">
       <div
@@ -224,19 +239,7 @@ export function Sidebar() {
             to="/containers"
             icon="container"
             label="Containers"
-            count={
-              crashed > 0 ? (
-                <span className="inline-flex items-center gap-1.5">
-                  {running}
-                  <IconAlertTriangle
-                    aria-label={`${crashed} crashed`}
-                    className="size-3.5 text-bad-ink"
-                  />
-                </span>
-              ) : (
-                running
-              )
-            }
+            count={containersCount(containers)}
           />
           <Item to="/images" icon="image" label="Images" count={images?.length} />
           <Item to="/volumes" icon="volume" label="Volumes" count={volumes?.length} />
