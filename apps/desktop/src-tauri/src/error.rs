@@ -11,6 +11,14 @@ pub(crate) enum ErrorKind {
     NotFound,
     Engine,
     Internal,
+    /// A database said no, or couldn't be reached.
+    Database,
+    /// A production database is in safe mode; the UI offers to allow writes.
+    ReadOnly,
+    /// What was asked doesn't fit, such as a missing field; the message says which.
+    Invalid,
+    /// The user stopped it, such as a running query.
+    Cancelled,
 }
 
 /// The one error shape every command rejects with.
@@ -29,6 +37,21 @@ impl CommandError {
 
     pub(crate) fn engine_stopped() -> Self {
         Self::new(ErrorKind::EngineStopped, "The engine isn't running.")
+    }
+}
+
+impl From<containeria_data::Error> for CommandError {
+    fn from(error: containeria_data::Error) -> Self {
+        use containeria_data::Error as Data;
+        let kind = match &error {
+            Data::UnknownConnection(_) => ErrorKind::NotFound,
+            Data::ReadOnly(_) => ErrorKind::ReadOnly,
+            Data::Invalid(_) | Data::Unsupported(_) => ErrorKind::Invalid,
+            Data::Docker(containeria_docker::Error::Unreachable(_)) => ErrorKind::EngineStopped,
+            Data::NotConnected(_) | Data::Database(_) | Data::Docker(_) => ErrorKind::Database,
+            Data::Keychain(_) | Data::Json(_) | Data::Io(_) => ErrorKind::Internal,
+        };
+        Self::new(kind, error.to_string())
     }
 }
 

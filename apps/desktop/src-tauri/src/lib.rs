@@ -1,6 +1,7 @@
 //! The Containeria desktop app: the window, the menu bar item and the commands the UI calls.
 
 mod commands;
+mod data;
 mod engine;
 mod error;
 mod events;
@@ -13,6 +14,7 @@ use std::sync::Arc;
 
 use tauri::Manager;
 
+use crate::data::DataState;
 use crate::engine::Engine;
 use crate::metrics::Sampler;
 use crate::state::AppState;
@@ -51,7 +53,10 @@ pub fn run() -> tauri::Result<()> {
             tauri::async_runtime::spawn(
                 async move { sampler.run(engine_for_sampler, handle).await },
             );
-            app.manage(AppState { engine, metrics, streams: Streams::default() });
+            let data = Arc::new(DataState::new(
+                &containeria_engine::Home::from_env()?.root().join("data"),
+            ));
+            app.manage(AppState { engine, metrics, streams: Streams::default(), data });
             Ok(())
         })
         .run(tauri::generate_context!())

@@ -24,6 +24,38 @@ export const commands = {
 	containerAct: (id: string, action: ContainerAction) => __TAURI_INVOKE<null>("container_act", { id, action }),
 	/**  Streams stats readings into `channel` until cancelled with `stream_cancel`. */
 	containerStats: (id: string, channel: Channel<StatsSample>) => __TAURI_INVOKE<number>("container_stats", { id, channel }),
+	dataConnections: () => __TAURI_INVOKE<Connection[]>("data_connections"),
+	/**  Databases running in containers. Empty while the engine is stopped. */
+	dataDetected: () => __TAURI_INVOKE<Detected[]>("data_detected"),
+	dataSaveConnection: (input: ConnectionInput) => __TAURI_INVOKE<Connection>("data_save_connection", { input }),
+	dataRemoveConnection: (id: string) => __TAURI_INVOKE<null>("data_remove_connection", { id }),
+	/**  Dials the connection described in the sheet; returns the server's version. */
+	dataTestConnection: (input: ConnectionInput) => __TAURI_INVOKE<string>("data_test_connection", { input }),
+	dataConnect: (id: string) => __TAURI_INVOKE<ServerInfo>("data_connect", { id }),
+	dataDisconnect: (id: string) => __TAURI_INVOKE<null>("data_disconnect", { id }),
+	dataSchema: (id: string, refresh: boolean) => __TAURI_INVOKE<Namespace[]>("data_schema", { id, refresh }),
+	dataRows: (id: string, request: RowsRequest) => __TAURI_INVOKE<RowPage>("data_rows", { id, request }),
+	/**  The SQL a commit would run, for the review sheet. */
+	dataPreviewChanges: (id: string, changes: ChangeSet) => __TAURI_INVOKE<string>("data_preview_changes", { id, changes }),
+	/**  Commits staged edits in one transaction; returns the rows changed. */
+	dataCommit: (id: string, changes: ChangeSet) => __TAURI_INVOKE<number>("data_commit", { id, changes }),
+	/**  Runs editor SQL. `run_id` lets `data_cancel` stop it. */
+	dataRun: (id: string, sql: string, runId: string) => __TAURI_INVOKE<QueryResult>("data_run", { id, sql, runId }),
+	dataCancel: (runId: string) => __TAURI_INVOKE<null>("data_cancel", { runId }),
+	/**  Lets a production connection write for a while; safe mode comes back by itself. */
+	dataAllowWrites: (id: string, minutes: number) => __TAURI_INVOKE<ServerInfo>("data_allow_writes", { id, minutes }),
+	dataSafeMode: (id: string) => __TAURI_INVOKE<ServerInfo>("data_safe_mode", { id }),
+	dataHistory: () => __TAURI_INVOKE<HistoryEntry[]>("data_history"),
+	dataSavedQueries: () => __TAURI_INVOKE<SavedQuery[]>("data_saved_queries"),
+	/**  Saves a query; an empty id creates a new one. */
+	dataSaveQuery: (query: SavedQuery) => __TAURI_INVOKE<SavedQuery>("data_save_query", { query }),
+	dataDeleteQuery: (id: string) => __TAURI_INVOKE<null>("data_delete_query", { id }),
+	/**  Writes every row matching the request's filters to `path`; returns how many. */
+	dataExport: (id: string, request: RowsRequest, format: ExportFormat, path: string) => __TAURI_INVOKE<number>("data_export", { id, request, format, path }),
+	dataRedisKeys: (id: string, pattern: string, cursor: string | null) => __TAURI_INVOKE<RedisKeyPage>("data_redis_keys", { id, pattern, cursor }),
+	dataRedisValue: (id: string, key: string) => __TAURI_INVOKE<RedisValue>("data_redis_value", { id, key }),
+	dataRedisSet: (id: string, key: string, value: string) => __TAURI_INVOKE<null>("data_redis_set", { id, key, value }),
+	dataRedisDelete: (id: string, key: string) => __TAURI_INVOKE<null>("data_redis_delete", { id, key }),
 };
 
 /** Events */
@@ -34,10 +66,80 @@ export const events = {
 };
 
 /* Types */
+/**  What the UI may offer for an engine. */
+export type Capabilities = {
+	/**  Runs SQL in the editor. */
+	sql: boolean,
+	/**  Rows can be edited, added and deleted from the grid. */
+	editRows: boolean,
+	/**  Has tables and columns to browse. */
+	tables: boolean,
+	/**  A key-value store browsed by key. */
+	keys: boolean,
+};
+
+export type Cell = {
+	column: string,
+	/**  `None` writes `NULL`. */
+	value: string | null,
+};
+
+export type ChangeSet = {
+	table: TableRef,
+	updates: RowUpdate[],
+	/**  New rows; columns left out take their default. */
+	inserts: Cell[][],
+	/**  Primary keys of rows to delete. */
+	deletes: Cell[][],
+};
+
+export type Column = {
+	name: string,
+	/**  The type as the database spells it, such as `character varying(255)` or `UInt64`. */
+	typeName: string,
+	kind: ValueKind,
+	nullable: boolean,
+	primaryKey: boolean,
+	references: ForeignKey | null,
+	default: string | null,
+};
+
 /**  The one error shape every command rejects with. */
 export type CommandError = {
 	kind: ErrorKind,
 	message: string,
+};
+
+/**  A saved connection. Its password lives in the Keychain, never here. */
+export type Connection = {
+	id: string,
+	name: string,
+	engine: Engine,
+	provider: Provider | null,
+	host: string,
+	port: number | null,
+	user: string | null,
+	database: string | null,
+	/**  The database file, for SQLite. */
+	file: string | null,
+	tls: boolean,
+	environment: Environment,
+	hasPassword: boolean,
+};
+
+/**  What the connection sheet sends. `password: None` keeps the saved one. */
+export type ConnectionInput = {
+	id: string | null,
+	name: string,
+	engine: Engine,
+	host: string,
+	port: number | null,
+	user: string | null,
+	database: string | null,
+	file: string | null,
+	tls: boolean,
+	environment: Environment,
+	password: string | null,
 };
 
 /**  What the user can do to a container from the list. */
@@ -66,6 +168,23 @@ export type ContainerUsage = {
 	memoryBytes: number,
 };
 
+/**  A database found in a container. The password stays in the container; this only says one exists. */
+export type Detected = {
+	/**  `container:<name>`, used like a saved connection's id. */
+	id: string,
+	containerId: string,
+	containerName: string,
+	image: string,
+	engine: Engine,
+	running: boolean,
+	/**  The port published on the Mac; `None` when the database is only reachable inside Docker. */
+	port: number | null,
+	user: string | null,
+	database: string | null,
+	/**  The environment variable the password came from, shown as "from `POSTGRES_PASSWORD`". */
+	passwordSource: string | null,
+};
+
 /**  Something in Docker changed; refetch lists of that kind. */
 export type DockerChanged = DockerEvent;
 
@@ -75,6 +194,9 @@ export type DockerEvent = {
 	action: string,
 	id: string,
 };
+
+/**  A database engine Containeria can open. */
+export type Engine = "postgres" | "mySql" | "mariaDb" | "sqlite" | "clickHouse" | "mongoDb" | "redis";
 
 /**  The engine started, stopped or changed settings; refetch its status. */
 export type EngineChanged = null;
@@ -110,8 +232,57 @@ export type EngineStatus = {
 	dockerSocket: string,
 };
 
+export type Enum = {
+	name: string,
+	values: string[],
+};
+
+/**  Production connections open read-only until the user allows writes for a while. */
+export type Environment = "local" | "staging" | "production";
+
 /**  What the UI can do about a failure: each kind gets its own empty state or action. */
-export type ErrorKind = "engineMissing" | "engineStopped" | "notFound" | "engine" | "internal";
+export type ErrorKind = "engineMissing" | "engineStopped" | "notFound" | "engine" | "internal" | 
+/**  A database said no, or couldn't be reached. */
+"database" | 
+/**  A production database is in safe mode; the UI offers to allow writes. */
+"readOnly" | 
+/**  What was asked doesn't fit, such as a missing field; the message says which. */
+"invalid" | 
+/**  The user stopped it, such as a running query. */
+"cancelled";
+
+export type ExportFormat = "csv" | "json" | "sql";
+
+export type Filter = {
+	column: string,
+	op: FilterOp,
+	value: string | null,
+};
+
+export type FilterOp = "equals" | "notEquals" | "greater" | "less" | "greaterOrEqual" | "lessOrEqual" | "contains" | "startsWith" | "isNull" | "isNotNull";
+
+export type ForeignKey = {
+	schema: string | null,
+	table: string,
+	column: string,
+};
+
+export type HistoryEntry = {
+	id: string,
+	connectionId: string,
+	connectionName: string,
+	sql: string,
+	atMs: number | null,
+	elapsedMs: number | null,
+	rows: number | null,
+	error: string | null,
+};
+
+export type Index = {
+	name: string,
+	columns: string[],
+	unique: boolean,
+};
 
 /**  One line of `colima list --json`. */
 export type Instance = {
@@ -124,6 +295,9 @@ export type Instance = {
 };
 
 export type InstanceStatus = "running" | "stopped" | "broken" | "unknown";
+
+/**  How TypeScript sees a JSON cell. Only describes the shape; values are `serde_json::Value`. */
+export type JsonDocument = { [key in string]: unknown } | unknown[];
 
 export type Kubernetes = {
 	enabled: boolean,
@@ -162,6 +336,14 @@ export type Metrics = {
 /**  A fresh CPU and memory sample, about every two seconds while the engine runs. */
 export type MetricsUpdated = Metrics;
 
+/**  One schema, database or keyspace with what's inside it. */
+export type Namespace = {
+	name: string,
+	tables: Table[],
+	functions: string[],
+	enums: Enum[],
+};
+
 export type ObjectKind = "container" | "image" | "volume" | "network";
 
 export type Port = {
@@ -172,7 +354,99 @@ export type Port = {
 
 export type PortProtocol = "tcp" | "udp" | "sctp";
 
+/**  A hosted service on top of an engine, for its logo and its defaults. */
+export type Provider = "neon" | "supabase" | "timescale" | "planetScale";
+
+/**  What a statement in the SQL editor returned. */
+export type QueryResult = {
+	columns: ResultColumn[],
+	rows: Value[][],
+	affected: number | null,
+	/**  More rows came back than the editor keeps; only the first ones are here. */
+	truncated: boolean,
+	elapsedMs: number | null,
+};
+
+export type RedisKey = {
+	key: string,
+	/**  `string`, `hash`, `list`, `set`, `zset` or `stream`. */
+	kind: string,
+	/**  Seconds until it expires; `None` when it never does. */
+	ttlSeconds: number | null,
+};
+
+export type RedisKeyPage = {
+	keys: RedisKey[],
+	/**  Pass back to continue the scan; `None` when it reached the end. */
+	cursor: string | null,
+};
+
+/**  A key's value, shaped for display: text, field pairs, or a list of members. */
+export type RedisValue = { kind: "text"; value: string } | { kind: "pairs"; pairs: ([string, Value])[] } | { kind: "items"; items: string[]; truncated: boolean } | { kind: "missing" };
+
+/**  A column of a query result, which may not belong to any one table. */
+export type ResultColumn = {
+	name: string,
+	typeName: string,
+	kind: ValueKind,
+};
+
+/**  One page of a table. */
+export type RowPage = {
+	columns: Column[],
+	rows: Value[][],
+	/**  Rows matching the filters, counted up to a cap; or the table's estimate when unfiltered. */
+	total: number | null,
+	/**  The count stopped at the cap: there are at least this many. */
+	totalCapped: boolean,
+	elapsedMs: number | null,
+	/**  Why the grid can't edit these rows, when it can't. */
+	readOnlyReason: string | null,
+};
+
+export type RowUpdate = {
+	/**  The primary key of the row as it was read. */
+	key: Cell[],
+	set: Cell[],
+};
+
+/**  One page of a table, filtered and sorted in the database. */
+export type RowsRequest = {
+	table: TableRef,
+	filters: Filter[],
+	sort: Sort | null,
+	limit: number,
+	offset: number,
+};
+
+export type SavedQuery = {
+	id: string,
+	name: string,
+	connectionId: string | null,
+	sql: string,
+};
+
 export type SegmentKind = "project" | "standalone" | "kubernetes";
+
+/**  An open connection, as the workspace header and the safe-mode banner show it. */
+export type ServerInfo = {
+	id: string,
+	name: string,
+	engine: Engine,
+	provider: Provider | null,
+	version: string,
+	capabilities: Capabilities,
+	environment: Environment,
+	/**  Writes are blocked: a production connection in safe mode. */
+	readOnly: boolean,
+	/**  When writes were allowed for a while, when that ends. */
+	writableUntilMs: number | null,
+};
+
+export type Sort = {
+	column: string,
+	descending: boolean,
+};
 
 /**  One stats reading, already turned into the numbers the UI draws. */
 export type StatsSample = {
@@ -184,6 +458,36 @@ export type StatsSample = {
 	diskReadBytes: number,
 	diskWriteBytes: number,
 };
+
+export type Table = {
+	schema: string | null,
+	name: string,
+	kind: TableKind,
+	/**  The database's own estimate, cheap to read; not an exact count. */
+	rowEstimate: number | null,
+	sizeBytes: number | null,
+	columns: Column[],
+	indexes: Index[],
+};
+
+export type TableKind = "table" | "view" | "collection";
+
+/**  Points at one table from the UI. */
+export type TableRef = {
+	schema: string | null,
+	name: string,
+};
+
+/**
+ *  One cell as the grid shows it. Integers beyond 2^53 and exact decimals stay text so nothing is
+ *  rounded on the way to JavaScript.
+ */
+export type Value = null | boolean | number | null | string | 
+/**  A JSON object or array: `jsonb`, MySQL `JSON`, a nested MongoDB document. */
+JsonDocument;
+
+/**  How the grid aligns, edits and filters a column. */
+export type ValueKind = "number" | "text" | "bool" | "json" | "time" | "binary" | "other";
 
 /**
  *  Apple Virtualization keeps Rosetta; krunkit gives freed memory back to macOS. The choice is

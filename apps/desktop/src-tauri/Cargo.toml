@@ -21,6 +21,7 @@ path = "src/main.rs"
 tauri-build = { workspace = true, features = [] }
 
 [dependencies]
+containeria-data.workspace = true
 containeria-docker.workspace = true
 containeria-engine.workspace = true
 futures.workspace = true

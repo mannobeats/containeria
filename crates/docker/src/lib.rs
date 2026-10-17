@@ -2,6 +2,7 @@
 //! small, fully populated types the app shows.
 
 mod containers;
+mod environment;
 mod events;
 mod stats;
 
