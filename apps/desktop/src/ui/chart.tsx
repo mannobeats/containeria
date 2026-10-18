@@ -3,6 +3,7 @@ import "uplot/dist/uPlot.min.css";
 import { useEffect, useEffectEvent, useRef } from "react";
 import uPlot from "uplot";
 
+import { useClock } from "@/lib/clock";
 import { resolveColor } from "@/lib/resolve-color";
 import { useIsDark } from "@/lib/theme";
 
@@ -46,7 +47,8 @@ function options(
   return {
     width: host.clientWidth || 600,
     height,
-    padding: spark ? [4, 0, 2, 0] : [8, 4, 0, 0],
+    // Room on the right for the last time label, which centres on its tick.
+    padding: spark ? [4, 0, 2, 0] : [8, 28, 0, 0],
     legend: { show: false },
     cursor: { y: false, points: { size: 7, width: 2, fill: resolveColor(host, "var(--surface)") } },
     scales: {
@@ -58,7 +60,7 @@ function options(
         ...axis,
         grid: { show: false },
         size: 26,
-        space: 80,
+        space: useClock.getState().hour12 ? 108 : 80,
         values: (_, ticks) => timeTicks(ticks),
       },
       {
