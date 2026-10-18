@@ -51,7 +51,7 @@ export function EngineCharts({ points, cpus, totalBytes }: ChartsProps) {
             height={120}
             series={[{ label: "CPU", color: "var(--s1)" }]}
             data={[times, shown.map((point) => point.cpuPercent)]}
-            format={(value) => `${Math.round(value)}%`}
+            format={(value) => `${Number(value.toFixed(1))}%`}
           />
         </div>
         <div className="flex min-w-0 flex-col gap-0.5">
