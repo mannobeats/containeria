@@ -4,7 +4,8 @@ import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import clsx from "clsx";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
-
+import { useBuilds } from "@/features/builds/api";
+import { runningCount } from "@/features/builds/model";
 import { useContainers } from "@/features/containers/api";
 import { isCrashed } from "@/features/containers/model";
 import { SidebarConnections } from "@/features/data/sidebar-connections";
@@ -210,6 +211,8 @@ export function Sidebar() {
   const openPalette = useUi((state) => state.setPaletteOpen);
   const { data: containers } = useContainers();
   const { data: images } = useImages();
+  const { data: builds } = useBuilds();
+  const building = runningCount(builds);
   const { data: volumes } = useVolumes();
   const { data: networks } = useNetworks();
   return (
@@ -249,6 +252,7 @@ export function Sidebar() {
             count={containersCount(containers)}
           />
           <Item to="/images" icon="image" label="Images" count={images?.length} />
+          <Item to="/builds" icon="build" label="Builds" count={building || undefined} />
           <Item to="/volumes" icon="volume" label="Volumes" count={volumes?.length} />
           <Item to="/networks" icon="network" label="Networks" count={networks?.length} />
           <Item to="/kubernetes" icon="kube" label="Kubernetes" count={<FailingPods />} />

@@ -4,6 +4,7 @@ export type Section = {
   to:
     | "/containers"
     | "/images"
+    | "/builds"
     | "/volumes"
     | "/networks"
     | "/kubernetes"
@@ -16,10 +17,11 @@ export type Section = {
   shortcut?: string;
 };
 
-/** The sidebar's order, also the order of ⌘1–⌘6. */
+/** The sidebar's order. */
 export const SECTIONS: Section[] = [
   { to: "/containers", label: "Containers", icon: "container", shortcut: "⌘1" },
   { to: "/images", label: "Images", icon: "image", shortcut: "⌘2" },
+  { to: "/builds", label: "Builds", icon: "build" },
   { to: "/volumes", label: "Volumes", icon: "volume", shortcut: "⌘3" },
   { to: "/networks", label: "Networks", icon: "network", shortcut: "⌘4" },
   { to: "/kubernetes", label: "Kubernetes", icon: "kube", shortcut: "⌘5" },

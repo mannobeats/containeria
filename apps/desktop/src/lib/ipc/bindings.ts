@@ -190,6 +190,16 @@ export const commands = {
 	imageExport: (reference: string, path: string) => __TAURI_INVOKE<null>("image_export", { reference, path }),
 	/**  Scans an image for known vulnerabilities with Trivy. */
 	imageScan: (reference: string) => __TAURI_INVOKE<ScanReport>("image_scan", { reference }),
+	buildsList: () => __TAURI_INVOKE<BuildRecord[]>("builds_list"),
+	buildDetail: (id: string) => __TAURI_INVOKE<BuildDetail>("build_detail", { id }),
+	/**
+	 *  Streams a build's output; for a running build it follows live until the build ends. Cancel
+	 *  with `stream_cancel`.
+	 */
+	buildLogs: (id: string, channel: Channel<OutputEvent>) => __TAURI_INVOKE<number>("build_logs", { id, channel }),
+	/**  Removes a build from the history; the image it made stays. */
+	buildRemove: (id: string) => __TAURI_INVOKE<null>("build_remove", { id }),
+	buildsClear: () => __TAURI_INVOKE<null>("builds_clear"),
 	volumesList: () => __TAURI_INVOKE<VolumeSummary[]>("volumes_list"),
 	volumeCreate: (name: string) => __TAURI_INVOKE<null>("volume_create", { name }),
 	volumeRemove: (name: string) => __TAURI_INVOKE<null>("volume_remove", { name }),
@@ -317,6 +327,46 @@ export type About = {
 
 export type Appearance = "system" | "light" | "dark";
 
+/**  What a build was asked to do and what it made. */
+export type BuildDetail = {
+	id: string,
+	name: string,
+	dockerfile: string | null,
+	/**  The folder sent to the builder, or the Git URL of a remote build. */
+	context: string | null,
+	target: string | null,
+	platforms: string[],
+	vcsRepository: string | null,
+	vcsRevision: string | null,
+	buildArgs: EnvVar[],
+	labels: EnvVar[],
+	error: BuildError | null,
+	/**  The image it made, as the engine's image id. The image may have been deleted since. */
+	imageId: string | null,
+};
+
+/**  Why a build failed: the step that broke, `BuildKit`'s message and the step's last output. */
+export type BuildError = {
+	step: string | null,
+	message: string,
+	logs: string[],
+};
+
+/**  One build in the engine's history. */
+export type BuildRecord = {
+	/**  What `docker buildx history logs`, `inspect` and `rm` take. */
+	id: string,
+	/**  The folder, or `project (service)` for Compose. Empty when buildx didn't name it. */
+	name: string,
+	status: BuildStatus,
+	startedAtMs: number,
+	completedAtMs: number | null,
+	/**  `BuildKit` counts steps when a build ends: all three are 0 while it runs. */
+	totalSteps: number,
+	completedSteps: number,
+	cachedSteps: number,
+};
+
 /**  What to build: the folder sent to the builder, the Dockerfile in it, and the name to give. */
 export type BuildSpec = {
 	context: string,
@@ -330,6 +380,8 @@ export type BuildSpec = {
 	/**  Pull newer base images. */
 	pull?: boolean,
 };
+
+export type BuildStatus = "running" | "completed" | "failed" | "canceled";
 
 /**  What the UI may offer for an engine. */
 export type Capabilities = {

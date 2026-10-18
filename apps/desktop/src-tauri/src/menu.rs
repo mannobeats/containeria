@@ -108,6 +108,7 @@ pub(crate) fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
             view.item(&tauri::menu::MenuItem::with_id(app, path, label, true, Some(accelerator))?);
     }
     let view = view
+        .text("/builds", "Builds")
         .separator()
         .text("/activity", "Activity")
         .separator()

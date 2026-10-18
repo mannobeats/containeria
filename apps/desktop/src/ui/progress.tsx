@@ -6,7 +6,7 @@ export function Progress({
   label,
   className,
 }: {
-  value?: number;
+  value?: number | undefined;
   label: string;
   className?: string;
 }) {

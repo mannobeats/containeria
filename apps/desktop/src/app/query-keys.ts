@@ -6,6 +6,8 @@ export const queryKeys = {
   metrics: ["metrics"],
   containers: ["containers"],
   images: ["images"],
+  /** Under images: an image event or a finished build or Compose run refreshes the history too. */
+  builds: ["images", "builds"],
   volumes: ["volumes"],
   networks: ["networks"],
   domains: ["domains"],

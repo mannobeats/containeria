@@ -97,6 +97,7 @@ the user installed:
 | Docker Hub search | Docker Hub API | We build | |
 | Vulnerability scan | Trivy (Apache-2.0) run as a container | Built | `aquasec/trivy` pinned, docker socket mounted, database cached in the `containeria-trivy-cache` volume. |
 | Build from a Dockerfile | BuildKit through `docker build` | Built | Build sheet or drop a Dockerfile on the window; plain BuildKit progress streams into the run sheet. |
+| Build history | `docker buildx history` (`ls`, `inspect`, `logs`, `rm`) on the engine's `default` builder | Built | Builds from the app and from `docker build` or `docker compose build` in a terminal: running ones first with live output, then the history with duration, cache hits, build arguments and the failing step. BuildKit only counts steps when a build ends, so a running build's bar is indeterminate. |
 | Volumes: list, size, used by | volumes API + `/system/df` | Docker API | |
 | Browse volume files | short-lived helper container mounting the volume | We build | |
 | Back up, restore, clone, export a volume | helper container with tar | Built | Restore takes Containeria backups and plain tar or tar.gz archives of a volume's files. |
