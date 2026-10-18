@@ -190,6 +190,7 @@ impl Colima {
     /// # Errors
     /// Fails with Colima's last error line when the start fails.
     pub async fn start(&self, profile: Profile, on_line: impl FnMut(LogLine)) -> Result<()> {
+        pin_virtiofs(&self.home.lima())?;
         self.stream("start", profile, ["start"], on_line).await
     }
 
@@ -308,6 +309,20 @@ fn last_error<'a>(lines: impl DoubleEndedIterator<Item = &'a str>) -> String {
     lines.rev().find_map(LogLine::parse).map_or_else(|| "no output".to_owned(), |line| line.message)
 }
 
+/// Colima v0.10.3 asks Lima for 9p mounts on every VM type but vz, and Lima's krunkit driver
+/// refuses 9p (abiosoft/colima#1607). Lima's override file wins over what Colima asks for, and
+/// virtiofs is what every Containeria VM uses anyway.
+fn pin_virtiofs(lima: &Path) -> Result<()> {
+    const OVERRIDE: &str = "mountType: virtiofs\n";
+    let path = lima.join("_config").join("override.yaml");
+    if std::fs::read_to_string(&path).is_ok_and(|current| current == OVERRIDE) {
+        return Ok(());
+    }
+    std::fs::create_dir_all(lima.join("_config"))?;
+    std::fs::write(path, OVERRIDE)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -372,5 +387,14 @@ mod tests {
             r#"time="x" level=fatal msg="error starting vm: disk locked""#,
         ];
         assert_eq!(last_error(lines.into_iter()), "error starting vm: disk locked");
+    }
+
+    #[test]
+    fn pins_virtiofs_for_every_vm_type() {
+        let lima = tempfile::tempdir().unwrap();
+        pin_virtiofs(lima.path()).unwrap();
+        pin_virtiofs(lima.path()).unwrap();
+        let written = std::fs::read_to_string(lima.path().join("_config/override.yaml")).unwrap();
+        assert_eq!(written, "mountType: virtiofs\n");
     }
 }
