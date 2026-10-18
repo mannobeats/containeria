@@ -35,3 +35,12 @@ jobs:
       - run: pnpm check
       - name: Bindings are committed
         run: git diff --exit-code apps/desktop/src/lib/ipc/bindings.ts
+
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: moderate
