@@ -69,6 +69,7 @@ describe("WelcomePage", () => {
       command: "preferencesSet",
       args: { preferences: preferencesFixture({ onboarded: true }) },
     });
+    expect(calls.map((call) => call.command)).toContain("plugin:autostart|enable");
   });
 
   it("explains when the app to copy from has to be opened first", async () => {

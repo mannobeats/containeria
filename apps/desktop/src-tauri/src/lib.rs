@@ -25,7 +25,9 @@ use std::sync::Arc;
 
 use containeria_engine::Home;
 use containeria_net::Domains;
-use tauri::{AppHandle, Manager, RunEvent, Window, WindowEvent};
+use tauri::{ActivationPolicy, AppHandle, Manager, RunEvent, Window, WindowEvent};
+use tauri_plugin_autostart::ManagerExt;
+use tauri_plugin_window_state::StateFlags;
 
 use crate::data::DataState;
 use crate::engine::Engine;
@@ -36,6 +38,9 @@ use crate::preferences::PreferencesStore;
 use crate::shells::Shells;
 use crate::state::AppState;
 use crate::streams::Streams;
+
+/// Passed by the login item, so a launch at login stays in the menu bar.
+const AT_LOGIN: &str = "--at-login";
 
 /// Starts the app and blocks until it quits.
 ///
@@ -51,12 +56,17 @@ pub fn run() -> tauri::Result<()> {
     tauri::Builder::default()
         // Opening the app again, from Finder or Spotlight, brings back its window even when hidden.
         .plugin(tauri_plugin_single_instance::init(|app, _, _| tray::show_main(app)))
-        .plugin(tauri_plugin_window_state::Builder::new().build())
+        // The window starts hidden and the app decides whether it shows: not at login.
+        .plugin(
+            tauri_plugin_window_state::Builder::new()
+                .with_state_flags(StateFlags::all() - StateFlags::VISIBLE)
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_autostart::Builder::new().build())
+        .plugin(tauri_plugin_autostart::Builder::new().arg(AT_LOGIN).build())
         .invoke_handler(ipc.invoke_handler())
         .menu(menu::build)
         .on_menu_event(|app, event| menu::handle(app, &event))
@@ -71,6 +81,7 @@ pub fn run() -> tauri::Result<()> {
             background.spawn(app.handle());
             tray::install(app.handle())?;
             notifications::open_on_click(app.handle());
+            open_window_unless_at_login(app.handle());
             Ok(())
         })
         .build(tauri::generate_context!())?
@@ -128,6 +139,21 @@ impl Background {
         tauri::async_runtime::spawn(async move { kubernetes.watch(&for_kube, handle).await });
         tauri::async_runtime::spawn(domains::supervise(domains, engine, for_domains));
         tauri::async_runtime::spawn(machines::stop_when_idle(app.clone()));
+        tauri::async_runtime::spawn(engine::start_with_app(app.clone()));
+    }
+}
+
+/// Opened by hand, the window shows; opened at login, Containeria stays in the menu bar. A login
+/// item saved before it passed `AT_LOGIN` is rewritten with it.
+fn open_window_unless_at_login(app: &AppHandle) {
+    let login = app.autolaunch();
+    if login.is_enabled().unwrap_or(false) {
+        let _ = login.enable();
+    }
+    if std::env::args().any(|arg| arg == AT_LOGIN) {
+        let _ = app.set_activation_policy(ActivationPolicy::Accessory);
+    } else {
+        tray::show_main(app);
     }
 }
 

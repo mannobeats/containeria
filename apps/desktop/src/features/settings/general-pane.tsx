@@ -42,6 +42,18 @@ const MENU_BAR = [
   ),
 ];
 
+const ENGINE = [
+  {
+    label: "Start the engine with Containeria",
+    hint: "When Containeria opens, at login too. Containers set to restart come back after your Mac restarts.",
+    read: (preferences: Preferences) => preferences.startEngine === "withApp",
+    write: (preferences: Preferences, on: boolean): Preferences => ({
+      ...preferences,
+      startEngine: on ? "withApp" : "manually",
+    }),
+  },
+];
+
 const macZone = new Intl.DateTimeFormat().resolvedOptions().timeZone.replaceAll("_", " ");
 
 const TIME = [
@@ -114,10 +126,11 @@ export function GeneralPane() {
       <SettingsSection title="Startup">
         <SettingsRow
           label="Open at login"
-          hint="Starts Containeria in the menu bar when you log in."
+          hint="Starts Containeria in the menu bar when you log in, without opening its window."
         >
           <Switch label="Open at login" checked={login.enabled} onCheckedChange={login.set} />
         </SettingsRow>
+        <ToggleRows toggles={ENGINE} />
         <ToggleRows toggles={MENU_BAR} />
       </SettingsSection>
       <SettingsSection title="Time">

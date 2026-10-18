@@ -1310,6 +1310,8 @@ export type Preferences = {
 	notifyOn: NotifyOn[],
 	/**  The zone times show in. */
 	timeZone: TimeZone,
+	/**  Whether opening the app, at login too, starts a stopped engine. */
+	startEngine: StartEngine,
 };
 
 /**  Settings changed, possibly in another window. */
@@ -1532,6 +1534,12 @@ export type SshTunnel = {
 	/**  The private key, for `SshAuth::Key`. A leading `~/` means the home folder. */
 	keyFile: string | null,
 };
+
+export type StartEngine = 
+/**  As Containeria opens, so containers with a restart policy come back after the Mac restarts. */
+"withApp" | 
+/**  Only from the Start button. */
+"manually";
 
 /**  One stats reading, already turned into the numbers the UI draws. */
 export type StatsSample = {

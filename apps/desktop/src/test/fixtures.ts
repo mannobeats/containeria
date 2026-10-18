@@ -69,6 +69,7 @@ export function preferencesFixture(overrides: Partial<Preferences> = {}): Prefer
     onboarded: true,
     notifyOn: ["crash", "unhealthy", "finished", "lowMemory"],
     timeZone: "mac",
+    startEngine: "withApp",
     ...overrides,
   };
 }

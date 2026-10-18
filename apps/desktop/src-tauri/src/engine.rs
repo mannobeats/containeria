@@ -9,13 +9,15 @@ use containeria_engine::{
 };
 use futures::StreamExt;
 use serde::Serialize;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use tauri_specta::Event;
 use tokio::sync::RwLock;
 
 use crate::error::{CommandError, ErrorKind, Result};
 use crate::events::{DockerChanged, EngineChanged};
 use crate::notifications::{self, Alerts};
+use crate::preferences::StartEngine;
+use crate::state::AppState;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
@@ -55,6 +57,26 @@ pub(crate) fn phase_of(
         (None, Some(InstanceStatus::Stopped)) => EnginePhase::Stopped,
         (None, Some(InstanceStatus::Broken | InstanceStatus::Unknown)) => EnginePhase::Broken,
     }
+}
+
+/// Starts the engine as the app opens, at login too, when it was stopped and Settings allow it.
+/// An engine never created waits for first launch, and a broken one for the user to see it.
+pub(crate) async fn start_with_app(app: AppHandle) {
+    let state = app.state::<AppState>();
+    if state.engine.is_external() {
+        return;
+    }
+    let Ok((phase, _)) = state.engine.phase().await else { return };
+    if !starts_with_app(state.preferences.get().start_engine, phase) {
+        return;
+    }
+    if let Err(error) = state.engine.start(&app, |_| {}).await {
+        tracing::warn!("the engine didn't start with the app: {}", error.message);
+    }
+}
+
+fn starts_with_app(choice: StartEngine, phase: EnginePhase) -> bool {
+    choice == StartEngine::WithApp && phase == EnginePhase::Stopped
 }
 
 /// The containers engine as the app sees it: Colima for the VM, Docker for what runs inside.
@@ -303,5 +325,19 @@ impl Engine {
 
     fn set_transition(&self, phase: Option<EnginePhase>) {
         *self.transition.lock().unwrap_or_else(PoisonError::into_inner) = phase;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_a_stopped_engine_starts_with_the_app_and_only_when_allowed() {
+        assert!(starts_with_app(StartEngine::WithApp, EnginePhase::Stopped));
+        assert!(!starts_with_app(StartEngine::Manually, EnginePhase::Stopped));
+        for phase in [EnginePhase::NotCreated, EnginePhase::Broken, EnginePhase::Running] {
+            assert!(!starts_with_app(StartEngine::WithApp, phase));
+        }
     }
 }

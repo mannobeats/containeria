@@ -19,6 +19,17 @@ pub(crate) struct Preferences {
     pub(crate) notify_on: Vec<NotifyOn>,
     /// The zone times show in.
     pub(crate) time_zone: TimeZone,
+    /// Whether opening the app, at login too, starts a stopped engine.
+    pub(crate) start_engine: StartEngine,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum StartEngine {
+    /// As Containeria opens, so containers with a restart policy come back after the Mac restarts.
+    WithApp,
+    /// Only from the Start button.
+    Manually,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
@@ -56,6 +67,7 @@ impl Default for Preferences {
                 NotifyOn::LowMemory,
             ],
             time_zone: TimeZone::Mac,
+            start_engine: StartEngine::WithApp,
         }
     }
 }

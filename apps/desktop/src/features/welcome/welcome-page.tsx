@@ -1,5 +1,6 @@
 import { IconCheck, IconCircleCheck } from "@tabler/icons-react";
 import { useNavigate } from "@tanstack/react-router";
+import { enable as openAtLogin } from "@tauri-apps/plugin-autostart";
 import clsx from "clsx";
 import { useState } from "react";
 
@@ -57,7 +58,10 @@ function Hero({ title, body, action }: { title: string; body: string; action: Re
   );
 }
 
-/** First launch: what Containeria is, the engine's size, creating it, and bringing images over. */
+/**
+ * First launch: what Containeria is, the engine's size, creating it, and bringing images over.
+ * Finishing it turns on Open at login, as Docker Desktop and OrbStack do; Settings turns it off.
+ */
 export function WelcomePage() {
   const [step, setStep] = useState<Step>("welcome");
   const navigate = useNavigate();
@@ -68,6 +72,7 @@ export function WelcomePage() {
     if (preferences) {
       setPreferences.mutate({ ...preferences, onboarded: true });
     }
+    openAtLogin().catch(() => undefined);
     navigate({ to: "/containers" }).catch(() => undefined);
   };
   const skip = (
