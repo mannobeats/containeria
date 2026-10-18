@@ -101,6 +101,7 @@ pub(crate) fn show_main(app: &AppHandle) {
         let _ = popover.hide();
     }
     if let Some(window) = app.get_webview_window("main") {
+        crate::dock::show(app);
         let _ = window.show();
         let _ = window.unminimize();
         let _ = window.set_focus();

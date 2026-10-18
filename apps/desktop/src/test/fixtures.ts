@@ -68,6 +68,7 @@ export function preferencesFixture(overrides: Partial<Preferences> = {}): Prefer
     memoryInMenuBar: true,
     onboarded: true,
     notifyOn: ["crash", "unhealthy", "finished", "lowMemory"],
+    timeZone: "mac",
     ...overrides,
   };
 }

@@ -8,7 +8,7 @@ use crate::commands::{
 };
 use crate::events::{
     DockerChanged, EngineChanged, KubeChanged, MachinesChanged, MenuCommand, MetricsUpdated,
-    Navigate, SettingsPaneShown,
+    Navigate, PreferencesChanged, SettingsPaneShown,
 };
 
 /// Every command and event the UI can use. `bindings.ts` is generated from this list.
@@ -25,7 +25,8 @@ pub(crate) fn builder() -> Builder<Wry> {
             MenuCommand,
             MachinesChanged,
             KubeChanged,
-            SettingsPaneShown
+            SettingsPaneShown,
+            PreferencesChanged
         ])
 }
 
@@ -48,6 +49,7 @@ fn commands() -> Commands<Wry> {
         settings::preferences_get,
         settings::preferences_set,
         settings::host_info,
+        settings::clock,
         settings::about,
         cli_tools::cli_tools,
         cli_tools::cli_tools_install,

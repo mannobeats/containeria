@@ -1168,6 +1168,7 @@ dependencies = [
  "containeria-net",
  "flate2",
  "futures",
+ "objc2-foundation",
  "serde",
  "serde_json",
  "specta",

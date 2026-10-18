@@ -29,6 +29,7 @@ containeria-machines.workspace = true
 containeria-net.workspace = true
 flate2.workspace = true
 futures.workspace = true
+objc2-foundation.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 specta.workspace = true

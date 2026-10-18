@@ -6,7 +6,7 @@ use tauri_specta::Event;
 
 use crate::events::SettingsPaneShown;
 
-const LABEL: &str = "settings";
+pub(crate) const LABEL: &str = "settings";
 const WIDTH: f64 = 640.0;
 /// A first guess; the window sizes itself to the pane once it renders.
 const HEIGHT: f64 = 480.0;
@@ -57,6 +57,7 @@ impl ShownPane {
 /// Opens Settings at `pane` in its own window, the Mac way, or brings it forward on that pane.
 pub(crate) fn open(app: &AppHandle, pane: SettingsPane) -> tauri::Result<()> {
     app.state::<ShownPane>().set(pane);
+    crate::dock::show(app);
     if let Some(window) = app.get_webview_window(LABEL) {
         window.set_title(pane.title())?;
         SettingsPaneShown(pane).emit_to(app, LABEL)?;

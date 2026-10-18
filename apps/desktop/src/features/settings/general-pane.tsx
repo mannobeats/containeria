@@ -42,6 +42,20 @@ const MENU_BAR = [
   ),
 ];
 
+const macZone = new Intl.DateTimeFormat().resolvedOptions().timeZone.replaceAll("_", " ");
+
+const TIME = [
+  {
+    label: "Use your Mac's time zone",
+    hint: `Times show in ${macZone}, on your Mac's clock. Off, they show in UTC, as servers and most container logs write them.`,
+    read: (preferences: Preferences) => preferences.timeZone === "mac",
+    write: (preferences: Preferences, on: boolean): Preferences => ({
+      ...preferences,
+      timeZone: on ? "mac" : "utc",
+    }),
+  },
+];
+
 const NOTIFICATIONS = [
   notice("crash", "A container crashes", "It exits with an error, not because you stopped it."),
   notice("unhealthy", "A health check fails", "A container's health check reports it unhealthy."),
@@ -105,6 +119,9 @@ export function GeneralPane() {
           <Switch label="Open at login" checked={login.enabled} onCheckedChange={login.set} />
         </SettingsRow>
         <ToggleRows toggles={MENU_BAR} />
+      </SettingsSection>
+      <SettingsSection title="Time">
+        <ToggleRows toggles={TIME} />
       </SettingsSection>
       <SettingsSection
         title="Notifications"

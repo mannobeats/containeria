@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-
+import { useClock } from "@/lib/clock";
 import type { LogEntry } from "@/lib/ipc/bindings";
-
 import { appendLines, countErrors, filterLines, formatTime, MAX_LINES, toText } from "./logs-model";
 
 const numbered = (entries: LogEntry[]) => appendLines([], entries);
@@ -47,7 +46,10 @@ describe("logs model", () => {
 
   it("shows Docker's nanosecond stamps as local times to the millisecond", () => {
     const local = new Date(2026, 9, 17, 12, 4, 9, 877).toISOString().replace("Z", "000000Z");
+    useClock.setState({ timeZone: undefined, hour12: false });
     expect(formatTime(local)).toBe("12:04:09.877");
+    useClock.setState({ hour12: true });
+    expect(formatTime(local)).toBe("12:04:09.877 PM");
     expect(formatTime(null)).toBe("");
     expect(formatTime("garbage")).toBe("");
   });

@@ -80,6 +80,17 @@ describe("SettingsWindow", () => {
     );
   });
 
+  it("switches times to UTC", async () => {
+    const calls = renderSection("general");
+    await userEvent.click(await screen.findByRole("switch", { name: "Use your Mac's time zone" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        command: "preferencesSet",
+        args: { preferences: preferencesFixture({ timeZone: "utc" }) },
+      }),
+    );
+  });
+
   it("turns notifications off, and asks macOS for permission when one is turned on", async () => {
     const calls = mockCommands({
       settingsPane: () => "general",

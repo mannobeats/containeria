@@ -1,6 +1,7 @@
 import { IconCamera, IconDots } from "@tabler/icons-react";
 import { useState } from "react";
 
+import { formatDateTime } from "@/lib/clock";
 import { formatRelative } from "@/lib/format";
 import type { MachineSnapshot } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
@@ -36,7 +37,7 @@ function Row({
         <span className="truncate font-mono text-mono-12 select-text">{snapshot.name}</span>
         <time
           dateTime={snapshot.createdAt}
-          title={Number.isNaN(created) ? undefined : new Date(created).toLocaleString()}
+          title={Number.isNaN(created) ? undefined : formatDateTime(created)}
           className="text-right text-12 text-ink-3"
         >
           {Number.isNaN(created) ? "" : formatRelative(created / 1000)}

@@ -6,16 +6,20 @@ import {
   requestPermission,
   sendNotification,
 } from "@tauri-apps/plugin-notification";
+import { useEffect } from "react";
 import { toast } from "sonner";
 
-import { commands, type Preferences } from "@/lib/ipc/bindings";
+import { useClock } from "@/lib/clock";
+import { commands, events, type Preferences } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
+import { useTauriEvent } from "@/lib/ipc/use-tauri-event";
 
 const keys = {
   preferences: ["preferences"],
   host: ["host"],
   about: ["about"],
   autostart: ["autostart"],
+  clock: ["clock"],
 } as const;
 
 export function usePreferences() {
@@ -73,4 +77,26 @@ export async function notifyWhenAway(title: string, body: string | null) {
   if (!focused && preferences.notifyOn.includes("finished")) {
     sendNotification(body === null ? { title } : { title, body });
   }
+}
+
+/** Keeps `useClock` in step with Settings, which may change in the Settings window. */
+export function useClockSync() {
+  const client = useQueryClient();
+  useTauriEvent(events.preferencesChanged, () => {
+    client.invalidateQueries({ queryKey: keys.preferences }).catch(() => undefined);
+  });
+  const { data: preferences } = usePreferences();
+  const { data: mac } = useQuery({
+    queryKey: keys.clock,
+    queryFn: commands.clock,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+  const utc = preferences?.timeZone === "utc";
+  const hour12 = mac?.hour12;
+  useEffect(() => {
+    useClock.setState((clock) => ({
+      timeZone: utc ? "UTC" : undefined,
+      hour12: hour12 ?? clock.hour12,
+    }));
+  }, [utc, hour12]);
 }

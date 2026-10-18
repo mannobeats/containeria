@@ -8,7 +8,9 @@ import { ComposeSheet } from "@/features/compose/compose-sheet";
 import { RunSheet } from "@/features/containers/run/run-sheet";
 import { EngineGate } from "@/features/engine/engine-gate";
 import { DockerfileDropTarget } from "@/features/images/dockerfile-drop-target";
+import { useClockSync } from "@/features/settings/api";
 import { useFirstLaunch } from "@/features/welcome/use-first-launch";
+import { useClock } from "@/lib/clock";
 import { Toaster } from "@/ui/toaster";
 import { TooltipProvider } from "@/ui/tooltip";
 
@@ -27,7 +29,10 @@ export function AppShell() {
   useMenuNavigation();
   useMenuCommands();
   useFirstLaunch();
+  useClockSync();
   const collapsed = useUi((state) => state.sidebarCollapsed);
+  // Times are formatted as they render, so a page draws again when the clock setting changes.
+  const clock = useClock((state) => `${state.timeZone}-${state.hour12}`);
   const matches = useMatches();
   const leaf = matches.at(-1);
   const needsEngine = matches.some((match) => match.staticData.needsEngine);
@@ -50,7 +55,7 @@ export function AppShell() {
         >
           <Sidebar />
         </div>
-        <div className="relative flex min-h-0 min-w-0 flex-col bg-bg">
+        <div key={clock} className="relative flex min-h-0 min-w-0 flex-col bg-bg">
           {needsEngine ? (
             <EngineGate title={leaf?.staticData.title ?? ""}>
               <Outlet />

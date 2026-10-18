@@ -2,6 +2,7 @@
 
 mod commands;
 mod data;
+mod dock;
 mod domains;
 mod engine;
 mod error;
@@ -130,17 +131,23 @@ impl Background {
     }
 }
 
-/// Closing the main window hides it while Containeria stays in the menu bar.
+/// Closing the main window hides it, and the Dock icon with it, while Containeria stays in the
+/// menu bar. Closing Settings with the main window hidden takes the Dock icon away too.
 fn on_window_event(window: &Window, event: &WindowEvent) {
-    let WindowEvent::CloseRequested { api, .. } = event else { return };
-    if window.label() != "main" {
-        return;
-    }
-    if window.state::<AppState>().preferences.get().keep_running_in_menu_bar {
-        api.prevent_close();
-        let _ = window.hide();
-    } else {
-        window.app_handle().exit(0);
+    match event {
+        WindowEvent::CloseRequested { api, .. } if window.label() == "main" => {
+            if window.state::<AppState>().preferences.get().keep_running_in_menu_bar {
+                api.prevent_close();
+                let _ = window.hide();
+                dock::hide_unless_open(window.app_handle(), None);
+            } else {
+                window.app_handle().exit(0);
+            }
+        }
+        WindowEvent::Destroyed if window.label() == settings_window::LABEL => {
+            dock::hide_unless_open(window.app_handle(), Some(settings_window::LABEL));
+        }
+        _ => {}
     }
 }
 

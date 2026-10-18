@@ -17,6 +17,17 @@ pub(crate) struct Preferences {
     pub(crate) onboarded: bool,
     /// What Containeria tells you about in Notification Center.
     pub(crate) notify_on: Vec<NotifyOn>,
+    /// The zone times show in.
+    pub(crate) time_zone: TimeZone,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum TimeZone {
+    /// The Mac's own, with its 12- or 24-hour clock.
+    Mac,
+    /// UTC, as servers and most container logs write it.
+    Utc,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
@@ -44,6 +55,7 @@ impl Default for Preferences {
                 NotifyOn::Finished,
                 NotifyOn::LowMemory,
             ],
+            time_zone: TimeZone::Mac,
         }
     }
 }

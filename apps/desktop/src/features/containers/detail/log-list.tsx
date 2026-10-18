@@ -33,7 +33,7 @@ function Row({ line, query, timestamps }: { line: LogLine; query: string; timest
     <div
       className={clsx(
         "grid gap-3 border-l-2 px-5 py-px text-ink-2 [contain-intrinsic-size:auto_20px] [content-visibility:auto] hover:bg-hover",
-        timestamps ? "grid-cols-[96px_44px_1fr]" : "grid-cols-[44px_1fr]",
+        timestamps ? "grid-cols-[112px_44px_1fr]" : "grid-cols-[44px_1fr]",
         rowTone[line.level],
       )}
     >

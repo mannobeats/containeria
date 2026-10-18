@@ -2,8 +2,8 @@ import { emit } from "@tauri-apps/api/event";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { useClock } from "@/lib/clock";
 import type { EnginePhase } from "@/lib/ipc/bindings";
-
 import {
   containerFixture,
   engineFixture,
@@ -14,13 +14,18 @@ import { mockCommands, renderWithApp } from "@/test/harness";
 
 import { AppShell } from "./app-shell";
 
-function renderShell(phase: EnginePhase, onboarded = true) {
+function renderShell(
+  phase: EnginePhase,
+  onboarded = true,
+  preferences = preferencesFixture({ onboarded }),
+) {
   const calls = mockCommands({
+    clock: () => ({ hour12: false }),
     engineStatus: () => engineFixture({ phase }),
     dataConnections: () => [],
     containersList: () => [containerFixture({ name: "shop-db-1" })],
     metricsLatest: () => metricsFixture(),
-    preferencesGet: () => preferencesFixture({ onboarded }),
+    preferencesGet: () => preferences,
   });
   const { router } = renderWithApp(<p>Page content</p>, {
     shell: AppShell,
@@ -86,6 +91,15 @@ describe("AppShell", () => {
     await waitFor(() => expect(calls.map((call) => call.command)).toContain("engineStart"));
     await emit("menu-command", "openEngineShell");
     await waitFor(() => expect(calls.router.state.location.pathname).toBe("/engine/shell"));
+  });
+
+  it("shows times on the Mac's clock, or in UTC once Settings says so", async () => {
+    const calls = renderShell("running", true, preferencesFixture({ timeZone: "utc" }));
+    await waitFor(() => expect(useClock.getState()).toEqual({ timeZone: "UTC", hour12: false }));
+    await emit("preferences-changed", null);
+    await waitFor(() =>
+      expect(calls.filter((call) => call.command === "preferencesGet").length).toBeGreaterThan(1),
+    );
   });
 
   it("opens the view the native menu asks for", async () => {

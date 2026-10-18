@@ -1,8 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+
+import { useClock } from "@/lib/clock";
 
 import { readout, timeTicks } from "./chart-format";
 
 const at = (iso: string) => Date.parse(iso) / 1000;
+
+beforeEach(() => useClock.setState({ timeZone: undefined, hour12: false }));
 
 describe("timeTicks", () => {
   it("shows seconds on short spans and minutes on long ones", () => {

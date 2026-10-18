@@ -28,6 +28,7 @@ export const commands = {
 	preferencesSet: (preferences: Preferences) => __TAURI_INVOKE<null>("preferences_set", { preferences }),
 	/**  The Mac's chip, cores and memory, to size the engine's limits. */
 	hostInfo: () => __TAURI_INVOKE<Host>("host_info"),
+	clock: () => __TAURI_INVOKE<Clock>("clock"),
 	about: () => __TAURI_INVOKE<About>("about"),
 	/**  The tools Containeria can install, and whether each one is. */
 	cliTools: () => __TAURI_INVOKE<CliTool[]>("cli_tools"),
@@ -314,6 +315,7 @@ export const events = {
 	menuCommand: makeEvent<MenuCommand>("menu-command"),
 	metricsUpdated: makeEvent<MetricsUpdated>("metrics-updated"),
 	navigate: makeEvent<Navigate>("navigate"),
+	preferencesChanged: makeEvent<PreferencesChanged>("preferences-changed"),
 	settingsPaneShown: makeEvent<SettingsPaneShown>("settings-pane-shown"),
 };
 
@@ -416,6 +418,14 @@ export type CliTool = {
 	name: string,
 	target: string,
 	state: ToolState,
+};
+
+/**
+ *  How the Mac shows the time. The web view's `Intl` knows the region and time zone but not the
+ *  24-hour switch in System Settings, which overrides the region.
+ */
+export type Clock = {
+	hour12: boolean,
 };
 
 /**  Everything the Kubernetes view shows, read in one pass. */
@@ -1298,7 +1308,12 @@ export type Preferences = {
 	onboarded: boolean,
 	/**  What Containeria tells you about in Notification Center. */
 	notifyOn: NotifyOn[],
+	/**  The zone times show in. */
+	timeZone: TimeZone,
 };
+
+/**  Settings changed, possibly in another window. */
+export type PreferencesChanged = null;
 
 /**  A hosted service on top of an engine, for its logo and its defaults. */
 export type Provider = "neon" | "supabase" | "timescale" | "planetscale";
@@ -1554,6 +1569,12 @@ export type TableRef = {
 	schema: string | null,
 	name: string,
 };
+
+export type TimeZone = 
+/**  The Mac's own, with its 12- or 24-hour clock. */
+"mac" | 
+/**  UTC, as servers and most container logs write it. */
+"utc";
 
 export type ToolState = 
 /**  Linked to Containeria's copy. */

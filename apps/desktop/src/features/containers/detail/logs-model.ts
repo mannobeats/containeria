@@ -1,3 +1,4 @@
+import { formatPreciseClock } from "@/lib/clock";
 import type { Level, LogEntry } from "@/lib/ipc/bindings";
 
 /** Lines kept in memory; older ones scroll away, as in Terminal. */
@@ -33,17 +34,13 @@ export function countErrors(lines: LogEntry[]): number {
   return lines.filter((line) => line.level === "error").length;
 }
 
-/** `2026-10-17T12:04:09.877000000Z` → `12:04:09.877` in the Mac's time zone. */
+/** `2026-10-17T12:04:09.877000000Z` → `8:04:09.877 AM` on the clock Settings picks. */
 export function formatTime(timestamp: string | null): string {
   if (!timestamp) {
     return "";
   }
-  const date = new Date(timestamp.replace(/(\.\d{3})\d+/, "$1"));
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-  const pad = (value: number, length = 2) => String(value).padStart(length, "0");
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${pad(date.getMilliseconds(), 3)}`;
+  const ms = Date.parse(timestamp.replace(/(\.\d{3})\d+/, "$1"));
+  return Number.isNaN(ms) ? "" : formatPreciseClock(ms);
 }
 
 /** The lines as plain text, for Copy and Download. */

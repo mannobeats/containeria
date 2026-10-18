@@ -1,9 +1,13 @@
 use containeria_docker::EngineInfo;
 use containeria_engine::Host;
+use objc2_foundation::{NSDateFormatter, NSLocale, ns_string};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, LogicalSize, State, Theme, WebviewWindow};
 
+use tauri_specta::Event;
+
 use crate::error::Result;
+use crate::events::PreferencesChanged;
 use crate::preferences::Preferences;
 use crate::settings_window::{self, SettingsPane, ShownPane};
 use crate::state::AppState;
@@ -23,9 +27,32 @@ pub(crate) async fn preferences_set(
     preferences: Preferences,
 ) -> Result<()> {
     state.preferences.set(preferences)?;
+    PreferencesChanged.emit(&app)?;
     let used = state.metrics.latest().await.map(|metrics| metrics.ledger.used_bytes);
     tray::show_memory(&app, used);
     Ok(())
+}
+
+/// How the Mac shows the time. The web view's `Intl` knows the region and time zone but not the
+/// 24-hour switch in System Settings, which overrides the region.
+#[derive(Debug, Clone, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct Clock {
+    pub(crate) hour12: bool,
+}
+
+#[tauri::command]
+#[specta::specta]
+pub(crate) fn clock() -> Clock {
+    let locale = NSLocale::autoupdatingCurrentLocale();
+    let hours =
+        NSDateFormatter::dateFormatFromTemplate_options_locale(ns_string!("j"), 0, Some(&locale));
+    Clock { hour12: hours.is_some_and(|format| uses_12_hour_clock(&format.to_string())) }
+}
+
+/// Reads the hour pattern macOS picks for the `j` skeleton: `h a` or `HH`.
+fn uses_12_hour_clock(pattern: &str) -> bool {
+    pattern.contains(['h', 'K'])
 }
 
 /// The Mac's chip, cores and memory, to size the engine's limits.
@@ -120,4 +147,15 @@ pub(crate) async fn app_set_appearance(app: AppHandle, appearance: Appearance) -
 pub(crate) async fn app_quit(app: AppHandle) -> Result<()> {
     app.exit(0);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reads_the_hour_pattern() {
+        assert!(uses_12_hour_clock("h a"));
+        assert!(!uses_12_hour_clock("HH"));
+    }
 }

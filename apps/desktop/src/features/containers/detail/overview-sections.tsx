@@ -3,6 +3,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import type { ReactNode } from "react";
 
 import { copyText } from "@/lib/clipboard";
+import { formatDateTime } from "@/lib/clock";
 import type { ContainerDetails } from "@/lib/ipc/bindings";
 import { Banner } from "@/ui/banner";
 import { CxIcon } from "@/ui/cx-icon";
@@ -12,8 +13,8 @@ import { ContextMenu } from "@/ui/menu";
 
 import { miniTable } from "./mini-table";
 
-const dateTime = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" });
-const when = (timestamp: string | null) => (timestamp ? dateTime.format(new Date(timestamp)) : "—");
+const when = (timestamp: string | null) =>
+  timestamp ? formatDateTime(Date.parse(timestamp)) : "—";
 
 export function Section({
   title,

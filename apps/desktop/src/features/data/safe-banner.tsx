@@ -1,14 +1,14 @@
 import { IconLock, IconLockOpen } from "@tabler/icons-react";
 import { useState } from "react";
 
+import { formatClock } from "@/lib/clock";
 import type { ServerInfo } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
 import { ConfirmSheet } from "@/ui/confirm-sheet";
 
 import { useWrites } from "./api";
 
-const time = (ms: number) =>
-  new Date(ms).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+const time = (ms: number) => formatClock(ms);
 
 /** A production connection says it is read-only, and offers writes for 15 minutes. */
 export function SafeBanner({ info }: { info: ServerInfo }) {

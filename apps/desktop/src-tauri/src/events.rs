@@ -52,3 +52,7 @@ pub(crate) struct KubeChanged;
 /// Switches the open Settings window to a pane.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
 pub(crate) struct SettingsPaneShown(pub(crate) SettingsPane);
+
+/// Settings changed, possibly in another window.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
+pub(crate) struct PreferencesChanged;
