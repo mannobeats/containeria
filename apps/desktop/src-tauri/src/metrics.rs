@@ -5,7 +5,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use containeria_docker::{ContainerState, ContainerSummary, CpuCounters, Docker};
 use futures::{StreamExt, stream};
 use serde::Serialize;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use tauri_specta::Event;
 use tokio::sync::RwLock;
 
@@ -97,6 +97,9 @@ pub(crate) struct Sampler {
 
 impl Sampler {
     const EVERY: Duration = Duration::from_secs(2);
+    /// While the window is hidden only the menu bar's memory reading needs it, so the engine
+    /// isn't woken every two seconds.
+    const EVERY_HIDDEN: Duration = Duration::from_secs(10);
     const PARALLEL_READINGS: usize = 8;
     /// Thirty minutes at one sample every two seconds.
     const HISTORY: usize = 900;
@@ -134,7 +137,10 @@ impl Sampler {
             }
             tray::show_memory(&app, metrics.as_ref().map(|metrics| metrics.ledger.used_bytes));
             *self.latest.write().await = metrics;
-            tokio::time::sleep(Self::EVERY).await;
+            let shown = app
+                .get_webview_window("main")
+                .is_some_and(|window| window.is_visible().unwrap_or(true));
+            tokio::time::sleep(if shown { Self::EVERY } else { Self::EVERY_HIDDEN }).await;
         }
     }
 }

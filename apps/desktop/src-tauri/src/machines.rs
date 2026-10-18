@@ -2,19 +2,26 @@ use std::collections::HashMap;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
+use std::time::{Duration, Instant};
 
 use containeria_engine::{Colima, EngineConfig, Home, Instance, LogLine, Profile};
-use containeria_machines::{Incus, Shell, ShellInput, client_config, shell_command};
+use containeria_machines::{
+    Incus, Machine, MachineAction, MachineState, Shell, ShellInput, client_config, shell_command,
+};
 use futures::StreamExt;
 use serde::Serialize;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use tauri_specta::Event;
 use tokio::sync::mpsc;
 
 use crate::engine::{EnginePhase, phase_of};
 use crate::error::{CommandError, ErrorKind, Result};
 use crate::events::MachinesChanged;
+use crate::state::AppState;
 use crate::streams::Streams;
+
+/// How long the machines VM may sit with nothing running before it stops to free its memory.
+const IDLE_STOP: Duration = Duration::from_mins(5);
 
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
@@ -35,6 +42,8 @@ pub(crate) struct MachinesEngine {
     supports_vms: bool,
     transition: Mutex<Option<EnginePhase>>,
     shells: ShellInputs,
+    /// The machines as last seen at rest, shown while the VM is off.
+    known: Mutex<Option<Vec<Machine>>>,
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -49,6 +58,7 @@ impl MachinesEngine {
             supports_vms: containeria_engine::supports_nested_virtualization(),
             transition: Mutex::new(None),
             shells: ShellInputs::default(),
+            known: Mutex::new(None),
         }
     }
 
@@ -120,6 +130,88 @@ impl MachinesEngine {
             CommandError::new(ErrorKind::EngineStopped, "Linux machines aren't running.")
         })?;
         Ok(incus)
+    }
+
+    /// Every machine. While the VM is off, the ones it had when last seen, all stopped.
+    pub(crate) async fn machines(&self) -> Result<Vec<Machine>> {
+        let Ok(incus) = self.incus().await else { return Ok(self.known().await) };
+        let machines = incus.machines().await?;
+        self.remember(&machines).await;
+        Ok(machines)
+    }
+
+    pub(crate) async fn machine(&self, name: &str) -> Result<Machine> {
+        if let Ok(incus) = self.incus().await {
+            return Ok(incus.machine(name).await?);
+        }
+        self.known().await.into_iter().find(|machine| machine.name == name).ok_or_else(|| {
+            CommandError::new(ErrorKind::NotFound, format!("There's no machine called {name}."))
+        })
+    }
+
+    /// Starts, stops or restarts a machine, starting the machines VM first when it's off.
+    pub(crate) async fn act(
+        &self,
+        app: &AppHandle,
+        settings: &EngineConfig,
+        name: &str,
+        action: MachineAction,
+    ) -> Result<()> {
+        if self.status().await?.phase != EnginePhase::Running {
+            if action == MachineAction::Stop {
+                return Ok(());
+            }
+            self.start(app, settings, |_| {}).await?;
+        }
+        let incus = self.incus().await?;
+        // Incus brings back what ran when the VM stopped, so the machine may be up already.
+        if action == MachineAction::Start
+            && incus.machine(name).await?.state == MachineState::Running
+        {
+            return Ok(());
+        }
+        Ok(incus.act(name, action).await?)
+    }
+
+    /// Whether the VM runs with no machine up, no Incus operation in flight and no shell open.
+    async fn is_idle(&self) -> bool {
+        if lock(&self.transition).is_some() || !lock(&self.shells).is_empty() {
+            return false;
+        }
+        let Ok(incus) = self.incus().await else { return false };
+        let Ok(machines) = incus.machines().await else { return false };
+        machines
+            .iter()
+            .all(|machine| matches!(machine.state, MachineState::Stopped | MachineState::Error))
+            && incus.is_busy().await.is_ok_and(|busy| !busy)
+    }
+
+    fn known_file(&self) -> std::path::PathBuf {
+        self.home.root().join("machines").join("known.json")
+    }
+
+    async fn known(&self) -> Vec<Machine> {
+        if let Some(known) = lock(&self.known).clone() {
+            return known;
+        }
+        let known: Vec<Machine> = tokio::fs::read(self.known_file())
+            .await
+            .ok()
+            .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+            .unwrap_or_default();
+        *lock(&self.known) = Some(known.clone());
+        known
+    }
+
+    async fn remember(&self, machines: &[Machine]) {
+        let at_rest: Vec<Machine> = machines.iter().cloned().map(at_rest).collect();
+        if lock(&self.known).as_ref() == Some(&at_rest) {
+            return;
+        }
+        let Ok(json) = serde_json::to_string(&at_rest) else { return };
+        if write(&self.known_file(), &json).await.is_ok() {
+            *lock(&self.known) = Some(at_rest);
+        }
     }
 
     /// The command that opens the machine's root shell from a Mac terminal, writing the `incus`
@@ -198,6 +290,40 @@ impl MachinesEngine {
     }
 }
 
+/// A machine as it is while the VM is off: stopped, with no address or usage.
+fn at_rest(machine: Machine) -> Machine {
+    Machine {
+        state: MachineState::Stopped,
+        ipv4: None,
+        memory_bytes: 0,
+        cpu_seconds: 0.0,
+        processes: 0,
+        ..machine
+    }
+}
+
+/// Stops the machines VM once it has had nothing to do for `IDLE_STOP`; starting a machine brings
+/// it back.
+pub(crate) async fn stop_when_idle(app: AppHandle) {
+    let mut idle_since: Option<Instant> = None;
+    let mut tick = tokio::time::interval(Duration::from_secs(30));
+    loop {
+        tick.tick().await;
+        let machines = &app.state::<AppState>().machines;
+        idle_since = if machines.is_idle().await {
+            idle_since.or_else(|| Some(Instant::now()))
+        } else {
+            None
+        };
+        if idle_since.is_some_and(|since| since.elapsed() >= IDLE_STOP) {
+            idle_since = None;
+            if let Err(error) = machines.stop(&app, |_| {}).await {
+                tracing::warn!("the idle machines VM didn't stop: {}", error.message);
+            }
+        }
+    }
+}
+
 fn file_error(path: &Path, error: &std::io::Error) -> CommandError {
     CommandError::new(
         ErrorKind::Internal,
@@ -255,6 +381,32 @@ impl Utf8Decoder {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_machine_at_rest_keeps_its_identity_and_drops_live_state() {
+        let running = Machine {
+            name: "dev".to_owned(),
+            distro: "Ubuntu".to_owned(),
+            release: "noble".to_owned(),
+            kind: containeria_machines::MachineKind::Container,
+            state: MachineState::Running,
+            ipv4: Some("10.0.0.2".to_owned()),
+            memory_bytes: 1024,
+            cpu_seconds: 3.5,
+            processes: 12,
+            cpu_limit: Some("2".to_owned()),
+            memory_limit: None,
+            home: Some("/Users/me".to_owned()),
+            created_at: "2026-10-17T10:00:00Z".to_owned(),
+        };
+        let rested = at_rest(running.clone());
+        assert_eq!(rested.state, MachineState::Stopped);
+        assert_eq!((rested.ipv4.as_deref(), rested.memory_bytes, rested.processes), (None, 0, 0));
+        assert_eq!(
+            (rested.name, rested.cpu_limit, rested.home),
+            (running.name, running.cpu_limit, running.home)
+        );
+    }
 
     #[test]
     fn keeps_a_split_character_for_the_next_chunk() {

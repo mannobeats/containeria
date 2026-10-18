@@ -95,7 +95,8 @@ fn app_state(app: &AppHandle) -> Result<AppState, Box<dyn std::error::Error>> {
     })
 }
 
-/// The long-running tasks: Docker events, metrics, Kubernetes watches and the domains service.
+/// The long-running tasks: Docker events, metrics, Kubernetes watches, the domains service and
+/// stopping the machines VM when idle.
 struct Background {
     engine: Arc<Engine>,
     metrics: Arc<Sampler>,
@@ -125,6 +126,7 @@ impl Background {
         let for_domains = Arc::clone(&kubernetes);
         tauri::async_runtime::spawn(async move { kubernetes.watch(&for_kube, handle).await });
         tauri::async_runtime::spawn(domains::supervise(domains, engine, for_domains));
+        tauri::async_runtime::spawn(machines::stop_when_idle(app.clone()));
     }
 }
 

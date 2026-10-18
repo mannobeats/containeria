@@ -121,6 +121,7 @@ the user installed:
 | Ubuntu, Debian, Fedora, Arch, Alpine, NixOS, openSUSE, Rocky, Kali | Incus system containers in the `containeria-machines` profile | Colima | Incus images server. |
 | Full VMs instead of system containers | Incus VMs | Limited | M3 or newer only. |
 | Terminal and files | `incus exec`, `incus file` | We build | |
+| The machines VM only runs while it has work | `colima start`/`stop` of `containeria-machines` | Built | Starting a machine starts the VM. After five minutes with no machine running, no Incus operation and no shell open, it stops and its memory goes back to macOS. The list stays, read from `~/.containeria/machines/known.json`. |
 | Open in Terminal App, Copy Shell Command | the `incus` client next to Colima, with its own config in `~/.containeria/incus` | Built | Opens a `.command` file from `~/.containeria/terminal`, so macOS asks for no Automation permission. |
 | Snapshots: take, restore, delete | Incus snapshots | Built | Restoring a running machine restarts it. |
 | Clone | Incus instance copy, without snapshots | Built | The copy is stopped. Running system containers copy as they are on disk. |

@@ -69,8 +69,21 @@ describe("MachinesPage", () => {
     expect(await screen.findByRole("dialog", { name: "New Linux machine" })).toBeDefined();
   });
 
-  it("starts a stopped machines VM", async () => {
-    const calls = setup("stopped", []);
+  it("keeps listing machines while their VM is off and starts one on request", async () => {
+    const calls = setup("stopped", [arch]);
+    expect(await screen.findByText("arch-lab")).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Import…" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Start" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        command: "machineAct",
+        args: { name: "arch-lab", action: "start" },
+      }),
+    );
+  });
+
+  it("offers a fresh start when the machines VM broke", async () => {
+    const calls = setup("broken", []);
     await userEvent.click(await screen.findByRole("button", { name: "Start Linux machines" }));
     await waitFor(() => expect(calls.map((call) => call.command)).toContain("machinesStart"));
   });

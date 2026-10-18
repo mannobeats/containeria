@@ -45,13 +45,13 @@ pub(crate) async fn machines_stop(
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn machines_list(state: State<'_, AppState>) -> Result<Vec<Machine>> {
-    Ok(state.machines.incus().await?.machines().await?)
+    state.machines.machines().await
 }
 
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn machine_get(state: State<'_, AppState>, name: String) -> Result<Machine> {
-    Ok(state.machines.incus().await?.machine(&name).await?)
+    state.machines.machine(&name).await
 }
 
 #[tauri::command]
@@ -91,9 +91,10 @@ pub(crate) async fn machine_act(
     name: String,
     action: MachineAction,
 ) -> Result<()> {
-    let result = state.machines.incus().await?.act(&name, action).await;
+    let settings = state.engine.config()?;
+    let result = state.machines.act(&app, &settings, &name, action).await;
     MachinesChanged.emit(&app)?;
-    Ok(result?)
+    result
 }
 
 #[tauri::command]

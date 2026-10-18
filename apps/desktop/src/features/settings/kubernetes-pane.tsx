@@ -15,7 +15,7 @@ export function KubernetesPane() {
       <SettingsSection note="k3s runs inside the engine and uses Docker as its runtime, so images you build are ready for pods without a registry.">
         <SettingsRow
           label="Kubernetes"
-          hint="A single-node k3s cluster. kubectl gets a context for it."
+          hint="A single-node k3s cluster. kubectl gets a context for it. Uses about 800 MB of the engine's memory and some CPU while on."
         >
           <Switch
             label="Kubernetes"

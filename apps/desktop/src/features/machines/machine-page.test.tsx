@@ -42,11 +42,15 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({
 
 type Tab = "overview" | "terminal" | "files" | "snapshots";
 
-function setup(tab: Tab, machine: Machine = machineFixture()) {
+function setup(
+  tab: Tab,
+  machine: Machine = machineFixture(),
+  vm: "running" | "stopped" = "running",
+) {
   const onTab = vi.fn();
   const onLeave = vi.fn();
   const calls = mockCommands({
-    machinesStatus: () => machinesStatusFixture(),
+    machinesStatus: () => machinesStatusFixture({ phase: vm }),
     machinesList: () => [machine],
     machineShell: () => 7,
     machineSnapshots: () => [
@@ -129,6 +133,12 @@ describe("MachineView", () => {
         args: { name: "ubuntu-dev", action: "start" },
       }),
     );
+  });
+
+  it("asks to start the machine before showing snapshots while the VM is off", async () => {
+    const { calls } = setup("snapshots", machineFixture({ state: "stopped" }), "stopped");
+    expect(await screen.findByText("Start it to use the snapshots.")).toBeDefined();
+    expect(calls.map((call) => call.command)).not.toContain("machineSnapshots");
   });
 
   it("stops the machine from the header", async () => {

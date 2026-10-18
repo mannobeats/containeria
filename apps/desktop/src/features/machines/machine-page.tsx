@@ -117,9 +117,9 @@ function StoppedPane({ machine, what }: { machine: Machine; what: string }) {
 
 type Navigation = { tab: Tab; onTab: (tab: Tab) => void; onLeave: () => void };
 
-type DetailProps = Navigation & { machine: ListedMachine; taken: string[] };
+type DetailProps = Navigation & { machine: ListedMachine; taken: string[]; vmRunning: boolean };
 
-function Detail({ machine, taken, tab, onTab: show, onLeave }: DetailProps) {
+function Detail({ machine, taken, vmRunning, tab, onTab: show, onLeave }: DetailProps) {
   const action = useMachineAction();
   const [dialog, setDialog] = useState<MachineDialog | null>(null);
   const running = isRunning(machine);
@@ -148,7 +148,11 @@ function Detail({ machine, taken, tab, onTab: show, onLeave }: DetailProps) {
           )}
         </TabPanel>
         <TabPanel value="snapshots" className="flex flex-col">
-          <MachineSnapshots name={machine.name} onTake={() => setDialog("snapshot")} />
+          {vmRunning ? (
+            <MachineSnapshots name={machine.name} onTake={() => setDialog("snapshot")} />
+          ) : (
+            <StoppedPane machine={machine} what="snapshots" />
+          )}
         </TabPanel>
       </Tabs>
       <MachineDialogs
@@ -167,6 +171,7 @@ export function MachineView({ name, tab, onTab, onLeave }: Navigation & { name: 
   const { data: status } = useMachinesStatus();
   const { data: list } = useMachines();
   const machine = list?.machines.find((candidate) => candidate.name === name);
+  const vmShown = status?.phase === "running" || status?.phase === "stopped";
   const crumbs = (
     <>
       <ParentCrumb to="/machines" label="Linux machines" />
@@ -175,12 +180,11 @@ export function MachineView({ name, tab, onTab, onLeave }: Navigation & { name: 
   );
   return (
     <Page crumbs={crumbs} flush>
-      {status && status.phase !== "running" ? (
-        <MachinesIntro phase={status.phase} onNew={onLeave} />
-      ) : null}
-      {machine ? (
+      {status && !vmShown ? <MachinesIntro phase={status.phase} onNew={onLeave} /> : null}
+      {machine && vmShown ? (
         <Detail
           machine={machine}
+          vmRunning={status?.phase === "running"}
           taken={list?.machines.map((candidate) => candidate.name) ?? []}
           tab={tab}
           onTab={onTab}

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -65,6 +66,15 @@ impl Incus {
     /// Fails when the socket is missing or Incus doesn't reply.
     pub async fn ping(&self) -> Result<()> {
         self.get::<Value>("/1.0").await.map(drop)
+    }
+
+    /// Whether Incus is in the middle of something: a download, a copy, an export, an open shell.
+    ///
+    /// # Errors
+    /// Fails when Incus can't be reached.
+    pub async fn is_busy(&self) -> Result<bool> {
+        let operations: HashMap<String, Vec<Value>> = self.get("/1.0/operations").await?;
+        Ok(operations.get("running").is_some_and(|running| !running.is_empty()))
     }
 
     pub(crate) async fn stream(&self) -> Result<UnixStream> {

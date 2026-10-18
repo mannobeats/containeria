@@ -40,7 +40,10 @@ export function useMachinesStatus() {
   });
 }
 
-/** Every machine, polled every three seconds while shown so usage stays live. */
+/**
+ * Every machine, polled every three seconds while shown so usage stays live. While the machines VM
+ * is off, the ones it had, stopped; starting one starts the VM.
+ */
 export function useMachines() {
   const client = useQueryClient();
   const { data: status } = useMachinesStatus();
@@ -50,8 +53,8 @@ export function useMachines() {
       const machines = await commands.machinesList();
       return withCpu(client.getQueryData<MachineList>(machineKeys.list), machines, Date.now());
     },
-    enabled: status?.phase === "running",
-    refetchInterval: 3000,
+    enabled: status?.phase === "running" || status?.phase === "stopped",
+    refetchInterval: status?.phase === "running" ? 3000 : false,
   });
 }
 

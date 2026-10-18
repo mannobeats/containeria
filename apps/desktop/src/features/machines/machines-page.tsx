@@ -84,7 +84,10 @@ function MachineGrid({ list, onNew }: { list: MachineList | undefined; onNew: ()
   );
 }
 
-/** Running with at least one machine, or the intro for the machines VM's phase. */
+const listsMachines = (phase: EnginePhase | undefined) =>
+  phase === "running" || phase === "stopped";
+
+/** Running or stopped with at least one machine, or the intro for the machines VM's phase. */
 function introPhase(
   phase: EnginePhase | undefined,
   list: MachineList | undefined,
@@ -92,7 +95,7 @@ function introPhase(
   if (phase === undefined) {
     return null;
   }
-  if (phase !== "running") {
+  if (!listsMachines(phase)) {
     return phase;
   }
   return list?.machines.length === 0 ? "notCreated" : null;
@@ -138,20 +141,19 @@ export function MachinesPage() {
   const creating = useNewMachineSheet((state) => state.open);
   const setCreating = useNewMachineSheet((state) => state.setOpen);
   const intro = introPhase(status?.phase, list);
-  const showGrid = status?.phase === "running" && intro === null;
+  const showGrid = listsMachines(status?.phase) && intro === null;
   const taken = list?.machines.map((machine) => machine.name) ?? [];
-  const tools =
-    status?.phase === "running" ? (
-      <>
-        <ImportButton taken={taken} />
-        {showGrid ? (
-          <Button variant="brand" onClick={() => setCreating(true)}>
-            <IconPlus />
-            New machine
-          </Button>
-        ) : null}
-      </>
-    ) : null;
+  const tools = listsMachines(status?.phase) ? (
+    <>
+      {status?.phase === "running" ? <ImportButton taken={taken} /> : null}
+      {showGrid ? (
+        <Button variant="brand" onClick={() => setCreating(true)}>
+          <IconPlus />
+          New machine
+        </Button>
+      ) : null}
+    </>
+  ) : null;
   return (
     <Page crumbs={<Crumb>Linux machines</Crumb>} tools={tools}>
       {intro ? <MachinesIntro phase={intro} onNew={() => setCreating(true)} /> : null}
