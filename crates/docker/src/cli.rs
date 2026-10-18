@@ -101,6 +101,15 @@ pub(crate) async fn stream(
     Err(Error::Engine(if last.is_empty() { format!("{tool} failed") } else { last }))
 }
 
+/// A tool ends a failure with the line that says why.
+pub(crate) fn last_line(stderr: &str, tool: &str) -> String {
+    stderr
+        .lines()
+        .rev()
+        .find(|line| !line.trim().is_empty())
+        .map_or_else(|| format!("{tool} failed"), |line| line.trim().to_owned())
+}
+
 /// The Docker CLI, for builds (`BuildKit` through buildx) and pushes (with the user's logins).
 #[derive(Debug, Clone)]
 pub struct DockerCli {
@@ -169,7 +178,7 @@ impl DockerCli {
         Some(Self { bin, socket: socket.to_path_buf(), config })
     }
 
-    fn command<I, S>(&self, args: I) -> Result<Command>
+    pub(crate) fn command<I, S>(&self, args: I) -> Result<Command>
     where
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
@@ -259,6 +268,15 @@ mod tests {
         assert_eq!(written["credsStore"], "osxkeychain");
         assert!(written["auths"]["ghcr.io"].is_object());
         assert_eq!(written["cliPluginsExtraDirs"][0], "/App/tools/cli-plugins");
+    }
+
+    #[test]
+    fn keeps_the_last_line_of_a_failure() {
+        assert_eq!(
+            last_line("pulling\nservice \"web\" has neither an image nor a build\n\n", "Compose"),
+            "service \"web\" has neither an image nor a build"
+        );
+        assert_eq!(last_line("", "Compose"), "Compose failed");
     }
 
     #[test]

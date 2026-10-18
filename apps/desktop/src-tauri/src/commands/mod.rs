@@ -1,3 +1,4 @@
+pub(crate) mod builds;
 pub(crate) mod cli_tools;
 pub(crate) mod compose;
 pub(crate) mod container_detail;

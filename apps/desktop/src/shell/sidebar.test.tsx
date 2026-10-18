@@ -2,7 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
-import { containerFixture, engineFixture, metricsFixture } from "@/test/fixtures";
+import { buildFixture, containerFixture, engineFixture, metricsFixture } from "@/test/fixtures";
 import { mockCommands, renderWithApp } from "@/test/harness";
 
 import { Sidebar } from "./sidebar";
@@ -11,6 +11,10 @@ function renderSidebar(phase: "running" | "stopped" = "running") {
   const calls = mockCommands({
     engineStatus: () => engineFixture({ phase }),
     dataConnections: () => [],
+    buildsList: () => [
+      buildFixture({ id: "a", status: "running", completedAtMs: null }),
+      buildFixture({ id: "b" }),
+    ],
     containersList: () => [
       containerFixture({ id: "a", name: "api" }),
       containerFixture({ id: "b", name: "worker", state: "exited", status: "Exited (2) now" }),
@@ -30,6 +34,12 @@ describe("Sidebar", () => {
     const containers = await screen.findByRole("link", { name: /Containers/ });
     await waitFor(() => expect(containers.textContent).toContain("1"));
     expect(screen.getByLabelText("1 crashed")).toBeDefined();
+  });
+
+  it("counts builds while one runs", async () => {
+    renderSidebar();
+    const builds = await screen.findByRole("link", { name: /Builds/ });
+    await waitFor(() => expect(builds.textContent).toBe("Builds1"));
   });
 
   it("shows engine memory in the footer", async () => {

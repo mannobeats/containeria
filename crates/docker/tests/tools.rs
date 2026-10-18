@@ -5,8 +5,8 @@
 use std::path::PathBuf;
 
 use containeria_docker::{
-    BuildSpec, Compose, ComposeFiles, ComposeVerb, ContainerAction, Docker, DockerCli, EnvVar,
-    Restart, RunSpec,
+    BuildSpec, BuildStatus, Compose, ComposeFiles, ComposeVerb, ContainerAction, Docker, DockerCli,
+    EnvVar, Restart, RunSpec,
 };
 
 fn socket() -> PathBuf {
@@ -75,6 +75,62 @@ async fn builds_exports_and_scans_an_image() {
     let report = docker.scan_image(&tag).await.unwrap();
     assert_eq!(report.reference, tag);
 
+    docker.remove_image(&tag, true).await.unwrap();
+}
+
+#[tokio::test]
+#[ignore = "needs a Docker engine and the Docker CLI with buildx"]
+async fn finds_a_build_in_the_history_with_its_logs_and_removes_it() {
+    let docker = Docker::connect(&socket()).unwrap();
+    let cli =
+        DockerCli::locate(&socket(), None, None, std::path::Path::new("/tmp")).expect("docker CLI");
+    let context = tempfile::tempdir().unwrap();
+    std::fs::write(
+        context.path().join("Dockerfile"),
+        "FROM busybox:1.37\nARG WHO\nRUN echo \"history for $WHO\"\n",
+    )
+    .unwrap();
+    let tag = format!("containeria-test-build-history:{}", std::process::id());
+    let before: Vec<String> = cli.builds().await.unwrap().into_iter().map(|b| b.id).collect();
+    cli.build(
+        &BuildSpec {
+            context: context.path().to_string_lossy().into_owned(),
+            dockerfile: None,
+            tag: tag.clone(),
+            build_args: vec!["WHO=containeria".to_owned()],
+            no_cache: true,
+            pull: false,
+        },
+        |_| {},
+    )
+    .await
+    .unwrap();
+
+    let ours: Vec<_> = cli
+        .builds()
+        .await
+        .unwrap()
+        .into_iter()
+        .filter(|build| !before.contains(&build.id))
+        .collect();
+    assert_eq!(ours.len(), 1, "{ours:?}");
+    let record = &ours[0];
+    assert_eq!(record.status, BuildStatus::Completed);
+    assert!(record.total_steps > 0 && record.completed_at_ms.is_some(), "{record:?}");
+
+    let detail = cli.build_detail(&record.id).await.unwrap();
+    assert!(detail.build_args.iter().any(|arg| arg.key == "WHO" && arg.value == "containeria"));
+    let image = docker.image(&tag).await.unwrap();
+    assert_eq!(detail.image_id.as_deref(), Some(image.id.as_str()));
+
+    let mut lines = Vec::new();
+    cli.build_logs(&record.id, |line| lines.push(line)).await.unwrap();
+    assert!(lines.iter().any(|line| line.contains("history for containeria")), "{lines:?}");
+
+    cli.remove_build(&record.id).await.unwrap();
+    assert!(cli.builds().await.unwrap().iter().all(|build| build.id != record.id));
+    let gone = cli.build_detail(&record.id).await;
+    assert!(matches!(gone, Err(containeria_docker::Error::NotFound(_))), "{gone:?}");
     docker.remove_image(&tag, true).await.unwrap();
 }
 

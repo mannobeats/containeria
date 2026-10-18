@@ -109,6 +109,18 @@ const routeTree = root.addChildren([
   page("images", "Images", () =>
     import("@/features/images/images-page").then((module) => ({ default: module.ImagesPage })),
   ),
+  page("builds", "Builds", () =>
+    import("@/features/builds/builds-page").then((module) => ({ default: module.BuildsPage })),
+  ),
+  createRoute({
+    getParentRoute: () => root,
+    path: "builds/$id",
+    staticData: { needsEngine: true, title: "Build" },
+    validateSearch: tabSearch,
+    component: lazyRouteComponent(() =>
+      import("@/features/builds/build-page").then((module) => ({ default: module.BuildPage })),
+    ),
+  }),
   page("volumes", "Volumes", () =>
     import("@/features/volumes/volumes-page").then((module) => ({ default: module.VolumesPage })),
   ),

@@ -2,9 +2,9 @@ use tauri::Wry;
 use tauri_specta::{Builder, Commands, ErrorHandlingMode, collect_commands, collect_events};
 
 use crate::commands::{
-    cli_tools, compose, container_detail, containers, data, diagnostics, domains, engine, images,
-    kubernetes, machines, metrics, networks, run, settings, shell, storage, streams, volumes,
-    welcome,
+    builds, cli_tools, compose, container_detail, containers, data, diagnostics, domains, engine,
+    images, kubernetes, machines, metrics, networks, run, settings, shell, storage, streams,
+    volumes, welcome,
 };
 use crate::events::{
     DockerChanged, EngineChanged, KubeChanged, MachinesChanged, MenuCommand, MetricsUpdated,
@@ -134,6 +134,11 @@ fn commands() -> Commands<Wry> {
         images::image_push,
         images::image_export,
         images::image_scan,
+        builds::builds_list,
+        builds::build_detail,
+        builds::build_logs,
+        builds::build_remove,
+        builds::builds_clear,
         volumes::volumes_list,
         volumes::volume_create,
         volumes::volume_remove,

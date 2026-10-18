@@ -133,6 +133,14 @@ const ICONS = {
       <path strokeDasharray="2 2.25" d="m3.5 12.25 8.5 4.25 8.5-4.25M3.5 16.5l8.5 4.25 8.5-4.25" />
     </>
   ),
+  // a build: layers stacked one by one, the newest still being laid on top
+  build: (
+    <>
+      <path className={ACCENT} d="m12 3 8.5 4.25L12 11.5 3.5 7.25z" />
+      <path d="m12 3 8.5 4.25L12 11.5 3.5 7.25z" />
+      <path d="m3.5 12.25 8.5 4.25 8.5-4.25M3.5 16.5l8.5 4.25 8.5-4.25" />
+    </>
+  ),
 } satisfies Record<string, ReactNode>;
 
 export type CxIconName = keyof typeof ICONS;

@@ -1,4 +1,5 @@
 import type {
+  BuildRecord,
   ContainerDetails,
   ContainerSummary,
   EngineStatus,
@@ -164,4 +165,18 @@ export function statsFixture(overrides: Partial<StatsSample> = {}): StatsSample 
 
 export function logFixture(message: string, level: LogEntry["level"] = "info"): LogEntry {
   return { stream: "stdout", timestamp: "2026-10-17T08:00:02.000000000Z", level, message };
+}
+
+export function buildFixture(overrides: Partial<BuildRecord> = {}): BuildRecord {
+  return {
+    id: "vz73j982nfapcjly5dsdomi65",
+    name: "shop (api)",
+    status: "completed",
+    startedAtMs: 1_760_000_000_000,
+    completedAtMs: 1_760_000_005_200,
+    totalSteps: 10,
+    completedSteps: 10,
+    cachedSteps: 4,
+    ...overrides,
+  };
 }

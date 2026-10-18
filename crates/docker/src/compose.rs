@@ -174,7 +174,10 @@ impl Compose {
     ) -> Result<ComposePreview> {
         let output = self.command(files, name, &["config", "--format", "json"])?.output().await?;
         if !output.status.success() {
-            return Err(Error::Engine(last_line(&String::from_utf8_lossy(&output.stderr))));
+            return Err(Error::Engine(cli::last_line(
+                &String::from_utf8_lossy(&output.stderr),
+                "Compose",
+            )));
         }
         let raw: RawConfig = serde_json::from_slice(&output.stdout)
             .map_err(|error| Error::Engine(format!("Compose printed unreadable JSON: {error}")))?;
@@ -238,17 +241,6 @@ fn files_from_labels(labels: &HashMap<String, String>) -> Option<ComposeFiles> {
     (!files.is_empty()).then_some(ComposeFiles { files, directory })
 }
 
-/// Compose ends a failure with the line that says why.
-fn last_line(stderr: &str) -> String {
-    stderr
-        .lines()
-        .rev()
-        .find(|line| !line.trim().is_empty())
-        .unwrap_or("Compose failed")
-        .trim()
-        .to_owned()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -304,13 +296,5 @@ mod tests {
         assert!(ComposeVerb::Rebuild.args().contains(&"--force-recreate"));
         assert!(ComposeVerb::DownWithVolumes.args().contains(&"--volumes"));
         assert!(!ComposeVerb::Down.args().contains(&"--volumes"));
-    }
-
-    #[test]
-    fn keeps_the_last_line_of_a_failure() {
-        assert_eq!(
-            last_line("pulling\nservice \"web\" has neither an image nor a build\n\n"),
-            "service \"web\" has neither an image nor a build"
-        );
     }
 }

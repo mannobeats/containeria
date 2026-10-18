@@ -19,7 +19,7 @@ export function useShortcuts() {
     if (event.shiftKey) {
       return key === "l" ? () => applyAppearance(dark ? "light" : "dark") : undefined;
     }
-    const section = /^[1-6]$/.test(key) ? SECTIONS[Number(key) - 1] : undefined;
+    const section = SECTIONS.find((candidate) => candidate.shortcut === `⌘${key}`);
     if (section) {
       return () => navigate({ to: section.to }).catch(() => undefined);
     }
