@@ -147,4 +147,22 @@ describe("ImagesPage", () => {
       ]),
     );
   });
+
+  it("selects with ⌘-click and ⇧-click on rows instead of opening them", async () => {
+    const user = userEvent.setup();
+    setup([
+      redis,
+      layer,
+      imageFixture({ id: "sha256:ng", repository: "nginx", references: ["nginx:1"] }),
+    ]);
+    await user.click(await screen.findByRole("checkbox", { name: "Select redis:8" }));
+    await user.keyboard("{Shift>}");
+    await user.click(screen.getByText("nginx"));
+    await user.keyboard("{/Shift}");
+    expect(screen.getByText("3 selected")).toBeDefined();
+    await user.keyboard("{Meta>}");
+    await user.click(screen.getByText("redis"));
+    await user.keyboard("{/Meta}");
+    expect(screen.getByText("2 selected")).toBeDefined();
+  });
 });
