@@ -1,16 +1,21 @@
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { useState } from "react";
 
+import { queryKeys } from "@/app/query-keys";
+import { useRemoveMany } from "@/app/use-remove-many";
 import { segmentColor } from "@/features/metrics/segment-color";
 import { formatBytes } from "@/lib/format";
-import type { VolumeSummary } from "@/lib/ipc/bindings";
+import { commands, type VolumeSummary } from "@/lib/ipc/bindings";
+import { type Selection, useSelection, useSelectionKeys } from "@/lib/use-selection";
 import { Crumb, Page } from "@/shell/page";
 import { Button } from "@/ui/button";
+import { DeleteManySheet } from "@/ui/delete-many-sheet";
 import { EmptyState } from "@/ui/empty-state";
 import { ListToolbar } from "@/ui/list-toolbar";
 import { Lede, PageHeading } from "@/ui/page-heading";
 import { Segmented } from "@/ui/segmented";
-import { HeadRow, Table } from "@/ui/table";
+import { SelectionBar } from "@/ui/selection-bar";
+import { HeadRow, SelectAll, Table } from "@/ui/table";
 import { Tile } from "@/ui/tile";
 import { UsageBar } from "@/ui/usage-bar";
 
@@ -57,10 +62,13 @@ function Sizes({ volumes, onClean }: { volumes: VolumeSummary[]; onClean: () => 
   );
 }
 
-function VolumeTable({ volumes, ...handlers }: VolumeHandlers & { volumes: VolumeSummary[] }) {
+type VolumeTableProps = VolumeHandlers & { volumes: VolumeSummary[]; selection: Selection };
+
+function VolumeTable({ volumes, selection, ...handlers }: VolumeTableProps) {
   return (
     <Table label="Volumes">
       <colgroup>
+        <col className="w-11" />
         <col />
         <col className="w-[120px]" />
         <col className="w-[220px]" />
@@ -70,6 +78,7 @@ function VolumeTable({ volumes, ...handlers }: VolumeHandlers & { volumes: Volum
         <col className="w-[84px]" />
       </colgroup>
       <HeadRow>
+        <SelectAll selection={selection} label="Select all volumes no container uses" />
         <th>Name</th>
         <th>Project</th>
         <th>Used by</th>
@@ -82,7 +91,7 @@ function VolumeTable({ volumes, ...handlers }: VolumeHandlers & { volumes: Volum
       </HeadRow>
       <tbody>
         {volumes.map((volume) => (
-          <VolumeRow key={volume.name} volume={volume} {...handlers} />
+          <VolumeRow key={volume.name} volume={volume} selection={selection} {...handlers} />
         ))}
       </tbody>
     </Table>
@@ -98,6 +107,18 @@ export function VolumesPage() {
   const all = volumes ?? [];
   const stats = volumeStats(all);
   const visible = all.filter((volume) => matchesVolume(volume, filter, query));
+  const selection = useSelection(
+    visible.filter((volume) => volume.usedBy.length === 0).map((volume) => volume.name),
+  );
+  const chosen = visible.filter((volume) => selection.has(volume.name));
+  const [deleting, setDeleting] = useState<VolumeSummary[]>([]);
+  const removeMany = useRemoveMany({
+    remove: (volume: VolumeSummary) => commands.volumeRemove(volume.name),
+    name: volumeName,
+    noun: "volume",
+    invalidates: queryKeys.volumes,
+  });
+  useSelectionKeys(selection, () => setDeleting(chosen));
   const restoreInto = (volume: string | null) =>
     pickBackup()
       .then((file) => (file ? setDialog({ kind: "restore", file, volume }) : undefined))
@@ -150,16 +171,35 @@ export function VolumesPage() {
               />
             }
           />
-          <div className="pb-10">
+          <div className="pb-[72px]">
             {volumes && visible.length === 0 ? (
               <EmptyState title="No volumes match this filter" />
             ) : (
-              <VolumeTable volumes={visible} {...handlers} />
+              <VolumeTable volumes={visible} selection={selection} {...handlers} />
             )}
           </div>
+          <SelectionBar count={chosen.length} label="Selected volumes" onClear={selection.clear}>
+            <Button variant="dangerGhost" size="sm" onClick={() => setDeleting(chosen)}>
+              <IconTrash />
+              Delete
+            </Button>
+          </SelectionBar>
         </>
       )}
       <VolumeDialogs dialog={dialog} volumes={all} onClose={() => setDialog(null)} />
+      <DeleteManySheet
+        names={deleting.map(volumeName)}
+        noun="volume"
+        onCancel={() => setDeleting([])}
+        onConfirm={() => {
+          removeMany.mutate(deleting);
+          setDeleting([]);
+          selection.clear();
+        }}
+      >
+        Their data is deleted with them. Back a volume up first if you may need it. This can't be
+        undone.
+      </DeleteManySheet>
     </Page>
   );
 }

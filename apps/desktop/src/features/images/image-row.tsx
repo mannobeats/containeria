@@ -4,6 +4,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { formatBytes, formatRelative, plural } from "@/lib/format";
 import type { ContainerSummary, ImageSummary } from "@/lib/ipc/bindings";
 import { logoFor } from "@/lib/logos";
+import type { Selection } from "@/lib/use-selection";
 import { Button } from "@/ui/button";
 import { Chip } from "@/ui/chip";
 import { rowLink } from "@/ui/classes";
@@ -11,15 +12,19 @@ import { Dash } from "@/ui/dash";
 import { FaceStack } from "@/ui/face-stack";
 import { IconAction } from "@/ui/icon-action";
 import { ContextMenu, Menu } from "@/ui/menu";
-import { Row, RowActions } from "@/ui/table";
+import { Row, RowActions, SelectCell } from "@/ui/table";
 import { Tile } from "@/ui/tile";
 
 import { type ImageDialog, imageMenu } from "./image-actions";
-import { imageName, shortId } from "./model";
+import { imageName, inUseReason, shortId } from "./model";
 
 export type ImageHandlers = { onDialog: (dialog: ImageDialog) => void };
 
-type ImageRowProps = ImageHandlers & { image: ImageSummary; users: ContainerSummary[] };
+type ImageRowProps = ImageHandlers & {
+  image: ImageSummary;
+  users: ContainerSummary[];
+  selection: Selection;
+};
 
 function UsedBy({ image, users }: { image: ImageSummary; users: ContainerSummary[] }) {
   if (users.length === 0 && image.containers > 0) {
@@ -34,7 +39,7 @@ function UsedBy({ image, users }: { image: ImageSummary; users: ContainerSummary
   return <FaceStack faces={faces} />;
 }
 
-export function ImageRow({ image, users, onDialog }: ImageRowProps) {
+export function ImageRow({ image, users, onDialog, selection }: ImageRowProps) {
   const navigate = useNavigate();
   const name = imageName(image);
   const inUse = image.containers > 0;
@@ -44,7 +49,17 @@ export function ImageRow({ image, users, onDialog }: ImageRowProps) {
   });
   return (
     <ContextMenu entries={menu}>
-      <Row dim={image.dangling}>
+      <Row
+        dim={image.dangling}
+        selected={selection.has(image.id)}
+        onClick={(event) => selection.click(image.id, event)}
+      >
+        <SelectCell
+          selection={selection}
+          id={image.id}
+          label={`Select ${image.references[0] ?? name}`}
+          blocked={inUse ? inUseReason(image.containers) : undefined}
+        />
         <td className="max-w-0">
           <Link to="/images/$id" params={{ id: image.id }} className={rowLink} data-row-link>
             <Tile

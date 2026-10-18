@@ -1,3 +1,4 @@
+import { plural } from "@/lib/format";
 import type { VolumeFile, VolumeSummary } from "@/lib/ipc/bindings";
 
 export type VolumeFilter = "all" | "used" | "unused";
@@ -63,3 +64,7 @@ export function volumeFromBackup(path: string): string {
   const file = path.split("/").at(-1) ?? "";
   return file.replace(/\.(tar\.gz|tgz|tar)$/i, "").replace(/-\d{4}-\d{2}-\d{2}$/, "");
 }
+
+/** Docker won't delete a volume a container uses, running or not. */
+export const inUseReason = (containers: number) =>
+  `Used by ${plural(containers, "container")}. Delete ${containers === 1 ? "it" : "them"} first.`;

@@ -1,3 +1,4 @@
+import { plural } from "@/lib/format";
 import type { NetworkSpec, NetworkSummary } from "@/lib/ipc/bindings";
 
 export function matchesNetwork(network: NetworkSummary, query: string): boolean {
@@ -24,4 +25,15 @@ export function specProblem(spec: NetworkSpec, taken: string[]): string | null {
     return "A gateway needs a subnet and an address like 172.23.0.1.";
   }
   return null;
+}
+
+/** Why Docker would refuse to delete the network, or `undefined` when it can go. */
+export function undeletable(network: NetworkSummary): string | undefined {
+  if (network.builtIn) {
+    return "Built-in networks can't be deleted.";
+  }
+  const connected = network.containers.length;
+  return connected > 0
+    ? `${plural(connected, "container")} ${connected === 1 ? "is" : "are"} connected. Disconnect or stop ${connected === 1 ? "it" : "them"} first.`
+    : undefined;
 }

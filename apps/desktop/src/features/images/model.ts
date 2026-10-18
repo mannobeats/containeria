@@ -1,3 +1,4 @@
+import { plural } from "@/lib/format";
 import type { ContainerSummary, ImageSummary, PullProgress } from "@/lib/ipc/bindings";
 
 export type ImageFilter = "all" | "used" | "unused" | "dangling";
@@ -11,6 +12,11 @@ export function imageKind(image: ImageSummary): Exclude<ImageFilter, "all"> {
 
 export function imageName(image: ImageSummary): string {
   return image.dangling ? "Dangling build layer" : (image.repository ?? image.id);
+}
+
+/** The image as people type it: `redis:8`, or its name when it has no tag. */
+export function imageLabel(image: ImageSummary): string {
+  return image.references[0] ?? imageName(image);
 }
 
 /** The 12 hex characters people recognise an image by. */
@@ -113,3 +119,7 @@ export function usersOf(image: ImageSummary, containers: ContainerSummary[]): Co
       container.image === image.id,
   );
 }
+
+/** Docker won't delete an image a container was made from, running or not. */
+export const inUseReason = (containers: number) =>
+  `Used by ${plural(containers, "container")}. Delete ${containers === 1 ? "it" : "them"} first.`;

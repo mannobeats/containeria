@@ -12,6 +12,14 @@ export function openRowOnClick(table: HTMLTableElement | null) {
   }
   const open = (event: MouseEvent) => {
     const target = event.target instanceof Element ? event.target : null;
+    // ⌘- and ⇧-clicks select rows instead, through the row's own handler; on the row's link they
+    // would otherwise open a new window.
+    if (target && (event.metaKey || event.shiftKey)) {
+      if (target.closest("a")) {
+        event.preventDefault();
+      }
+      return;
+    }
     if (!target || target.closest(OWN_CONTROLS)) {
       return;
     }

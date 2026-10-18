@@ -13,6 +13,8 @@ type ContainerTableProps = ContainerCallbacks & {
   usage: Map<string, ContainerUsage>;
   selected: ReadonlySet<string>;
   onSelect: (ids: string[], selected: boolean) => void;
+  /** A ⌘- or ⇧-click on a row. */
+  onPick: (id: string, event: { metaKey: boolean; shiftKey: boolean }) => void;
   collapsed: ReadonlySet<string>;
   onCollapse: (group: string) => void;
 };
@@ -39,6 +41,7 @@ export function ContainerTable({
   usage,
   selected,
   onSelect,
+  onPick,
   collapsed,
   onCollapse,
   act,
@@ -106,6 +109,7 @@ export function ContainerTable({
                     usage={usage.get(container.id)}
                     selected={selected.has(container.id)}
                     onSelect={(checked) => onSelect([container.id], checked)}
+                    onPick={(event) => onPick(container.id, event)}
                     showImage={wide}
                     act={act}
                     remove={remove}

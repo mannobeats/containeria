@@ -23,6 +23,7 @@ type ContainerRowProps = ContainerCallbacks & {
   usage: ContainerUsage | undefined;
   selected: boolean;
   onSelect: (selected: boolean) => void;
+  onPick: (event: { metaKey: boolean; shiftKey: boolean }) => void;
   showImage: boolean;
 };
 
@@ -38,6 +39,7 @@ export function ContainerRow({
   usage,
   selected,
   onSelect,
+  onPick,
   showImage,
   act,
   remove,
@@ -56,6 +58,8 @@ export function ContainerRow({
   return (
     <ContextMenu entries={menu}>
       <tr
+        aria-selected={selected || undefined}
+        onClick={onPick}
         className={clsx(
           "group/row h-9 transition-colors duration-140 hover:bg-hover data-[state=open]:bg-hover [&>td]:border-b-[0.5px] [&>td]:border-line",
           selected && "bg-select",
@@ -67,10 +71,6 @@ export function ContainerRow({
             checked={selected}
             onCheckedChange={onSelect}
             label={`Select ${container.name}`}
-            className={clsx(
-              "opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100",
-              selected && "opacity-100",
-            )}
           />
         </td>
         <td className="max-w-0 px-2.5">

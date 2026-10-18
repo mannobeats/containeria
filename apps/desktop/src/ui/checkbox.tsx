@@ -7,16 +7,24 @@ type CheckboxProps = {
   onCheckedChange: (checked: boolean) => void;
   label: string;
   className?: string;
+  disabled?: boolean;
 };
 
-export function Checkbox({ checked, onCheckedChange, label, className }: CheckboxProps) {
+export function Checkbox({
+  checked,
+  onCheckedChange,
+  label,
+  className,
+  disabled = false,
+}: CheckboxProps) {
   return (
     <Radix.Root
       checked={checked}
+      disabled={disabled}
       onCheckedChange={(value) => onCheckedChange(value === true)}
       aria-label={label}
       className={clsx(
-        "inline-grid size-3.5 shrink-0 place-content-center rounded-xs bg-surface inset-ring-1 inset-ring-line-strong transition-colors duration-140 data-[state=checked]:bg-brand data-[state=checked]:inset-ring-0 data-[state=indeterminate]:bg-brand data-[state=indeterminate]:inset-ring-0",
+        "inline-grid size-3.5 shrink-0 disabled:opacity-40 place-content-center rounded-xs bg-surface inset-ring-1 inset-ring-line-strong transition-colors duration-140 data-[state=checked]:bg-brand data-[state=checked]:inset-ring-0 data-[state=indeterminate]:bg-brand data-[state=indeterminate]:inset-ring-0",
         className,
       )}
     >

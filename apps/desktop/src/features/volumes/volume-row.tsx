@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 
 import { formatBytes, formatRelative } from "@/lib/format";
 import type { VolumeSummary } from "@/lib/ipc/bindings";
+import type { Selection } from "@/lib/use-selection";
 import { Button } from "@/ui/button";
 import { Chip } from "@/ui/chip";
 import { rowLink } from "@/ui/classes";
@@ -10,10 +11,10 @@ import { Dash } from "@/ui/dash";
 import { FaceStack } from "@/ui/face-stack";
 import { IconAction } from "@/ui/icon-action";
 import { ContextMenu, Menu, type MenuEntry } from "@/ui/menu";
-import { Row, RowActions } from "@/ui/table";
+import { Row, RowActions, SelectCell } from "@/ui/table";
 import { Tile } from "@/ui/tile";
 
-import { volumeName } from "./model";
+import { inUseReason, volumeName } from "./model";
 
 export type VolumeHandlers = {
   onBackup: (volume: VolumeSummary) => void;
@@ -28,7 +29,8 @@ export function VolumeRow({
   onClone,
   onRestore,
   onDelete,
-}: VolumeHandlers & { volume: VolumeSummary }) {
+  selection,
+}: VolumeHandlers & { volume: VolumeSummary; selection: Selection }) {
   const navigate = useNavigate();
   const name = volumeName(volume);
   const faces = volume.usedBy.map((user) => ({
@@ -50,7 +52,17 @@ export function VolumeRow({
   ];
   return (
     <ContextMenu entries={menu}>
-      <Row dim={faces.length === 0}>
+      <Row
+        dim={faces.length === 0}
+        selected={selection.has(volume.name)}
+        onClick={(event) => selection.click(volume.name, event)}
+      >
+        <SelectCell
+          selection={selection}
+          id={volume.name}
+          label={`Select ${name}`}
+          blocked={faces.length > 0 ? inUseReason(faces.length) : undefined}
+        />
         <td className="max-w-0">
           <Link
             to="/volumes/$name"

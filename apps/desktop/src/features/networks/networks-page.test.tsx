@@ -82,4 +82,12 @@ describe("NetworksPage", () => {
       expect(calls).toContainEqual({ command: "networkRemove", args: { id: "n1" } }),
     );
   });
+
+  it("can't select a built-in network or one with containers on it", async () => {
+    setup();
+    await screen.findByText("shop_default");
+    for (const name of ["Select shop_default", "Select bridge"]) {
+      expect((screen.getByRole("checkbox", { name }) as HTMLButtonElement).disabled).toBe(true);
+    }
+  });
 });

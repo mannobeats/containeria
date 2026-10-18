@@ -92,4 +92,19 @@ describe("VolumesPage", () => {
     setup([]);
     expect(await screen.findByText("No volumes yet")).toBeDefined();
   });
+
+  it("selects a volume with ⌘-click and deletes it with ⌘⌫", async () => {
+    const calls = setup();
+    const user = userEvent.setup();
+    await user.keyboard("{Meta>}");
+    await user.click(await screen.findByText("old_cache"));
+    await user.keyboard("{/Meta}");
+    expect(screen.getByText("1 selected")).toBeDefined();
+    await userEvent.keyboard("{Meta>}{Backspace}{/Meta}");
+    await userEvent.click(await screen.findByRole("button", { name: "Delete volume" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({ command: "volumeRemove", args: { name: "old_cache" } }),
+    );
+    expect(calls).not.toContainEqual({ command: "volumeRemove", args: { name: "shop_pgdata" } });
+  });
 });

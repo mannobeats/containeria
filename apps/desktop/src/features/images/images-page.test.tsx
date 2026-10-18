@@ -1,11 +1,14 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { containerFixture, engineFixture, imageFixture } from "@/test/fixtures";
 import { mockCommands, renderWithApp } from "@/test/harness";
 
 import { ImagesPage } from "./images-page";
+import { useImageSheet } from "./sheet-store";
+
+beforeEach(() => useImageSheet.setState({ sheet: null }));
 
 const postgres = imageFixture({
   id: "sha256:pg",
@@ -118,5 +121,30 @@ describe("ImagesPage", () => {
   it("invites a first pull when there are no images", async () => {
     setup([]);
     expect(await screen.findByText("No images yet")).toBeDefined();
+  });
+
+  it("deletes the selected unused images, but never one a container uses", async () => {
+    const calls = setup();
+    await screen.findByText("redis");
+    expect(
+      (screen.getByRole("checkbox", { name: "Select postgres:18" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Select all images that aren't in use" }),
+    );
+    await userEvent.click(
+      within(screen.getByRole("toolbar", { name: "Selected images" })).getByRole("button", {
+        name: "Delete",
+      }),
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "Delete 2 images" }));
+    await waitFor(() =>
+      expect(
+        calls.filter((call) => call.command === "imageRemove").map((call) => call.args),
+      ).toEqual([
+        { id: "sha256:rd", force: false },
+        { id: "sha256:dd", force: false },
+      ]),
+    );
   });
 });

@@ -5,6 +5,7 @@ import { useCompose } from "@/features/compose/store";
 import { usageById, useMetrics } from "@/features/metrics/api";
 import type { ContainerAction, ContainerSummary } from "@/lib/ipc/bindings";
 import { useIdSet } from "@/lib/use-id-set";
+import { useSelection, useSelectionKeys } from "@/lib/use-selection";
 import { useSlashToSearch } from "@/lib/use-slash-to-search";
 import { Crumb, Page } from "@/shell/page";
 import { Button } from "@/ui/button";
@@ -18,7 +19,14 @@ import { ContainerTable } from "./container-table";
 import { ContainersHero } from "./containers-hero";
 import { CrashBanners } from "./crash-banners";
 import { DeleteSheet } from "./delete-sheet";
-import { emptyTitle, type Filter, filterOptions, groupByProject, matches } from "./model";
+import {
+  type ContainerGroup,
+  emptyTitle,
+  type Filter,
+  filterOptions,
+  groupByProject,
+  matches,
+} from "./model";
 import { useRunSheet } from "./run/api";
 
 function NoContainers() {
@@ -81,6 +89,20 @@ function useListedContainers() {
   return data?.filter((container) => container.pod === null);
 }
 
+/** The rows in the order they show, so ⇧-click selects what lies between. */
+function useContainerSelection(
+  groups: ContainerGroup[],
+  all: ContainerSummary[],
+  onDelete: (containers: ContainerSummary[]) => void,
+) {
+  const selection = useSelection(
+    groups.flatMap((group) => group.containers.map((container) => container.id)),
+  );
+  const chosen = all.filter((container) => selection.has(container.id));
+  useSelectionKeys(selection, () => onDelete(chosen));
+  return { selection, chosen };
+}
+
 export function ContainersPage() {
   const containers = useListedContainers();
   const { data: metrics } = useMetrics();
@@ -89,8 +111,11 @@ export function ContainersPage() {
   const [query, setQuery] = useState("");
   const [hot, setHot] = useState<string | null>(null);
   const [removing, setRemoving] = useState<ContainerSummary[]>([]);
-  const selection = useIdSet();
   const collapsed = useIdSet();
+  const all = containers ?? [];
+  const visible = all.filter((container) => matches(container, filter, query));
+  const groups = groupByProject(visible);
+  const { selection, chosen } = useContainerSelection(groups, all, setRemoving);
   if (containers?.length === 0) {
     return (
       <Page crumbs={<Crumb>Containers</Crumb>}>
@@ -98,9 +123,6 @@ export function ContainersPage() {
       </Page>
     );
   }
-  const all = containers ?? [];
-  const visible = all.filter((container) => matches(container, filter, query));
-  const chosen = all.filter((container) => selection.ids.has(container.id));
   const act = (targets: ContainerSummary[], verb: ContainerAction, label?: string) =>
     action.mutate({ containers: targets, action: verb, ...(label ? { label } : {}) });
   const finish = (targets: ContainerSummary[], verb: ContainerAction) => {
@@ -127,10 +149,11 @@ export function ContainersPage() {
           />
         ) : (
           <ContainerTable
-            groups={groupByProject(visible)}
+            groups={groups}
             usage={usageById(metrics)}
-            selected={selection.ids}
+            selected={new Set(selection.chosen)}
             onSelect={selection.set}
+            onPick={selection.click}
             collapsed={collapsed.ids}
             onCollapse={collapsed.toggle}
             act={act}

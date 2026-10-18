@@ -137,4 +137,14 @@ describe("ContainersPage", () => {
       ),
     );
   });
+
+  it("selects a run of containers with ⇧-click", async () => {
+    setup();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("checkbox", { name: "Select shop-db-1" }));
+    await user.keyboard("{Shift>}");
+    await user.click(screen.getByRole("link", { name: /payments-mock/ }));
+    await user.keyboard("{/Shift}");
+    expect(screen.getByText("3 selected")).toBeDefined();
+  });
 });

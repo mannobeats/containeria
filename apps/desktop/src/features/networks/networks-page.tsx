@@ -1,18 +1,23 @@
-import { IconPlus } from "@tabler/icons-react";
+import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { useState } from "react";
 
+import { queryKeys } from "@/app/query-keys";
+import { useRemoveMany } from "@/app/use-remove-many";
 import { useContainers } from "@/features/containers/api";
-import type { ContainerSummary, NetworkSummary } from "@/lib/ipc/bindings";
+import { type ContainerSummary, commands, type NetworkSummary } from "@/lib/ipc/bindings";
+import { type Selection, useSelection, useSelectionKeys } from "@/lib/use-selection";
 import { Crumb, Page } from "@/shell/page";
 import { Button } from "@/ui/button";
+import { DeleteManySheet } from "@/ui/delete-many-sheet";
 import { EmptyState } from "@/ui/empty-state";
 import { ListToolbar } from "@/ui/list-toolbar";
 import { Lede, PageHeading } from "@/ui/page-heading";
-import { HeadRow, Table } from "@/ui/table";
+import { SelectionBar } from "@/ui/selection-bar";
+import { HeadRow, SelectAll, Table } from "@/ui/table";
 
 import { useNetworks } from "./api";
 import { DeleteNetworkSheet } from "./delete-network-sheet";
-import { matchesNetwork } from "./model";
+import { matchesNetwork, undeletable } from "./model";
 import { NetworkRow } from "./network-row";
 import { NewNetworkSheet } from "./new-network-sheet";
 
@@ -20,12 +25,14 @@ type NetworkTableProps = {
   networks: NetworkSummary[];
   containers: ContainerSummary[];
   onDelete: (network: NetworkSummary) => void;
+  selection: Selection;
 };
 
-function NetworkTable({ networks, containers, onDelete }: NetworkTableProps) {
+function NetworkTable({ networks, containers, onDelete, selection }: NetworkTableProps) {
   return (
     <Table label="Networks">
       <colgroup>
+        <col className="w-11" />
         <col />
         <col className="w-[100px]" />
         <col className="w-[150px]" />
@@ -34,6 +41,7 @@ function NetworkTable({ networks, containers, onDelete }: NetworkTableProps) {
         <col className="w-[60px]" />
       </colgroup>
       <HeadRow>
+        <SelectAll selection={selection} label="Select all networks that can be deleted" />
         <th>Name</th>
         <th>Driver</th>
         <th>Subnet</th>
@@ -50,6 +58,7 @@ function NetworkTable({ networks, containers, onDelete }: NetworkTableProps) {
             network={network}
             containers={containers}
             onDelete={onDelete}
+            selection={selection}
           />
         ))}
       </tbody>
@@ -66,6 +75,18 @@ export function NetworksPage() {
   const all = networks ?? [];
   const own = all.filter((network) => !network.builtIn).length;
   const visible = all.filter((network) => matchesNetwork(network, query));
+  const selection = useSelection(
+    visible.filter((network) => !undeletable(network)).map((network) => network.id),
+  );
+  const chosen = visible.filter((network) => selection.has(network.id));
+  const [removing, setRemoving] = useState<NetworkSummary[]>([]);
+  const removeMany = useRemoveMany({
+    remove: (network: NetworkSummary) => commands.networkRemove(network.id),
+    name: (network) => network.name,
+    noun: "network",
+    invalidates: queryKeys.networks,
+  });
+  useSelectionKeys(selection, () => setRemoving(chosen));
   return (
     <Page crumbs={<Crumb>Networks</Crumb>}>
       <PageHeading
@@ -83,13 +104,36 @@ export function NetworksPage() {
         </Lede>
       </PageHeading>
       <ListToolbar query={query} onQuery={setQuery} placeholder="Filter networks" />
-      <div className="pb-10">
+      <div className="pb-[72px]">
         {networks && visible.length === 0 ? (
           <EmptyState title="No networks match" />
         ) : (
-          <NetworkTable networks={visible} containers={containers ?? []} onDelete={setDeleting} />
+          <NetworkTable
+            networks={visible}
+            containers={containers ?? []}
+            onDelete={setDeleting}
+            selection={selection}
+          />
         )}
       </div>
+      <SelectionBar count={chosen.length} label="Selected networks" onClear={selection.clear}>
+        <Button variant="dangerGhost" size="sm" onClick={() => setRemoving(chosen)}>
+          <IconTrash />
+          Delete
+        </Button>
+      </SelectionBar>
+      <DeleteManySheet
+        names={removing.map((network) => network.name)}
+        noun="network"
+        onCancel={() => setRemoving([])}
+        onConfirm={() => {
+          removeMany.mutate(removing);
+          setRemoving([]);
+          selection.clear();
+        }}
+      >
+        Containers created later can't join them by name. This can't be undone.
+      </DeleteManySheet>
       {creating ? (
         <NewNetworkSheet
           open

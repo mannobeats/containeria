@@ -43,6 +43,9 @@ a component it exists to share (the memory ledger). `ui/` never imports from `fe
   DOM element or a component that spreads its props onto one (`Row` does); otherwise right-click
   silently does nothing. Order entries as macOS does: primary action, other actions, copies,
   destructive last with `danger` and a `…` when it asks first.
+- A list people clean up gets selection: `useSelection` over the selectable rows in order,
+  `SelectAll` and `SelectCell` in the table (with `blocked` saying why a row can't be picked),
+  `SelectionBar` for the actions and `useSelectionKeys` for ⌘⌫ and Esc.
 - Times go through `lib/clock.ts` (`formatClock`, `formatPreciseClock`, `formatDateTime`), never
   `toLocaleString` or a fixed locale, so they follow the Mac's time zone and 12- or 24-hour clock,
   or UTC when Settings asks.
