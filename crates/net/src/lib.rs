@@ -18,3 +18,19 @@ pub use host::{DEFAULT_TLD, container_host};
 pub use routes::{ClusterService, CustomRoute, DomainRoute, RouteDown, RouteKind};
 pub use service::{DNS_PORT, DomainPorts, Domains, DomainsStatus, running_ports};
 pub use system::{ResolverState, privileged};
+
+/// What `fuzz/` feeds untrusted bytes: the parsers that read DNS packets and Host headers from
+/// any local process.
+#[cfg(feature = "fuzzing")]
+#[doc(hidden)]
+pub mod fuzzing {
+    #[must_use]
+    pub fn dns_answer(packet: &[u8]) -> Option<Vec<u8>> {
+        crate::dns::answer(packet, |name| name.ends_with(crate::DEFAULT_TLD))
+    }
+
+    #[must_use]
+    pub fn normalize_host(raw: &str) -> Option<String> {
+        crate::host::normalize(raw)
+    }
+}
