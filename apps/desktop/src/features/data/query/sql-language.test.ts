@@ -25,14 +25,14 @@ function table(name: string, columns: string[]): Table {
 }
 
 describe("completionSchema", () => {
-  it("qualifies tables outside the default schema", () => {
+  it("qualifies every table and completes the first schema's tables without one", () => {
     const namespaces: Namespace[] = [
       { name: "public", tables: [table("orders", ["id", "total"])], functions: [], enums: [] },
       { name: "auth", tables: [table("users", ["email"])], functions: [], enums: [] },
     ];
     expect(completionSchema(namespaces)).toEqual({
-      orders: ["id", "total"],
-      "auth.users": ["email"],
+      schema: { "public.orders": ["id", "total"], "auth.users": ["email"] },
+      defaultSchema: "public",
     });
     expect(sqlLanguage("postgres", namespaces)).toHaveLength(2);
     expect(sqlLanguage("clickhouse", [])).toHaveLength(2);

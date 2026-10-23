@@ -64,7 +64,9 @@ export function QueryView({ info, tabKey, namespaces }: QueryViewProps) {
   const documents = !info.capabilities.sql;
   const sql =
     useWorkspace((state) => state.sql[sqlKey]) ??
-    (documents ? mongoQuery(namespaces[0]?.tables[0]) : "");
+    (documents
+      ? mongoQuery(namespaces.find((namespace) => namespace.tables.length > 0)?.tables[0])
+      : "");
   const setSql = useWorkspace((state) => state.setSql);
   const run = useRunQuery(info.id);
   const save = useSaveQuery();

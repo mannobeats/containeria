@@ -37,7 +37,7 @@ function Message({ result }: { result: QueryResult }) {
       ? `${result.rows.length.toLocaleString("en-US")} rows`
       : `${result.affected.toLocaleString("en-US")} rows affected`;
   return (
-    <div className="flex h-[30px] items-center gap-2.5 border-b-[0.5px] border-line px-5 text-ink-2 [&_.tabler-icon]:size-3.5 [&_.tabler-icon]:text-ok">
+    <div className="flex h-[30px] items-center gap-2.5 border-b-[0.5px] border-line px-5 text-ink-2 [&_.tabler-icon]:size-3.5 [&_.tabler-icon]:text-ink-3">
       <IconCheck aria-hidden />
       <span className="flex-1 font-mono text-mono-12">
         {text}
@@ -96,7 +96,11 @@ export function QueryResults({ result, error, running, onCancel }: ResultsProps)
             onClick={() =>
               writeText(asTsv(columns, rows))
                 .then(() => toast("Copied the results"))
-                .catch(() => undefined)
+                .catch((error: unknown) =>
+                  toast.error("The results couldn't be copied", {
+                    description: errorMessage(error),
+                  }),
+                )
             }
           >
             <IconCopy />

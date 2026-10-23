@@ -93,7 +93,8 @@ export function DataGrid({
   onDelete,
 }: DataGridProps) {
   const scroller = useRef<HTMLDivElement>(null);
-  const [widths, setWidths] = useState(() => columns.map(columnWidth));
+  const [resized, setResized] = useState<Record<string, number>>({});
+  const widths = columns.map((column) => resized[column.name] ?? columnWidth(column));
   const [editing, setEditing] = useState(false);
   const shown = useRowWindow(scroller, rows.length);
   const added = rows.filter((row) => row.added !== null).length;
@@ -129,11 +130,7 @@ export function DataGrid({
           widths={widths}
           sort={sort}
           onSort={onSort}
-          onResize={(index, width) =>
-            setWidths((current) =>
-              current.map((old, position) => (position === index ? width : old)),
-            )
-          }
+          onResize={(column, width) => setResized((current) => ({ ...current, [column]: width }))}
         />
         <tbody>
           <Spacer height={shown.first * ROW_HEIGHT} columns={columns.length} />

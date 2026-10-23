@@ -14,7 +14,7 @@ import { SearchField } from "@/ui/search-field";
 
 import { useDeleteRedisKey, useRedisKeys, useRedisValue } from "../api";
 import { CellValue } from "../table/cell-value";
-import { pretty, ttlText } from "./redis-model";
+import { pretty, ttlText, uniqueKeys } from "./redis-model";
 
 function ValueBody({ value }: { value: RedisValue }) {
   switch (value.kind) {
@@ -95,7 +95,7 @@ export function RedisView({ info }: { info: ServerInfo }) {
   const [deleting, setDeleting] = useState<string | null>(null);
   const remove = useDeleteRedisKey(info.id);
   const keys = useRedisKeys(info.id, pattern);
-  const all = keys.data?.pages.flatMap((page) => page.keys) ?? [];
+  const all = uniqueKeys(keys.data?.pages.flatMap((page) => page.keys) ?? []);
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex h-11 shrink-0 items-center gap-2 border-b-[0.5px] border-line px-3">

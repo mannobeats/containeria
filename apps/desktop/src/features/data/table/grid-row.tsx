@@ -64,7 +64,7 @@ function Cell(props: CellProps) {
   }, [active, editing]);
   const finish = (text: string | null | undefined) => {
     onStopEdit();
-    if (text !== undefined && text !== cellText(value)) {
+    if (text !== undefined && text !== (cellText(value) ?? "")) {
       onEdit?.(text);
     }
   };

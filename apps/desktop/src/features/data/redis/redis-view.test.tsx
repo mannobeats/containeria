@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
@@ -15,17 +15,27 @@ const VALUES: Record<string, RedisValue> = {
   gone: { kind: "missing" },
 };
 
+const FIRST_PAGE = {
+  keys: [
+    { key: "config:flags", kind: "string", ttlSeconds: null },
+    { key: "user:1", kind: "hash", ttlSeconds: 90 },
+    { key: "queue", kind: "list", ttlSeconds: null },
+    { key: "gone", kind: "none", ttlSeconds: null },
+  ],
+  cursor: "42",
+};
+
+const NEXT_PAGE = {
+  keys: [
+    { key: "queue", kind: "list", ttlSeconds: null },
+    { key: "user:2", kind: "hash", ttlSeconds: null },
+  ],
+  cursor: null,
+};
+
 function setup() {
   const calls = mockCommands({
-    dataRedisKeys: () => ({
-      keys: [
-        { key: "config:flags", kind: "string", ttlSeconds: null },
-        { key: "user:1", kind: "hash", ttlSeconds: 90 },
-        { key: "queue", kind: "list", ttlSeconds: null },
-        { key: "gone", kind: "none", ttlSeconds: null },
-      ],
-      cursor: "42",
-    }),
+    dataRedisKeys: (args) => (args.cursor === "42" ? NEXT_PAGE : FIRST_PAGE),
     dataRedisValue: (args) => VALUES[String(args.key)] ?? { kind: "missing" },
   });
   const info = infoFixture({
@@ -49,9 +59,22 @@ describe("RedisView", () => {
     expect(await screen.findByText("This key no longer exists")).toBeDefined();
   });
 
-  it("scans by pattern and loads the next page", async () => {
+  it("loads the next page and lists a key SCAN returns twice once", async () => {
     const calls = setup();
     await userEvent.click(await screen.findByRole("button", { name: "Load more" }));
+    expect(await screen.findByRole("button", { name: /user:2/ })).toBeDefined();
+    expect(screen.getAllByRole("button", { name: /queue/ })).toHaveLength(1);
+    expect(screen.getByText("5 keys")).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Load more" })).toBeNull();
+    expect(calls).toContainEqual({
+      command: "dataRedisKeys",
+      args: { id: "pg", pattern: "*", cursor: "42" },
+    });
+  });
+
+  it("scans by the pattern typed", async () => {
+    const calls = setup();
+    await screen.findByRole("button", { name: /queue/ });
     await userEvent.clear(screen.getByPlaceholderText("Key pattern, like session:*"));
     await userEvent.type(screen.getByPlaceholderText("Key pattern, like session:*"), "user:*");
     await waitFor(() =>
@@ -60,17 +83,15 @@ describe("RedisView", () => {
         args: { id: "pg", pattern: "user:*", cursor: null },
       }),
     );
-    expect(calls).toContainEqual({
-      command: "dataRedisKeys",
-      args: { id: "pg", pattern: "*", cursor: "42" },
-    });
   });
 
   it("asks before deleting a key", async () => {
     const calls = setup();
     await userEvent.click(await screen.findByRole("button", { name: /user:1/ }));
     await userEvent.click(screen.getByRole("button", { name: "Delete key" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Delete key" }));
+    const sheet = await screen.findByRole("dialog");
+    expect(calls.some((call) => call.command === "dataRedisDelete")).toBe(false);
+    await userEvent.click(within(sheet).getByRole("button", { name: "Delete key" }));
     await waitFor(() =>
       expect(calls).toContainEqual({
         command: "dataRedisDelete",
@@ -83,7 +104,9 @@ describe("RedisView", () => {
     const calls = setup();
     fireEvent.contextMenu(await screen.findByRole("button", { name: /queue/ }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Delete…" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Delete key" }));
+    const sheet = await screen.findByRole("dialog");
+    expect(calls.some((call) => call.command === "dataRedisDelete")).toBe(false);
+    await userEvent.click(within(sheet).getByRole("button", { name: "Delete key" }));
     await waitFor(() =>
       expect(calls).toContainEqual({
         command: "dataRedisDelete",
