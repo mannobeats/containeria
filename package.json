@@ -1,0 +1,23 @@
+{
+  "name": "containeria",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.24.0",
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @containeria/desktop tauri dev",
+    "build": "pnpm --filter @containeria/desktop tauri build",
+    "check": "pnpm check:web && pnpm check:rust",
+    "check:web": "biome ci . && pnpm --filter @containeria/desktop typecheck && pnpm --filter @containeria/desktop test && pnpm check:react && pnpm check:fallow",
+    "check:react": "pnpm --filter @containeria/desktop run react-doctor",
+    "check:fallow": "fallow --coverage apps/desktop/coverage/coverage-final.json",
+    "check:rust": "cargo fmt --all --check && cargo clippy --workspace --all-targets --locked -- -D warnings && cargo test --workspace --locked && cargo deny check",
+    "fix": "biome check --write . && cargo fmt --all"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "fallow": "3.34.0"
+  }
+}
