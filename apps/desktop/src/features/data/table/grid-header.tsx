@@ -13,7 +13,8 @@ type HeaderProps = {
   widths: number[];
   sort: Sort | null;
   onSort: ((sort: Sort | null) => void) | undefined;
-  onResize: (index: number, width: number) => void;
+  /** The column's position and its new width. */
+  onResize: (column: number, width: number) => void;
 };
 
 function ariaSort(sorted: Sort | null): "ascending" | "descending" | "none" {

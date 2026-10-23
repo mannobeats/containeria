@@ -15,7 +15,7 @@ import { Menu } from "@/ui/menu";
 import { Segmented } from "@/ui/segmented";
 
 import { useExport, useRefreshSchema } from "../api";
-import { opLabel, tableRef, whereText } from "../model";
+import { filterKey, opLabel, tableRef, uniqueFilters, whereText } from "../model";
 import { useTableActions } from "../use-table-actions";
 import type { GridView } from "../workspace-store";
 import { FilterPopover } from "./filter-popover";
@@ -80,7 +80,7 @@ export function FilterBar({ info, table, view, onView }: FilterBarProps) {
     ...actions.imports(table),
     ...(destroy.length > 0 ? [{ kind: "separator" as const }, ...destroy] : []),
   ];
-  const setFilters = (filters: Filter[]) => onView({ filters, page: 0 });
+  const setFilters = (filters: Filter[]) => onView({ filters: uniqueFilters(filters), page: 0 });
   const exportAs = (format: ExportFormat, extension: string) =>
     save({ defaultPath: `${table.name}.${extension}` })
       .then((path) =>
@@ -115,7 +115,7 @@ export function FilterBar({ info, table, view, onView }: FilterBarProps) {
       <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
         {view.filters.map((filter, index) => (
           <FilterChip
-            key={`${filter.column}-${filter.op}-${filter.value ?? ""}`}
+            key={filterKey(filter)}
             columns={table.columns}
             filter={filter}
             onChange={(changed) =>

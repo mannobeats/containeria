@@ -51,7 +51,17 @@ describe("QueryView", () => {
       id: "pg",
       sql: "select * from users",
     });
-    await userEvent.click(screen.getByRole("button", { name: "Copy as TSV" }));
+  });
+
+  it("copies the results as TSV", async () => {
+    const calls = setup(() => rows);
+    await userEvent.click(await screen.findByRole("button", { name: /Run/ }));
+    await userEvent.click(await screen.findByRole("button", { name: "Copy as TSV" }));
+    await waitFor(() =>
+      expect(calls.find((call) => String(call.command).endsWith("writeText"))?.args).toMatchObject({
+        text: 'id\tmeta\tactive\n1\t{"plan":"pro"}\ttrue',
+      }),
+    );
   });
 
   it("shows the database's error", async () => {
@@ -124,6 +134,18 @@ describe("QueryView for MongoDB", () => {
       find: {},
       limit: 100,
     });
+  });
+
+  it("starts on the first database that has a collection", async () => {
+    const calls = mockCommands({ dataRun: () => documents });
+    const empty: Namespace = { name: "admin", tables: [], functions: [], enums: [] };
+    renderWithApp(<QueryView info={mongo} tabKey="query:1" namespaces={[empty, ...collections]} />);
+    await userEvent.click(await screen.findByRole("button", { name: /Run/ }));
+    await waitFor(() =>
+      expect(
+        JSON.parse(String(calls.find((call) => call.command === "dataRun")?.args.sql)),
+      ).toMatchObject({ database: "shop", collection: "users" }),
+    );
   });
 
   it("runs the aggregate typed in the tab and explains safe mode", async () => {

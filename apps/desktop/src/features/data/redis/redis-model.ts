@@ -1,3 +1,5 @@
+import type { RedisKey } from "@/lib/ipc/bindings";
+
 /** Time to live as people read it: 42s, 15m, 3h. Nothing when the key never expires. */
 export function ttlText(seconds: number | null): string {
   if (seconds === null) {
@@ -16,4 +18,9 @@ export function pretty(text: string): string {
   } catch {
     return text;
   }
+}
+
+/** Each key once: SCAN can return a key on more than one page. */
+export function uniqueKeys(keys: RedisKey[]): RedisKey[] {
+  return [...new Map(keys.map((key) => [key.key, key])).values()];
 }

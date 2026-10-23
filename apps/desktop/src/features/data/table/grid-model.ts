@@ -49,6 +49,19 @@ export function gridRows(
   return [...added, ...read];
 }
 
+/**
+ * A key per column that survives reordering: its name, and which of the same-named columns it is,
+ * since a query can return two columns called `id`.
+ */
+export function columnKeys(columns: Column[]): string[] {
+  const seen = new Map<string, number>();
+  return columns.map((column) => {
+    const count = seen.get(column.name) ?? 0;
+    seen.set(column.name, count + 1);
+    return `${column.name}#${count}`;
+  });
+}
+
 /** A sensible starting width for a column, from its type and name. */
 export function columnWidth(column: Column): number {
   if (column.kind === "json") {

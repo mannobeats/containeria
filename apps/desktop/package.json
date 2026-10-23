@@ -46,6 +46,7 @@
   },
   "devDependencies": {
     "@babel/core": "8.0.7",
+    "@codemirror/autocomplete": "6.20.4",
     "@rolldown/plugin-babel": "0.2.4",
     "@tailwindcss/vite": "4.3.3",
     "@tanstack/router-plugin": "1.168.47",

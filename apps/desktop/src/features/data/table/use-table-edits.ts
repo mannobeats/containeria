@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 
-import type { Column, Table } from "@/lib/ipc/bindings";
+import type { Column, Table, Value } from "@/lib/ipc/bindings";
 import { errorMessage, isCommandError } from "@/lib/ipc/errors";
 
 import { useCommit, usePreview } from "../api";
@@ -33,7 +33,8 @@ export function useTableEdits(connection: string, table: Table) {
     count: pendingCount(pending),
     committing: commit.isPending,
     review,
-    edit: (row: GridRow, column: Column, text: string | null) => {
+    /** `before` is the cell's value as the grid shows it; a staged edit keeps the first one. */
+    edit: (row: GridRow, column: Column, before: Value, text: string | null) => {
       if (row.added !== null) {
         const index = row.added;
         change((current) => ({
@@ -44,7 +45,6 @@ export function useTableEdits(connection: string, table: Table) {
         }));
       } else if (row.key) {
         const key = row.key;
-        const before = row.edited[column.name] ?? row.values[table.columns.indexOf(column)] ?? null;
         change((current) => withEdit(current, key, column.name, before, text));
       }
     },
@@ -58,7 +58,10 @@ export function useTableEdits(connection: string, table: Table) {
           toast.error("The changes don't fit the table", { description: errorMessage(error) }),
       }),
     closeReview: () => setReview(undefined),
-    commit: () =>
+    commit: () => {
+      if (commit.isPending) {
+        return;
+      }
       commit.mutate(changes(), {
         onSuccess: (rows) => {
           change(() => EMPTY_PENDING);
@@ -76,6 +79,7 @@ export function useTableEdits(connection: string, table: Table) {
               description: errorMessage(error),
             },
           ),
-      }),
+      });
+    },
   };
 }

@@ -12,16 +12,16 @@ export const nodeHeight = (table: Table) => HEADER + table.columns.length * ROW;
 
 export type Link = { id: string; from: string; to: string; column: string };
 
-/** One link per foreign key whose target table is in the diagram. */
+/**
+ * One link per foreign key whose target table is in the diagram. A key without a schema points into
+ * its own table's schema, the way SQLite reports them.
+ */
 export function links(tables: Table[]): Link[] {
   const keys = new Set(tables.map(tableKey));
-  const byName = new Map(tables.map((table) => [table.name, tableKey(table)]));
   return tables.flatMap((table) =>
     table.columns.flatMap((column) => {
       const target = column.references;
-      const to = target?.schema
-        ? `${target.schema}.${target.table}`
-        : byName.get(target?.table ?? "");
+      const to = target && tableKey({ schema: target.schema ?? table.schema, name: target.table });
       return to && keys.has(to)
         ? [
             {

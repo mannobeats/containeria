@@ -12,6 +12,7 @@ import {
   pendingSummary,
   tableKey,
   toChangeSet,
+  uniqueFilters,
   whereText,
   withDeleteToggled,
   withEdit,
@@ -67,6 +68,16 @@ describe("pending changes", () => {
     expect(pendingCount(again)).toBe(0);
   });
 
+  it("remembers a NULL original through later edits", () => {
+    if (!key) {
+      throw new Error("expected a key");
+    }
+    const edited = withEdit(EMPTY_PENDING, key, "credit", null, "1");
+    const again = withEdit(edited, key, "credit", "1", "2");
+    expect(again.edits['["7"]']?.set.credit?.before).toBeNull();
+    expect(pendingCount(withEdit(again, key, "credit", "2", null))).toBe(0);
+  });
+
   it("builds the change set the commit sends", () => {
     if (!key) {
       throw new Error("expected a key");
@@ -95,6 +106,14 @@ describe("withRowsDeleted", () => {
     ]);
     expect(next.added).toEqual([{ email: "b" }]);
     expect(Object.keys(next.deleted)).toEqual(['["7"]']);
+  });
+});
+
+describe("uniqueFilters", () => {
+  it("drops a filter added twice and keeps ones that differ", () => {
+    const equals = { column: "email", op: "equals" as const, value: "x" };
+    const isNull = { column: "email", op: "isNull" as const, value: null };
+    expect(uniqueFilters([equals, isNull, { ...equals }])).toEqual([equals, isNull]);
   });
 });
 

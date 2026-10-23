@@ -15,6 +15,8 @@ type CellProps = {
   column: Column;
   value: Value;
   active: boolean;
+  /** Takes Tab into the grid while no cell is active. */
+  entry: boolean;
   editing: boolean;
   edited: boolean;
   before: Value;
@@ -39,13 +41,14 @@ function cellClass({ active, editing, edited }: Pick<CellProps, "active" | "edit
 
 /**
  * One cell. Its content is a button so it can be focused and moved through with the arrow keys;
- * only the active cell is in the tab order.
+ * only the active cell is in the tab order, or the first one until a cell is active.
  */
 function Cell(props: CellProps) {
   const {
     column,
     value,
     active,
+    entry,
     editing,
     edited,
     before,
@@ -64,7 +67,7 @@ function Cell(props: CellProps) {
   }, [active, editing]);
   const finish = (text: string | null | undefined) => {
     onStopEdit();
-    if (text !== undefined && text !== cellText(value)) {
+    if (text !== undefined && text !== (cellText(value) ?? "")) {
       onEdit?.(text);
     }
   };
@@ -79,7 +82,12 @@ function Cell(props: CellProps) {
         <button
           ref={button}
           type="button"
-          tabIndex={active ? 0 : -1}
+          tabIndex={active || entry ? 0 : -1}
+          onFocus={() => {
+            if (!active) {
+              onSelect(false);
+            }
+          }}
           onClick={() => onSelect(false)}
           onDoubleClick={() => onSelect(true)}
           onContextMenu={onMenu}
@@ -118,6 +126,8 @@ type RowProps = {
   columns: Column[];
   selected: boolean;
   activeColumn: number | null;
+  /** This row holds the grid's tab stop while no cell is active. */
+  entry: boolean;
   editing: boolean;
   onToggle: () => void;
   onSelect: (column: number, edit: boolean) => void;
@@ -145,6 +155,7 @@ export function GridRow({
   columns,
   selected,
   activeColumn,
+  entry,
   editing,
   onToggle,
   onSelect,
@@ -186,6 +197,7 @@ export function GridRow({
             column={column}
             value={row.values[position] ?? null}
             active={activeColumn === position}
+            entry={entry && position === 0}
             editing={editing && activeColumn === position}
             edited={column.name in row.edited}
             before={row.edited[column.name] ?? null}

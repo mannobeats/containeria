@@ -16,9 +16,9 @@ function column(name: string, references: string | null = null): Column {
   };
 }
 
-function table(name: string, columns: Column[]): Table {
+function table(name: string, columns: Column[], schema = "public"): Table {
   return {
-    schema: "public",
+    schema,
     name,
     kind: "table",
     rowEstimate: null,
@@ -44,6 +44,15 @@ describe("schema diagram", () => {
         to: "public.customers",
         column: "customer_id",
       },
+    ]);
+  });
+
+  it("resolves a key without a schema inside its own table's schema", () => {
+    const auditUsers = table("users", [column("id")], "audit");
+    const publicUsers = table("users", [column("id")]);
+    const posts = table("posts", [column("id"), column("author_id", "users")]);
+    expect(links([publicUsers, posts, auditUsers]).map((link) => link.to)).toEqual([
+      "public.users",
     ]);
   });
 

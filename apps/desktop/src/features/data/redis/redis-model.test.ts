@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { pretty, ttlText } from "./redis-model";
+import { pretty, ttlText, uniqueKeys } from "./redis-model";
 
 describe("redis values", () => {
   it("reads a time to live", () => {
@@ -13,5 +13,11 @@ describe("redis values", () => {
   it("formats JSON and leaves other text alone", () => {
     expect(pretty('{"a":1}')).toBe('{\n  "a": 1\n}');
     expect(pretty("hello")).toBe("hello");
+  });
+
+  it("lists a key SCAN returned twice once, where it first appeared", () => {
+    const first = { key: "a", kind: "string", ttlSeconds: null };
+    const second = { key: "b", kind: "hash", ttlSeconds: null };
+    expect(uniqueKeys([first, second, { ...first }]).map((key) => key.key)).toEqual(["a", "b"]);
   });
 });

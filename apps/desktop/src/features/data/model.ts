@@ -98,7 +98,8 @@ export function withEdit(
   const id = rowId(key);
   const current = pending.edits[id] ?? { key, set: {} };
   const set = { ...current.set };
-  const original = set[column]?.before ?? before;
+  const staged = set[column];
+  const original = staged ? staged.before : before;
   if (cellText(original) === value) {
     delete set[column];
   } else {
@@ -172,6 +173,14 @@ export function pendingSummary(pending: Pending): string {
       : null,
   ];
   return parts.filter(Boolean).join(" · ");
+}
+
+export const filterKey = (filter: Filter) =>
+  JSON.stringify([filter.column, filter.op, filter.value]);
+
+/** The filters with repeats dropped: the same filter twice narrows nothing further. */
+export function uniqueFilters(filters: Filter[]): Filter[] {
+  return [...new Map(filters.map((filter) => [filterKey(filter), filter])).values()];
 }
 
 /** How the filters read as SQL, for the hint beside them. Display only. */

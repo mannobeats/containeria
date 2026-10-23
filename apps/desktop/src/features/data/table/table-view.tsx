@@ -32,7 +32,7 @@ function useGridView(connection: string, table: Table) {
   return [view, (change: Partial<GridView>) => setView(key, change)] as const;
 }
 
-/** ⌘S commits, from anywhere in the table. */
+/** ⌘S commits, from anywhere in the table. Holding it down commits once. */
 function useCommitShortcut(enabled: boolean, commit: () => void) {
   const run = useEffectEvent(commit);
   useEffect(() => {
@@ -42,7 +42,9 @@ function useCommitShortcut(enabled: boolean, commit: () => void) {
     const onKey = (event: KeyboardEvent) => {
       if (event.metaKey && event.key.toLowerCase() === "s") {
         event.preventDefault();
-        run();
+        if (!event.repeat) {
+          run();
+        }
       }
     };
     window.addEventListener("keydown", onKey);
@@ -145,10 +147,12 @@ function GridArea({ info, table, view, setView, page, edits }: GridAreaProps) {
   const columns = page.data?.columns ?? table.columns;
   const rows = gridRows(columns, page.data?.rows ?? [], edits.pending, offset);
   const editable = page.data?.readOnlyReason === null;
+  const picked = rows.filter((row) => selection.ids.has(row.id));
   const step = (direction: 1 | -1) => setActive(stepRow(active, direction, rows.length));
   const writes = editable
     ? {
-        onEdit: edits.edit,
+        onEdit: (row: (typeof rows)[number], column: Column, text: string | null) =>
+          edits.edit(row, column, row.values[columns.indexOf(column)] ?? null, text),
         onDelete: (row: (typeof rows)[number]) => edits.toggleDelete([row]),
         onAddRow: edits.addRow,
       }
@@ -203,9 +207,9 @@ function GridArea({ info, table, view, setView, page, edits }: GridAreaProps) {
           page={page.data}
           view={view}
           onView={setView}
-          selected={selection.ids.size}
+          selected={picked.length}
           onDeleteSelected={() => {
-            edits.toggleDelete(rows.filter((row) => selection.ids.has(row.id)));
+            edits.toggleDelete(picked);
             selection.clear();
           }}
           onAddRow={writes.onAddRow}

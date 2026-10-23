@@ -33,6 +33,12 @@ function totalText(page: RowPage, filtered: boolean): string {
   return filtered ? ` of ${total} matching rows` : ` of ~${total} rows`;
 }
 
+/** Whether a filtered page ends at the exact count. An unfiltered total is an estimate, so no. */
+function reachedCount(page: RowPage | undefined, view: GridView, end: number): boolean {
+  const total = page?.totalCapped ? null : (page?.total ?? null);
+  return view.filters.length > 0 && total !== null && end >= total;
+}
+
 /** Where you are in the table, what's selected, and paging. */
 export function GridFooter({
   page,
@@ -45,7 +51,7 @@ export function GridFooter({
   const size = useId();
   const shown = page?.rows.length ?? 0;
   const from = view.page * view.size;
-  const more = shown === view.size;
+  const more = shown === view.size && !reachedCount(page, view, from + shown);
   return (
     <div className="flex h-[38px] shrink-0 items-center gap-3 border-t-[0.5px] border-line bg-panel-solid pr-2 pl-3.5">
       <span className="inline-flex items-center gap-1.5 text-12 text-ink-3 tabular [&_.tabler-icon]:size-3.5">

@@ -35,6 +35,8 @@ function TableCard({ data }: NodeProps<TableNode>) {
       <button
         type="button"
         onDoubleClick={onOpen}
+        // Enter and Space click with no click count; a mouse opens the table on double-click only.
+        onClick={(event) => (event.detail === 0 ? onOpen() : undefined)}
         className="flex h-[34px] w-full items-center gap-[7px] border-b-[0.5px] border-line bg-panel-solid px-2.5 text-left text-13 text-ink [&_.tabler-icon]:size-3.5 [&_.tabler-icon]:text-brand"
       >
         <IconTable aria-hidden />
@@ -96,8 +98,9 @@ export function DiagramView({ info, namespaces }: { info: ServerInfo; namespaces
     <div className="relative min-h-0 flex-1">
       {positions.data ? (
         <ReactFlow
-          nodes={nodes}
-          edges={edges}
+          key={positions.dataUpdatedAt}
+          defaultNodes={nodes}
+          defaultEdges={edges}
           nodeTypes={NODE_TYPES}
           colorMode={dark ? "dark" : "light"}
           fitView

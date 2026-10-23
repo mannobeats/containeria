@@ -25,6 +25,17 @@ function setup({
   return calls;
 }
 
+/** A full page of 50 rows whose ids start at `first`. */
+const fullPage = (first: number) =>
+  pageFixture({
+    rows: Array.from({ length: 50 }, (_, index) => [
+      first + index,
+      `user${first + index}@example.com`,
+      null,
+    ]),
+    total: 50,
+  });
+
 const lastRequest = (calls: ReturnType<typeof setup>) =>
   calls.filter((call) => call.command === "dataRows").at(-1)?.args.request;
 
@@ -68,13 +79,30 @@ describe("TableView", () => {
   });
 
   it("shows the SQL a commit runs before running it", async () => {
-    setup();
+    const calls = setup();
     await userEvent.dblClick(await screen.findByRole("button", { name: "ada@example.com" }));
     await userEvent.type(screen.getByLabelText("Edit email"), "x{Enter}");
     await userEvent.click(await screen.findByRole("button", { name: /Review SQL/ }));
     const sheet = await screen.findByRole("dialog", { name: "Review SQL" });
     expect(sheet.textContent).toContain("grace@example.com");
-    await userEvent.click(within(sheet).getByRole("button", { name: "Back" }));
+    expect(calls.find((call) => call.command === "dataPreviewChanges")?.args).toMatchObject({
+      changes: {
+        updates: [
+          {
+            key: [{ column: "id", value: "1" }],
+            set: [{ column: "email", value: "ada@example.comx" }],
+          },
+        ],
+      },
+    });
+    expect(calls.some((call) => call.command === "dataCommit")).toBe(false);
+  });
+
+  it("discards staged changes", async () => {
+    setup();
+    await userEvent.dblClick(await screen.findByRole("button", { name: "ada@example.com" }));
+    await userEvent.type(screen.getByLabelText("Edit email"), "x{Enter}");
+    expect(await screen.findByRole("status")).toBeDefined();
     await userEvent.click(screen.getByRole("button", { name: "Discard" }));
     expect(screen.queryByRole("status")).toBeNull();
   });
@@ -90,16 +118,84 @@ describe("TableView", () => {
     expect(screen.getByLabelText("New row")).toBeDefined();
   });
 
-  it("cancels an edit with Escape and moves with the arrow keys", async () => {
+  it("cancels an edit with Escape", async () => {
     setup();
-    const cell = await screen.findByRole("button", { name: "ada@example.com" });
-    await userEvent.click(cell);
+    await userEvent.click(await screen.findByRole("button", { name: "ada@example.com" }));
     await userEvent.keyboard("{Enter}");
+    expect(screen.getByLabelText("Edit email")).toBeDefined();
     await userEvent.keyboard("changed{Escape}");
+    expect(screen.queryByLabelText("Edit email")).toBeNull();
+    expect(screen.getByRole("button", { name: "ada@example.com" })).toBeDefined();
     expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("takes Tab into the first cell, then moves with the arrow keys", async () => {
+    setup();
+    const first = (await screen.findAllByRole("button", { name: "1" }))[0];
+    const user = userEvent.setup();
+    for (let step = 0; step < 40 && document.activeElement !== first; step += 1) {
+      await user.tab();
+    }
+    expect(document.activeElement).toBe(first);
+    await user.keyboard("{ArrowRight}");
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "ada@example.com" }));
+  });
+
+  it("moves between cells with the arrow keys", async () => {
+    setup();
+    await userEvent.click(await screen.findByRole("button", { name: "ada@example.com" }));
     await userEvent.keyboard("{ArrowDown}");
-    expect(document.activeElement?.textContent).toBe("NULL");
-    await userEvent.keyboard("{Escape}");
+    expect(document.activeElement).toBe(screen.getAllByRole("button", { name: "NULL" })[0]);
+    await userEvent.keyboard("{ArrowLeft}");
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "2" }));
+  });
+
+  it("leaves a NULL cell alone when its editor closes untouched", async () => {
+    setup();
+    const [email] = await screen.findAllByRole("button", { name: "NULL" });
+    if (!email) {
+      throw new Error("expected a NULL email");
+    }
+    await userEvent.dblClick(email);
+    await userEvent.keyboard("{Enter}");
+    expect(screen.queryByLabelText("Edit email")).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("remembers a cell's value from before the edit", async () => {
+    const page = pageFixture({ columns: usersTable.columns.map((column) => ({ ...column })) });
+    mockCommands({ dataRows: () => page });
+    renderWithApp(<TableView info={infoFixture()} table={usersTable} />);
+    await userEvent.dblClick(await screen.findByRole("button", { name: "ada@example.com" }));
+    await userEvent.type(screen.getByLabelText("Edit email"), "x{Enter}");
+    expect(await screen.findByTitle("Was ada@example.com")).toBeDefined();
+  });
+
+  it("commits once while ⌘S is held down", async () => {
+    const calls = setup();
+    await userEvent.dblClick(await screen.findByRole("button", { name: "ada@example.com" }));
+    await userEvent.type(screen.getByLabelText("Edit email"), "x{Enter}");
+    await screen.findByRole("status");
+    fireEvent.keyDown(window, { key: "s", metaKey: true });
+    fireEvent.keyDown(window, { key: "s", metaKey: true, repeat: true });
+    await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
+    expect(calls.filter((call) => call.command === "dataCommit")).toHaveLength(1);
+  });
+
+  it("sizes a column that appears after the grid is drawn", async () => {
+    const narrow = pageFixture({
+      columns: usersTable.columns.slice(0, 2),
+      rows: [[1, "ada@example.com"]],
+    });
+    const pages = [narrow];
+    mockCommands({ dataRows: () => pages.shift() ?? pageFixture() });
+    renderWithApp(<TableView info={infoFixture()} table={usersTable} />);
+    const grid = await screen.findByRole("table", { name: "users rows" });
+    expect(grid.style.width).toBe("392px");
+    await userEvent.click(screen.getByRole("button", { name: /^email/ }));
+    await waitFor(() =>
+      expect(screen.getByRole("table", { name: "users rows" }).style.width).toBe("512px"),
+    );
   });
 
   it("sorts by a column in the database", async () => {
@@ -125,6 +221,19 @@ describe("TableView right-click menus", () => {
     await userEvent.click(await screen.findByRole("menuitem", { name: "Delete Row" }));
     const bar = await screen.findByRole("status");
     expect(bar.textContent).toContain("1 edited · 1 deleted");
+  });
+
+  it("sets a NULL cell to an empty string", async () => {
+    const calls = setup();
+    fireEvent.contextMenu((await screen.findAllByRole("button", { name: "NULL" }))[0] as Element);
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Set to Empty String" }));
+    const bar = await screen.findByRole("status");
+    await userEvent.click(within(bar).getByRole("button", { name: /Commit/ }));
+    await waitFor(() =>
+      expect(calls.find((call) => call.command === "dataCommit")?.args.changes).toMatchObject({
+        updates: [{ set: [{ column: "email", value: "" }] }],
+      }),
+    );
   });
 
   it("filters by the right-clicked value", async () => {
@@ -168,21 +277,70 @@ describe("TableView right-click menus", () => {
 });
 
 describe("TableView filters and panels", () => {
-  it("adds a filter, edits it as a chip, and clears it", async () => {
-    const calls = setup();
+  const addFilter = async () => {
     await userEvent.click(await screen.findByRole("button", { name: "Filter" }));
     await userEvent.selectOptions(screen.getByLabelText("Column"), "email");
     await userEvent.selectOptions(screen.getByLabelText("Condition"), "contains");
     await userEvent.type(screen.getByLabelText("Value"), "ada");
     await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+  };
+
+  it("adds a filter as a chip and reads it as SQL", async () => {
+    const calls = setup();
+    await addFilter();
     await waitFor(() =>
       expect(lastRequest(calls)).toMatchObject({
         filters: [{ column: "email", op: "contains", value: "ada" }],
       }),
     );
     expect(screen.getByText(/where/).textContent).toContain("email");
-    await userEvent.click(screen.getByRole("button", { name: "Remove the filter on email" }));
+  });
+
+  it("edits a filter from its chip", async () => {
+    const calls = setup();
+    await addFilter();
+    await userEvent.click(await screen.findByRole("button", { name: /^email.*ada$/ }));
+    await userEvent.selectOptions(screen.getByLabelText("Condition"), "startsWith");
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+    await waitFor(() =>
+      expect(lastRequest(calls)).toMatchObject({
+        filters: [{ column: "email", op: "startsWith", value: "ada" }],
+      }),
+    );
+  });
+
+  it("removes a filter from its chip", async () => {
+    const calls = setup();
+    await addFilter();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Remove the filter on email" }),
+    );
     await waitFor(() => expect(lastRequest(calls)).toMatchObject({ filters: [] }));
+  });
+
+  it("offers no next page past the last matching row", async () => {
+    useWorkspace.getState().setView("pg|public.users", {
+      ...DEFAULT_VIEW,
+      size: 50,
+      filters: [{ column: "email", op: "isNotNull", value: null }],
+    });
+    setup({ page: fullPage(1) });
+    expect(await screen.findByText(/1–50 of 50 matching rows/)).toBeDefined();
+    expect(screen.getByRole("button", { name: "Next page" })).toHaveProperty("disabled", true);
+  });
+
+  it("counts only the selected rows on the page shown", async () => {
+    const calls = mockCommands({
+      dataRows: (args) => fullPage((args.request as { offset: number }).offset + 1),
+    });
+    useWorkspace.getState().setView("pg|public.users", { ...DEFAULT_VIEW, size: 50 });
+    renderWithApp(<TableView info={infoFixture()} table={usersTable} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Select row 1" }));
+    expect(screen.getByText("1 selected")).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+    await waitFor(() => expect(lastRequest(calls)).toMatchObject({ offset: 50 }));
+    expect(await screen.findByRole("button", { name: "Select row 51" })).toBeDefined();
+    expect(screen.queryByText(/selected/)).toBeNull();
   });
 
   it("says when filters match nothing", async () => {
@@ -222,10 +380,26 @@ describe("TableView filters and panels", () => {
     expect(row.textContent).not.toContain("ada@example.com");
     await userEvent.click(within(row).getByRole("button", { name: "Previous row" }));
     expect(row.textContent).toContain("ada@example.com");
-    await userEvent.click(within(row).getByRole("button", { name: "Copy as JSON" }));
-    await userEvent.click(within(row).getByRole("button", { name: "Copy as insert" }));
     await userEvent.click(within(row).getByRole("button", { name: "Close inspector" }));
     expect(screen.queryByRole("complementary", { name: "Row inspector" })).toBeNull();
+  });
+
+  it("copies the inspected row as JSON and as an insert", async () => {
+    const calls = setup();
+    await userEvent.click(await screen.findByRole("button", { name: "Row inspector" }));
+    await userEvent.click(screen.getByRole("button", { name: "ada@example.com" }));
+    const row = screen.getByRole("complementary", { name: "Row inspector" });
+    await userEvent.click(within(row).getByRole("button", { name: "Copy as JSON" }));
+    await userEvent.click(within(row).getByRole("button", { name: "Copy as insert" }));
+    const copied = () =>
+      calls
+        .filter((call) => String(call.command).endsWith("writeText"))
+        .map((call) => String(call.args.text));
+    await waitFor(() => expect(copied()).toHaveLength(2));
+    expect(copied()[0]).toBe('{\n  "id": 1,\n  "email": "ada@example.com",\n  "team_id": 7\n}');
+    expect(copied()[1]).toBe(
+      'insert into users ("id", "email", "team_id") values (1, \'ada@example.com\', 7);',
+    );
   });
 
   it("follows a foreign key to the row it points at", async () => {

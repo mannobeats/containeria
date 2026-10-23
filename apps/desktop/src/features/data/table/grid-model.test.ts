@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { Column } from "@/lib/ipc/bindings";
 
 import { EMPTY_PENDING, withDeleteToggled, withEdit } from "../model";
-import { asInserts, asTsv, columnWidth, gridRows } from "./grid-model";
+import { asInserts, asTsv, columnKeys, columnWidth, gridRows } from "./grid-model";
 
 function column(name: string, overrides: Partial<Column> = {}): Column {
   return {
@@ -49,6 +49,18 @@ describe("gridRows", () => {
     const rows = gridRows([column("note")], [["x"], ["y"]], EMPTY_PENDING, 100);
     expect(rows.map((row) => row.id)).toEqual(["row-100", "row-101"]);
     expect(rows[0]?.key).toBeNull();
+  });
+});
+
+describe("columnKeys", () => {
+  it("tells apart columns that share a name, wherever they move", () => {
+    const named = (name: string) => ({ name }) as Column;
+    expect(columnKeys([named("id"), named("email"), named("id")])).toEqual([
+      "id#0",
+      "email#0",
+      "id#1",
+    ]);
+    expect(columnKeys([named("email"), named("id")])).toEqual(["email#0", "id#0"]);
   });
 });
 
