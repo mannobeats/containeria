@@ -69,9 +69,9 @@ export function QueryRail({ history, saved }: QueryRailProps) {
           >
             <button
               type="button"
-              disabled={!query.connectionId}
+              aria-disabled={!query.connectionId}
               onClick={open}
-              className="flex h-[30px] w-full items-center gap-2 rounded-sm px-2 text-left text-13 text-ink transition-colors duration-140 hover:bg-hover disabled:opacity-50 data-[state=open]:bg-hover"
+              className="flex h-[30px] w-full items-center gap-2 rounded-sm px-2 text-left text-13 text-ink transition-colors duration-140 hover:bg-hover aria-disabled:opacity-50 data-[state=open]:bg-hover"
             >
               <IconBookmark className="text-ink-3" aria-hidden />
               <span className="min-w-0 flex-1 truncate">{query.name}</span>
@@ -86,7 +86,7 @@ export function QueryRail({ history, saved }: QueryRailProps) {
         action="Delete query"
         onConfirm={() => {
           if (deleting) {
-            remove.mutate(deleting.id);
+            remove.mutate(deleting);
           }
           setDeleting(null);
         }}

@@ -1,10 +1,12 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import type { HistoryEntry } from "@/lib/ipc/bindings";
 import { infoFixture } from "@/test/data-fixtures";
 import { mockCommands, renderWithApp } from "@/test/harness";
+import { Toaster } from "@/ui/toaster";
 
 import { HistoryView } from "./history-view";
 import { useWorkspace } from "./workspace-store";
@@ -30,11 +32,19 @@ function setup() {
     ],
     dataSavedQueries: () => [{ id: "s1", name: "Big orders", connectionId: null, sql: "select 2" }],
   });
-  renderWithApp(<HistoryView info={infoFixture()} />);
-  return calls;
+  const { router } = renderWithApp(
+    <>
+      <HistoryView info={infoFixture()} />
+      <Toaster />
+    </>,
+  );
+  return { calls, router };
 }
 
-beforeEach(() => useWorkspace.setState({ tabs: {}, sql: {} }));
+beforeEach(() => {
+  useWorkspace.setState({ tabs: {}, sql: {} });
+  toast.dismiss();
+});
 
 describe("HistoryView", () => {
   it("lists this connection's queries with their outcome", async () => {
@@ -46,22 +56,49 @@ describe("HistoryView", () => {
     expect(screen.getByText("1 query on shop-db")).toBeDefined();
   });
 
-  it("reopens a query or a saved one in the editor", async () => {
-    setup();
+  it("reopens a query in a new editor tab", async () => {
+    const { router } = setup();
     const [open] = await screen.findAllByRole("button", { name: "Open in editor" });
     await userEvent.click(open as HTMLElement);
     expect(useWorkspace.getState().sql["pg|query:1"]).toBe("select * from orders");
-    await userEvent.click(screen.getByRole("button", { name: "Big orders" }));
-    expect(useWorkspace.getState().sql["pg|query:2"]).toBe("select 2");
-    const [copy] = screen.getAllByRole("button", { name: "Copy SQL" });
+    await waitFor(() => expect(router.state.location.href).toBe("/data/pg?tab=query%3A1"));
+  });
+
+  it("reopens a saved query in a new editor tab", async () => {
+    const { router } = setup();
+    await userEvent.click(await screen.findByRole("button", { name: "Big orders" }));
+    expect(useWorkspace.getState().sql["pg|query:1"]).toBe("select 2");
+    await waitFor(() => expect(router.state.location.href).toBe("/data/pg?tab=query%3A1"));
+  });
+
+  it("copies a query's SQL", async () => {
+    const { calls } = setup();
+    const [copy] = await screen.findAllByRole("button", { name: "Copy SQL" });
     await userEvent.click(copy as HTMLElement);
+    await waitFor(() =>
+      expect(calls.find((call) => String(call.command).endsWith("writeText"))?.args).toMatchObject({
+        text: "select * from orders",
+      }),
+    );
   });
 
   it("deletes a saved query", async () => {
-    const calls = setup();
+    const { calls } = setup();
     await userEvent.click(await screen.findByRole("button", { name: "Delete Big orders" }));
     await waitFor(() =>
       expect(calls).toContainEqual({ command: "dataDeleteQuery", args: { id: "s1" } }),
+    );
+  });
+
+  it("brings a deleted saved query back with Undo", async () => {
+    const { calls } = setup();
+    await userEvent.click(await screen.findByRole("button", { name: "Delete Big orders" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Undo" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        command: "dataSaveQuery",
+        args: { query: { id: "s1", name: "Big orders", connectionId: null, sql: "select 2" } },
+      }),
     );
   });
 });

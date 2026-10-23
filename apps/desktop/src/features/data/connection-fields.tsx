@@ -7,6 +7,7 @@ import { Button } from "@/ui/button";
 import { Field, Input } from "@/ui/field";
 import { Segmented } from "@/ui/segmented";
 import { Switch } from "@/ui/switch";
+import { Tip } from "@/ui/tooltip";
 
 import type { ConnectionForm } from "./connection-form";
 
@@ -36,7 +37,7 @@ type SecretFieldProps = {
 function SecretField({ label, value, changed, hint, onChange }: SecretFieldProps) {
   const id = useId();
   const [visible, setVisible] = useState(false);
-  const noun = label.toLowerCase();
+  const toggle = `${visible ? "Hide" : "Show"} ${label.toLowerCase()}`;
   return (
     <Field
       label={label}
@@ -52,13 +53,11 @@ function SecretField({ label, value, changed, hint, onChange }: SecretFieldProps
           placeholder={changed ? "Stored in Keychain" : "••••••••"}
           onChange={(event) => onChange(event.target.value)}
         />
-        <Button
-          iconOnly
-          aria-label={visible ? `Hide ${noun}` : `Show ${noun}`}
-          onClick={() => setVisible(!visible)}
-        >
-          {visible ? <IconEyeOff /> : <IconEye />}
-        </Button>
+        <Tip label={toggle}>
+          <Button iconOnly aria-label={toggle} onClick={() => setVisible(!visible)}>
+            {visible ? <IconEyeOff /> : <IconEye />}
+          </Button>
+        </Tip>
       </div>
     </Field>
   );

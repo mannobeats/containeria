@@ -1,5 +1,6 @@
 import {
   keepPreviousData,
+  type QueryClient,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -94,12 +95,19 @@ export function useRows(id: string, request: RowsRequest | null) {
   });
 }
 
+/** Drops what was read through a connection, so an edited or removed one never shows stale data. */
+function forgetConnection(client: QueryClient, id: string) {
+  for (const scope of ["session", "schema", "rows", "redis", "redis-value"]) {
+    client.removeQueries({ queryKey: ["data", scope, id] });
+  }
+}
+
 export function useSaveConnection() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: ConnectionInput) => commands.dataSaveConnection(input),
     onSuccess: (connection) => {
-      client.removeQueries({ queryKey: dataKeys.session(connection.id) });
+      forgetConnection(client, connection.id);
       return client.invalidateQueries({ queryKey: dataKeys.connections });
     },
     onError: (error) =>
@@ -111,7 +119,10 @@ export function useRemoveConnection() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => commands.dataRemoveConnection(id),
-    onSuccess: () => client.invalidateQueries({ queryKey: dataKeys.connections }),
+    onSuccess: (_, id) => {
+      forgetConnection(client, id);
+      return client.invalidateQueries({ queryKey: dataKeys.connections });
+    },
     onError: (error) =>
       toast.error("The connection wasn't removed", { description: errorMessage(error) }),
   });
@@ -163,8 +174,14 @@ export function useWrites(id: string) {
   const allow = useMutation({
     mutationFn: (minutes: number) => commands.dataAllowWrites(id, minutes),
     onSuccess: settle,
+    onError: (error) => toast.error("Writes weren't allowed", { description: errorMessage(error) }),
   });
-  const protect = useMutation({ mutationFn: () => commands.dataSafeMode(id), onSuccess: settle });
+  const protect = useMutation({
+    mutationFn: () => commands.dataSafeMode(id),
+    onSuccess: settle,
+    onError: (error) =>
+      toast.error("Safe mode didn't turn on", { description: errorMessage(error) }),
+  });
   return { allow, protect };
 }
 
@@ -207,9 +224,17 @@ export function useSaveQuery() {
 
 export function useDeleteQuery() {
   const client = useQueryClient();
+  const restore = useSaveQuery();
   return useMutation({
-    mutationFn: (queryId: string) => commands.dataDeleteQuery(queryId),
-    onSuccess: () => client.invalidateQueries({ queryKey: dataKeys.saved }),
+    mutationFn: (query: SavedQuery) => commands.dataDeleteQuery(query.id),
+    onSuccess: (_, query) => {
+      toast.success(`Deleted “${query.name}”`, {
+        action: { label: "Undo", onClick: () => restore.mutate(query) },
+      });
+      return client.invalidateQueries({ queryKey: dataKeys.saved });
+    },
+    onError: (error) =>
+      toast.error("The query wasn't deleted", { description: errorMessage(error) }),
   });
 }
 

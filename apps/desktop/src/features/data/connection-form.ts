@@ -91,7 +91,7 @@ export function formFromConnection(connection: Connection): ConnectionForm {
     port: connection.port === null ? "" : String(connection.port),
     user: connection.user ?? "",
     password: "",
-    passwordChanged: false,
+    passwordChanged: !connection.hasPassword,
     database: connection.database ?? "",
     file: connection.file ?? "",
     tls: connection.tls,
@@ -105,7 +105,7 @@ export function formFromConnection(connection: Connection): ConnectionForm {
           sshUser: connection.ssh.user,
           sshAuth: connection.ssh.auth,
           sshKeyFile: connection.ssh.keyFile ?? "",
-          sshSecretChanged: false,
+          sshSecretChanged: !connection.hasSshSecret,
         }
       : {}),
   };
@@ -147,11 +147,13 @@ export function toInput(form: ConnectionForm): ConnectionInput {
   };
 }
 
+const isPort = (text: string) => /^\d{1,5}$/.test(text.trim()) && Number(text) <= 65_535;
+
 function sshProblem(form: ConnectionForm): string | null {
   if (form.sshHost.trim() === "") {
     return "Enter the SSH host.";
   }
-  if (!/^\d{1,5}$/.test(form.sshPort.trim()) || Number(form.sshPort) > 65_535) {
+  if (!isPort(form.sshPort)) {
     return "The SSH port is a number up to 65535.";
   }
   if (form.sshUser.trim() === "") {
@@ -174,7 +176,7 @@ export function formProblem(form: ConnectionForm): string | null {
   if (form.host.trim() === "") {
     return "Enter the host.";
   }
-  if (form.port.trim() !== "" && !/^\d{1,5}$/.test(form.port.trim())) {
+  if (form.port.trim() !== "" && !isPort(form.port)) {
     return "The port is a number up to 65535.";
   }
   return form.ssh ? sshProblem(form) : null;

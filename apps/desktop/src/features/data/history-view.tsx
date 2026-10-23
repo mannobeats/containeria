@@ -100,7 +100,7 @@ export function HistoryView({ info }: { info: ServerInfo }) {
                 {item.name}
               </button>
               <span className="opacity-0 group-focus-within/saved:opacity-100 group-hover/saved:opacity-100">
-                <IconAction label={`Delete ${item.name}`} onClick={() => remove.mutate(item.id)}>
+                <IconAction label={`Delete ${item.name}`} onClick={() => remove.mutate(item)}>
                   <IconTrash />
                 </IconAction>
               </span>

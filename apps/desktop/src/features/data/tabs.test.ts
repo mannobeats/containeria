@@ -18,8 +18,11 @@ describe("tabs", () => {
     expect(tabFromKey("nonsense")).toBeUndefined();
   });
 
-  it("names table tabs after the table and numbers query tabs from the first free one", () => {
+  it("names table tabs after the table", () => {
     expect(tableTab("public.orders").title).toBe("orders");
+  });
+
+  it("numbers query tabs from the first free one", () => {
     expect(nextQueryTab([{ key: "query:1", kind: "query", title: "Query 1" }]).key).toBe("query:2");
     expect(nextQueryTab([]).title).toBe("Query 1");
   });

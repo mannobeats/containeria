@@ -6,6 +6,8 @@ type ConnectionSheetState = {
   open: boolean;
   /** The connection being edited; none for a new one. */
   connection: Connection | undefined;
+  /** Counts openings, so each one starts the form afresh from the connection it was given. */
+  opens: number;
   show: (connection?: Connection) => void;
   setOpen: (open: boolean) => void;
 };
@@ -14,6 +16,7 @@ type ConnectionSheetState = {
 export const useConnectionSheet = create<ConnectionSheetState>((set) => ({
   open: false,
   connection: undefined,
-  show: (connection) => set({ open: true, connection }),
+  opens: 0,
+  show: (connection) => set((state) => ({ open: true, connection, opens: state.opens + 1 })),
   setOpen: (open) => set({ open }),
 }));

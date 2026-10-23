@@ -208,6 +208,15 @@ const SCHEMES: Record<string, Engine> = {
   sqlite: "sqlite",
 };
 
+/** Percent-decodes, keeping a stray `%` as typed: `p%ss` is a real password. */
+function decode(text: string): string {
+  try {
+    return decodeURIComponent(text);
+  } catch {
+    return text;
+  }
+}
+
 /** Reads `postgres://user:pass@host:5432/db?sslmode=require` into the connection form. */
 export function parseConnectionUrl(text: string): Partial<ConnectionInput> | null {
   let url: URL;
@@ -225,13 +234,13 @@ export function parseConnectionUrl(text: string): Partial<ConnectionInput> | nul
     ["require", "verify-ca", "verify-full"].includes(params.get("sslmode") ?? "") ||
     params.get("ssl") === "true" ||
     url.protocol === "rediss:";
-  const database = decodeURIComponent(url.pathname.replace(/^\//, ""));
+  const database = decode(url.pathname.replace(/^\//, ""));
   return {
     engine,
     host: url.hostname,
     port: url.port ? Number(url.port) : null,
-    user: url.username ? decodeURIComponent(url.username) : null,
-    password: url.password ? decodeURIComponent(url.password) : null,
+    user: url.username ? decode(url.username) : null,
+    password: url.password ? decode(url.password) : null,
     database: database || null,
     tls,
     name: url.hostname.split(".")[0] ?? "",

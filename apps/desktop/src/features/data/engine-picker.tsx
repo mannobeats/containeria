@@ -32,7 +32,7 @@ export function EnginePicker({ onPick }: { onPick: (form: ConnectionForm) => voi
       <Field
         label="Paste a connection string"
         htmlFor={url}
-        hint="Containeria fills in the form and picks the engine."
+        hint="Paste it, or type it and press Return. Containeria fills in the form and picks the engine."
       >
         <Input
           id={url}
@@ -40,7 +40,12 @@ export function EnginePicker({ onPick }: { onPick: (form: ConnectionForm) => voi
           placeholder="postgres://user:password@host:5432/database?sslmode=require"
           autoComplete="off"
           spellCheck={false}
-          onChange={(event) => fromUrl(event.target.value)}
+          onPaste={(event) => fromUrl(event.clipboardData.getData("text/plain"))}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              fromUrl(event.currentTarget.value);
+            }
+          }}
         />
       </Field>
       <div>
