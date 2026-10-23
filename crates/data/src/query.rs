@@ -166,17 +166,25 @@ pub(crate) fn select_rows(
 ) -> Result<Statement> {
     let mut builder = Builder::new(dialect, table);
     let filters = builder.where_clause(&request.filters)?;
-    let order = match &request.sort {
-        Some(sort) => {
-            let mut column = dialect.quote(&builder.column(&sort.column)?.name);
-            // A bare name would sort by the `::text` copy in the select list, putting 10 before 9.
-            if dialect == Dialect::Postgres {
-                column = format!("{}.{column}", builder.target());
-            }
-            format!(" ORDER BY {}", dialect.order(&column, sort.descending))
-        }
-        None => String::new(),
+    let target = builder.target();
+    let qualified = |name: &str| {
+        let column = dialect.quote(name);
+        // A bare name would sort by the `::text` copy in the select list, putting 10 before 9.
+        if dialect == Dialect::Postgres { format!("{target}.{column}") } else { column }
     };
+    let mut terms = Vec::new();
+    if let Some(sort) = &request.sort {
+        terms.push(dialect.order(&qualified(&builder.column(&sort.column)?.name), sort.descending));
+    }
+    // Rows that tie, or a page with no order at all, may come back in a different order each time,
+    // so paging would repeat some and skip others; the primary key breaks every tie.
+    for key in table.primary_key() {
+        if request.sort.as_ref().is_none_or(|sort| sort.column != key.name) {
+            terms.push(dialect.order(&qualified(&key.name), false));
+        }
+    }
+    let order =
+        if terms.is_empty() { String::new() } else { format!(" ORDER BY {}", terms.join(", ")) };
     let limit = request.limit.clamp(1, MAX_PAGE);
     let sql = format!(
         "SELECT {} FROM {}{filters}{order} LIMIT {limit} OFFSET {}",
@@ -257,7 +265,8 @@ pub(crate) mod tests {
             statement.sql,
             "SELECT \"id\"::text AS \"id\", \"status\"::text AS \"status\", \"total\"::text AS \"total\" \
              FROM \"public\".\"orders\" WHERE \"total\" > CAST($1 AS numeric(10,2)) AND \"status\"::text ILIKE $2 \
-             ESCAPE '\\' ORDER BY \"public\".\"orders\".\"total\" DESC NULLS LAST LIMIT 100 OFFSET 200"
+             ESCAPE '\\' ORDER BY \"public\".\"orders\".\"total\" DESC NULLS LAST, \
+             \"public\".\"orders\".\"id\" ASC NULLS LAST LIMIT 100 OFFSET 200"
         );
         assert_eq!(statement.params, vec![Some("10".into()), Some("%pa\\%d%".into())]);
     }
@@ -284,8 +293,20 @@ pub(crate) mod tests {
         .unwrap();
         assert_eq!(
             statement.sql,
-            "SELECT `id`, `status`, `total` FROM `public`.`orders` WHERE `status` = ? LIMIT 100 OFFSET 200"
+            "SELECT `id`, `status`, `total` FROM `public`.`orders` WHERE `status` = ? \
+             ORDER BY `id` IS NULL, `id` ASC LIMIT 100 OFFSET 200"
         );
+    }
+
+    #[test]
+    fn breaks_sort_ties_with_every_primary_key_column() {
+        let mut items = orders();
+        items.columns[1].primary_key = true;
+        let sort = Some(Sort { column: "total".into(), descending: false });
+        let statement = select_rows(Dialect::Sqlite, &items, &request(Vec::new(), sort)).unwrap();
+        let order = statement.sql.split(" ORDER BY ").nth(1).unwrap();
+        assert!(order.starts_with("\"total\" ASC"), "{order}");
+        assert!(order.contains("\"id\" ASC") && order.contains("\"status\" ASC"), "{order}");
     }
 
     #[test]

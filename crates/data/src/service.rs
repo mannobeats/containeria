@@ -19,7 +19,7 @@ use crate::export::{ExportFormat, Writer};
 use crate::history::{HistoryEntry, HistoryStore, SavedQuery};
 use crate::import::{self, ImportOptions, ImportPreview, ImportRequest, ImportedRows, Plan};
 use crate::mongo;
-use crate::query::{MAX_PAGE, RowsRequest, Sort, Statement};
+use crate::query::{MAX_PAGE, RowsRequest, Statement};
 use crate::redis::{RedisKeyPage, RedisValue};
 use crate::result::{QueryResult, RowPage};
 use crate::schema::{Namespace, Table, TableKind, TableRef};
@@ -296,11 +296,12 @@ impl Data {
     pub async fn disconnect(&self, id: &str) {
         // Out of the map before closing: a pool waits for its running queries to close, and every
         // other call would wait on the lock meanwhile.
+        // Write permission goes first, so a session reopened while this one closes starts safe.
+        self.writable_until.lock().unwrap_or_else(PoisonError::into_inner).remove(id);
         let session = self.sessions.write().await.remove(id);
         if let Some(session) = session {
             session.close().await;
         }
-        self.writable_until.lock().unwrap_or_else(PoisonError::into_inner).remove(id);
     }
 
     async fn session(&self, id: &str) -> Result<Arc<Session>> {
@@ -488,13 +489,6 @@ impl Data {
         let file = std::io::BufWriter::new(std::fs::File::create(path)?);
         let mut writer = Writer::new(file, format, dialect, &table)?;
         let mut page = RowsRequest { limit: MAX_PAGE, offset: 0, ..request.clone() };
-        // Pages without an order may overlap or skip rows, so they're read in key order.
-        if page.sort.is_none() {
-            page.sort = table
-                .primary_key()
-                .first()
-                .map(|key| Sort { column: key.name.clone(), descending: false });
-        }
         loop {
             let rows = session.rows(&table, &page).await?;
             writer.rows(&rows)?;

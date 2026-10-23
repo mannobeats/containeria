@@ -403,7 +403,7 @@ fn one_statement(prepared: std::result::Result<(), sqlx::Error>) -> Result<()> {
     let syntax =
         mysql == Some(MYSQL_SYNTAX_ERROR) || error.code().as_deref() == Some(POSTGRES_SYNTAX_ERROR);
     Err(if syntax {
-        Error::Database(format!("{}. Safe mode runs one statement at a time.", error.message()))
+        Error::Database(format!("{}. In safe mode, run one statement at a time.", error.message()))
     } else {
         Error::Database(error.message().to_owned())
     })
