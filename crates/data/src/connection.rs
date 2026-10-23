@@ -199,20 +199,20 @@ impl ConnectionStore {
     /// # Errors
     /// Fails when the file can't be written.
     pub(crate) fn put(&self, connection: Connection) -> Result<()> {
-        let mut all = self.list()?;
-        match all.iter_mut().find(|saved| saved.id == connection.id) {
-            Some(saved) => *saved = connection,
-            None => all.push(connection),
-        }
-        crate::files::write_json(&self.path, &all)
+        crate::files::update_json(&self.path, |all: &mut Vec<Connection>| {
+            match all.iter_mut().find(|saved| saved.id == connection.id) {
+                Some(saved) => *saved = connection,
+                None => all.push(connection),
+            }
+        })
     }
 
     /// # Errors
     /// Fails when the file can't be written.
     pub(crate) fn remove(&self, id: &str) -> Result<()> {
-        let mut all = self.list()?;
-        all.retain(|connection| connection.id != id);
-        crate::files::write_json(&self.path, &all)
+        crate::files::update_json(&self.path, |all: &mut Vec<Connection>| {
+            all.retain(|connection| connection.id != id);
+        })
     }
 }
 
@@ -239,16 +239,20 @@ impl Keychain {
         Self::entry(id)?.set_password(password).map_err(|error| Error::Keychain(error.to_string()))
     }
 
-    /// The saved password, or `None` when there isn't one.
+    /// The saved password, or `None` when there isn't one. Read on a blocking thread, as macOS may
+    /// wait for the user to allow access.
     ///
     /// # Errors
     /// Fails when the Keychain can't be read.
-    pub(crate) fn read(id: &str) -> Result<Option<String>> {
-        match Self::entry(id)?.get_password() {
+    pub(crate) async fn read(id: &str) -> Result<Option<String>> {
+        let id = id.to_owned();
+        tokio::task::spawn_blocking(move || match Self::entry(&id)?.get_password() {
             Ok(password) => Ok(Some(password)),
             Err(keyring::Error::NoEntry) => Ok(None),
             Err(error) => Err(Error::Keychain(error.to_string())),
-        }
+        })
+        .await
+        .map_err(|error| Error::Keychain(error.to_string()))?
     }
 
     /// # Errors

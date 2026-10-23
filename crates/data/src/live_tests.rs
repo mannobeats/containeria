@@ -184,6 +184,7 @@ async fn refuses_writes_in_safe_mode(container: &str) {
     let error =
         session.run("DELETE FROM customers", true).await.unwrap_err().to_string().to_lowercase();
     assert!(error.contains("read-only") || error.contains("read only"), "{error}");
+    assert!(session.run("COMMIT; DELETE FROM customers", true).await.is_err());
     assert!(session.run("SELECT count(*) FROM customers", true).await.is_ok());
 }
 

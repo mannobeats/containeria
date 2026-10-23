@@ -52,8 +52,22 @@ pub enum RedisValue {
 }
 
 impl Redis {
+    /// Through an SSH tunnel the driver dials 127.0.0.1, which the server's certificate never
+    /// names, so only the name check is skipped there; the certificate chain is still verified.
+    fn address(target: &Target) -> ConnectionAddr {
+        let (host, port) = (target.host.clone(), target.port.unwrap_or(6379));
+        if target.tls {
+            let mut address =
+                ConnectionAddr::TcpTls { host, port, insecure: false, tls_params: None };
+            address.set_danger_accept_invalid_hostnames(target.ssh.is_some());
+            address
+        } else {
+            ConnectionAddr::Tcp(host, port)
+        }
+    }
+
     pub(crate) async fn connect(target: &Target) -> Result<Self> {
-        let address = ConnectionAddr::Tcp(target.host.clone(), target.port.unwrap_or(6379));
+        let address = Self::address(target);
         let mut settings = RedisConnectionInfo::default();
         if let Some(user) = &target.user {
             settings = settings.set_username(user);
@@ -174,5 +188,65 @@ impl Redis {
     pub(crate) async fn delete(&self, key: &str) -> Result<()> {
         let _: i64 = self.connection.clone().del(key).await?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::engine::Engine;
+
+    #[test]
+    fn dials_tls_targets_over_tls() {
+        let mut target = Target {
+            engine: Engine::Redis,
+            host: "cache.example.com".into(),
+            port: Some(6380),
+            user: None,
+            password: Some("secret".into()),
+            database: None,
+            file: None,
+            tls: true,
+            ssh: None,
+            ssh_secret: None,
+        };
+        assert!(matches!(
+            Redis::address(&target),
+            ConnectionAddr::TcpTls { port: 6380, insecure: false, .. }
+        ));
+        target.tls = false;
+        assert_eq!(Redis::address(&target), ConnectionAddr::Tcp("cache.example.com".into(), 6380));
+    }
+
+    #[test]
+    fn verifies_the_certificate_and_skips_only_the_name_through_an_ssh_tunnel() {
+        let mut target = Target {
+            engine: Engine::Redis,
+            host: "127.0.0.1".into(),
+            port: Some(41234),
+            user: None,
+            password: None,
+            database: None,
+            file: None,
+            tls: true,
+            ssh: Some(crate::tunnel::SshTunnel {
+                host: "bastion.example.com".into(),
+                port: 22,
+                user: "ada".into(),
+                auth: crate::tunnel::SshAuth::Agent,
+                key_file: None,
+            }),
+            ssh_secret: None,
+        };
+        let tunneled = Redis::address(&target);
+        assert!(matches!(
+            tunneled,
+            ConnectionAddr::TcpTls { insecure: false, tls_params: Some(_), .. }
+        ));
+        target.ssh = None;
+        assert!(matches!(
+            Redis::address(&target),
+            ConnectionAddr::TcpTls { insecure: false, tls_params: None, .. }
+        ));
     }
 }

@@ -32,7 +32,10 @@ impl DataState {
         self.lock().remove(&run_id);
         match outcome {
             Ok(result) => result,
-            Err(_) => Err(CommandError::new(ErrorKind::Cancelled, "The query was stopped.")),
+            Err(tauri::Error::JoinError(error)) if error.is_cancelled() => {
+                Err(CommandError::new(ErrorKind::Cancelled, "The query was stopped."))
+            }
+            Err(error) => Err(CommandError::new(ErrorKind::Internal, error.to_string())),
         }
     }
 
@@ -44,5 +47,21 @@ impl DataState {
 
     fn lock(&self) -> std::sync::MutexGuard<'_, HashMap<String, AbortHandle>> {
         self.running.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn reports_a_crashed_query_as_a_failure_not_a_stop() {
+        let folder = tempfile::tempdir().unwrap();
+        let state = DataState::new(folder.path());
+        let error = state
+            .cancellable::<(), _>("run".into(), async { panic!("the driver crashed") })
+            .await
+            .unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Internal);
     }
 }

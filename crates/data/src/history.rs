@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
-use crate::files::{read_json, write_json};
+use crate::files::{read_json, update_json};
 
 /// Keep this many statements in the history, newest first.
 const HISTORY_LIMIT: usize = 300;
@@ -56,10 +56,10 @@ impl HistoryStore {
     /// # Errors
     /// Fails when the file can't be written.
     pub(crate) fn record(&self, entry: HistoryEntry) -> Result<()> {
-        let mut entries = self.history()?;
-        entries.insert(0, entry);
-        entries.truncate(HISTORY_LIMIT);
-        write_json(&self.history, &entries)
+        update_json(&self.history, |entries: &mut Vec<HistoryEntry>| {
+            entries.insert(0, entry);
+            entries.truncate(HISTORY_LIMIT);
+        })
     }
 
     /// # Errors
@@ -73,21 +73,21 @@ impl HistoryStore {
     /// # Errors
     /// Fails when the file can't be written.
     pub(crate) fn save(&self, query: SavedQuery) -> Result<()> {
-        let mut saved = self.saved()?;
-        match saved.iter_mut().find(|existing| existing.id == query.id) {
-            Some(existing) => *existing = query,
-            None => saved.push(query),
-        }
-        saved.sort_by_key(|query| query.name.to_lowercase());
-        write_json(&self.saved, &saved)
+        update_json(&self.saved, |saved: &mut Vec<SavedQuery>| {
+            match saved.iter_mut().find(|existing| existing.id == query.id) {
+                Some(existing) => *existing = query,
+                None => saved.push(query),
+            }
+            saved.sort_by_key(|query| query.name.to_lowercase());
+        })
     }
 
     /// # Errors
     /// Fails when the file can't be written.
     pub(crate) fn unsave(&self, id: &str) -> Result<()> {
-        let mut saved = self.saved()?;
-        saved.retain(|query| query.id != id);
-        write_json(&self.saved, &saved)
+        update_json(&self.saved, |saved: &mut Vec<SavedQuery>| {
+            saved.retain(|query| query.id != id);
+        })
     }
 }
 
@@ -118,6 +118,23 @@ mod tests {
         let history = store.history().unwrap();
         assert_eq!(history.len(), HISTORY_LIMIT);
         assert_eq!(history[0].id, (HISTORY_LIMIT + 4).to_string());
+    }
+
+    #[test]
+    fn keeps_every_entry_recorded_at_the_same_time() {
+        let folder = tempfile::tempdir().unwrap();
+        let store = HistoryStore::new(folder.path());
+        std::thread::scope(|scope| {
+            for thread in 0..8 {
+                let store = &store;
+                scope.spawn(move || {
+                    for index in 0..10 {
+                        store.record(entry(&format!("{thread}-{index}"))).unwrap();
+                    }
+                });
+            }
+        });
+        assert_eq!(store.history().unwrap().len(), 80);
     }
 
     #[test]

@@ -6,10 +6,13 @@ mod introspect;
 use std::time::{Duration, Instant};
 
 use futures::TryStreamExt;
-use sqlx::mysql::{MySqlConnectOptions, MySqlPoolOptions, MySqlSslMode};
+use sqlx::mysql::{MySqlConnectOptions, MySqlDatabaseError, MySqlPoolOptions, MySqlSslMode};
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions, PgSslMode};
-use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
-use sqlx::{Acquire, AssertSqlSafe, Either, MySqlPool, PgPool, Row, SqlitePool};
+use sqlx::sqlite::{SqliteConnectOptions, SqliteConnection, SqlitePoolOptions};
+use sqlx::{
+    Acquire, AssertSqlSafe, Connection, Either, Executor, MySqlPool, PgPool, Row, SqlSafeStr,
+    SqlStr, SqlitePool,
+};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
@@ -290,22 +293,34 @@ impl SqlPool {
         })
     }
 
-    /// Runs SQL typed in the editor. Read-only mode is enforced by the database itself: a read-only
-    /// transaction on Postgres and MySQL, `query_only` on SQLite.
+    /// Runs SQL typed in the editor. In read-only mode the database refuses writes: Postgres and
+    /// MySQL run it in a read-only transaction, once they have parsed it as a single statement, so
+    /// it can't end that transaction with a `COMMIT` before writing; SQLite runs it on a connection
+    /// opened read-only. A MySQL stored procedure that commits part-way can still write.
     pub(crate) async fn run(&self, sql: &str, read_only: bool) -> Result<QueryResult> {
         let started = Instant::now();
-        let sql = AssertSqlSafe(sql.to_owned());
         let mut result = match self {
             Self::Postgres(pool) => {
                 let mut transaction =
                     pool.begin_with(if read_only { "BEGIN READ ONLY" } else { "BEGIN" }).await?;
-                let outcome = collect(
-                    sqlx::raw_sql(sql).fetch_many(&mut *transaction),
-                    |row: &sqlx::postgres::PgRow| {
-                        (0..row.len()).map(|index| decode::postgres(row, index)).collect()
-                    },
-                )
-                .await;
+                let parsed = if read_only {
+                    let prepared = (&mut *transaction).prepare(editor_sql(sql)).await;
+                    one_statement(prepared.map(drop))
+                } else {
+                    Ok(())
+                };
+                let outcome = match parsed {
+                    Ok(()) => {
+                        collect(
+                            sqlx::raw_sql(editor_sql(sql)).fetch_many(&mut *transaction),
+                            |row: &sqlx::postgres::PgRow| {
+                                (0..row.len()).map(|index| decode::postgres(row, index)).collect()
+                            },
+                        )
+                        .await
+                    }
+                    Err(error) => Err(error),
+                };
                 finish(transaction, outcome, read_only).await?
             }
             Self::MySql(pool) => {
@@ -316,31 +331,35 @@ impl SqlPool {
                         "START TRANSACTION"
                     })
                     .await?;
-                let outcome = collect(
-                    sqlx::raw_sql(sql).fetch_many(&mut *transaction),
-                    |row: &sqlx::mysql::MySqlRow| {
-                        (0..row.len()).map(|index| decode::mysql(row, index)).collect()
-                    },
-                )
-                .await;
+                let parsed = if read_only {
+                    let prepared = (&mut *transaction).prepare(editor_sql(sql)).await;
+                    one_statement(prepared.map(drop))
+                } else {
+                    Ok(())
+                };
+                let outcome = match parsed {
+                    Ok(()) => {
+                        collect(
+                            sqlx::raw_sql(editor_sql(sql)).fetch_many(&mut *transaction),
+                            |row: &sqlx::mysql::MySqlRow| {
+                                (0..row.len()).map(|index| decode::mysql(row, index)).collect()
+                            },
+                        )
+                        .await
+                    }
+                    Err(error) => Err(error),
+                };
                 finish(transaction, outcome, read_only).await?
+            }
+            Self::Sqlite(pool) if read_only => {
+                // Not `PRAGMA query_only`, which the SQL itself could turn off.
+                let options = pool.connect_options().as_ref().clone().read_only(true);
+                sqlite_run(&mut SqliteConnection::connect_with(&options).await?, sql).await?
             }
             Self::Sqlite(pool) => {
                 let mut connection = pool.acquire().await?;
-                sqlx::query(if read_only {
-                    "PRAGMA query_only = ON"
-                } else {
-                    "PRAGMA query_only = OFF"
-                })
-                .execute(&mut *connection)
-                .await?;
-                let outcome = collect(
-                    sqlx::raw_sql(sql).fetch_many(&mut *connection),
-                    |row: &sqlx::sqlite::SqliteRow| {
-                        (0..row.len()).map(|index| decode::sqlite(row, index)).collect()
-                    },
-                )
-                .await;
+                let outcome = sqlite_run(&mut connection, sql).await;
+                // The pool's connections serve the grid's edits too.
                 sqlx::query("PRAGMA query_only = OFF").execute(&mut *connection).await?;
                 outcome?
             }
@@ -348,6 +367,46 @@ impl SqlPool {
         result.elapsed_ms = elapsed_ms(started);
         Ok(result)
     }
+}
+
+async fn sqlite_run(connection: &mut SqliteConnection, sql: &str) -> Result<QueryResult> {
+    collect(
+        sqlx::raw_sql(editor_sql(sql)).fetch_many(connection),
+        |row: &sqlx::sqlite::SqliteRow| {
+            (0..row.len()).map(|index| decode::sqlite(row, index)).collect()
+        },
+    )
+    .await
+}
+
+/// MySQL's number for a statement it parsed but can't prepare, such as `USE`.
+const MYSQL_UNSUPPORTED_PREPARE: u16 = 1295;
+const MYSQL_SYNTAX_ERROR: u16 = 1064;
+const POSTGRES_SYNTAX_ERROR: &str = "42601";
+
+/// Editor SQL, which the user typed to run as it is.
+fn editor_sql(sql: &str) -> SqlStr {
+    AssertSqlSafe(sql.to_owned()).into_sql_str()
+}
+
+/// Whether the database could prepare the SQL, which it refuses for more than one statement.
+fn one_statement(prepared: std::result::Result<(), sqlx::Error>) -> Result<()> {
+    let error = match prepared {
+        Ok(()) => return Ok(()),
+        Err(sqlx::Error::Database(error)) => error,
+        Err(other) => return Err(other.into()),
+    };
+    let mysql = error.try_downcast_ref::<MySqlDatabaseError>().map(MySqlDatabaseError::number);
+    if mysql == Some(MYSQL_UNSUPPORTED_PREPARE) {
+        return Ok(());
+    }
+    let syntax =
+        mysql == Some(MYSQL_SYNTAX_ERROR) || error.code().as_deref() == Some(POSTGRES_SYNTAX_ERROR);
+    Err(if syntax {
+        Error::Database(format!("{}. In safe mode, run one statement at a time.", error.message()))
+    } else {
+        Error::Database(error.message().to_owned())
+    })
 }
 
 /// The database's refusal, with the rows of the file it was about.
@@ -571,6 +630,21 @@ mod tests {
         let result = pool.run("UPDATE notes SET body = 'b' WHERE id = 1", false).await.unwrap();
         assert_eq!(result.affected, Some(1));
         assert_eq!(result.columns, Vec::new());
+    }
+
+    #[tokio::test]
+    async fn safe_mode_cannot_be_switched_off_from_the_editor() {
+        let (_folder, pool) = notes().await;
+        assert!(pool.run("PRAGMA query_only = OFF; DELETE FROM notes", true).await.is_err());
+        let count = pool.run("SELECT count(*) FROM notes", false).await.unwrap();
+        assert_eq!(count.rows[0][0], Value::Number(3.0));
+    }
+
+    #[tokio::test]
+    async fn safe_mode_runs_a_statement_with_a_semicolon_in_a_string() {
+        let (_folder, pool) = notes().await;
+        let result = pool.run("SELECT ';' AS semicolon", true).await.unwrap();
+        assert_eq!(result.rows[0][0], Value::Text(";".into()));
     }
 
     #[tokio::test]

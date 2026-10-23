@@ -189,12 +189,12 @@ impl Data {
         let saved = input.id.as_deref().filter(|id| !id.is_empty());
         let password = match (&input.password, saved) {
             (Some(password), _) => Some(password.clone()),
-            (None, Some(id)) => Keychain::read(id)?,
+            (None, Some(id)) => Keychain::read(id).await?,
             (None, None) => None,
         };
         let ssh_secret = match (&input.ssh_secret, saved) {
             (Some(secret), _) => Some(secret.clone()),
-            (None, Some(id)) if input.ssh.is_some() => Keychain::read(&Keychain::ssh(id))?,
+            (None, Some(id)) if input.ssh.is_some() => Keychain::read(&Keychain::ssh(id)).await?,
             _ => None,
         };
         let connection = input.into_connection(String::new(), false, false);
@@ -236,9 +236,12 @@ impl Data {
             });
         }
         let connection = self.connections.get(id)?;
-        let password = if connection.has_password { Keychain::read(id)? } else { None };
-        let ssh_secret =
-            if connection.has_ssh_secret { Keychain::read(&Keychain::ssh(id))? } else { None };
+        let password = if connection.has_password { Keychain::read(id).await? } else { None };
+        let ssh_secret = if connection.has_ssh_secret {
+            Keychain::read(&Keychain::ssh(id)).await?
+        } else {
+            None
+        };
         Ok(Target::from_connection(&connection, password, ssh_secret))
     }
 
@@ -291,10 +294,14 @@ impl Data {
     }
 
     pub async fn disconnect(&self, id: &str) {
-        if let Some(session) = self.sessions.write().await.remove(id) {
+        // Out of the map before closing: a pool waits for its running queries to close, and every
+        // other call would wait on the lock meanwhile.
+        // Write permission goes first, so a session reopened while this one closes starts safe.
+        self.writable_until.lock().unwrap_or_else(PoisonError::into_inner).remove(id);
+        let session = self.sessions.write().await.remove(id);
+        if let Some(session) = session {
             session.close().await;
         }
-        self.writable_until.lock().unwrap_or_else(PoisonError::into_inner).remove(id);
     }
 
     async fn session(&self, id: &str) -> Result<Arc<Session>> {
@@ -405,7 +412,10 @@ impl Data {
                 .map(|result| u32::try_from(result.rows.len()).unwrap_or(u32::MAX)),
             error: outcome.as_ref().err().map(ToString::to_string),
         };
-        self.history.record(entry)?;
+        // The query already ran: failing it now could lead someone to run a write twice.
+        if let Err(error) = self.history.record(entry) {
+            tracing::warn!(%error, "a query ran but couldn't be added to the history");
+        }
         outcome
     }
 
@@ -606,5 +616,38 @@ impl Data {
         let session = self.session(id).await?;
         self.guard_writes(id, &session)?;
         session.redis()?.delete(key).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn returns_a_query_that_ran_even_when_the_history_cant_be_written() {
+        let folder = tempfile::tempdir().unwrap();
+        let file = folder.path().join("notes.db");
+        std::fs::write(&file, b"").unwrap();
+        let data = Data::new(folder.path());
+        let connection = data
+            .save(ConnectionInput {
+                id: None,
+                name: "notes".into(),
+                engine: Engine::Sqlite,
+                host: String::new(),
+                port: None,
+                user: None,
+                database: None,
+                file: Some(file.to_string_lossy().into_owned()),
+                tls: false,
+                environment: Environment::Local,
+                password: None,
+                ssh: None,
+                ssh_secret: None,
+            })
+            .unwrap();
+        data.connect(&connection.id, None).await.unwrap();
+        std::fs::create_dir(folder.path().join("history.json")).unwrap();
+        assert!(data.run(&connection.id, "SELECT 1").await.is_ok());
     }
 }
