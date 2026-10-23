@@ -1,0 +1,31 @@
+[package]
+name = "containeria-fuzz"
+version = "0.0.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+# Its own workspace: libFuzzer needs a nightly compiler, the app doesn't.
+[workspace]
+
+[dependencies]
+containeria-net = { path = "../crates/net", features = ["fuzzing"] }
+hickory-proto = "0.26.3"
+libfuzzer-sys = "0.4.13"
+
+[[bin]]
+name = "dns_answer"
+path = "fuzz_targets/dns_answer.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "normalize_host"
+path = "fuzz_targets/normalize_host.rs"
+test = false
+doc = false
+bench = false
