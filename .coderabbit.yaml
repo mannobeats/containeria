@@ -1,0 +1,108 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit reviews every pull request against the project's own rules: CLAUDE.md and the docs it
+# points to. `pnpm check` stays the gate; this is a second reader, not a replacement.
+language: en-US
+tone_instructions: >-
+  Direct and specific. Lead with the bug and the input that triggers it. Skip praise, style nits
+  Biome or rustfmt already fix, and anything the quality gate already enforces.
+
+reviews:
+  profile: assertive
+  request_changes_workflow: true
+  high_level_summary: true
+  review_status: true
+  commit_status: true
+  collapse_walkthrough: true
+  sequence_diagrams: true
+  poem: false
+  in_progress_fortune: false
+  suggested_reviewers: false
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: true
+    base_branches: ["main", "review/.*"]
+  path_filters:
+    - "!apps/desktop/src/lib/ipc/bindings.ts"
+    - "!design/**"
+    - "!**/*.lock"
+    - "!pnpm-lock.yaml"
+    - "!apps/desktop/src-tauri/gen/**"
+    - "!apps/desktop/src-tauri/icons/**"
+    - "!apps/desktop/src-tauri/resources/tools/**"
+    - "!.agents/**"
+    - "!.claude/**"
+  path_instructions:
+    - path: "**/*.rs"
+      instructions: >-
+        Follow docs/rust-conventions.md. Look for panics reachable from user input or engine
+        output (unwrap, expect, indexing, slicing on untrusted lengths), blocking calls on the async
+        runtime, locks held across .await, errors swallowed without reason, and processes or
+        sockets left behind. Never suggest unsafe code, an #[allow], or loosening a Clippy lint.
+    - path: "crates/net/**"
+      instructions: >-
+        Reachable by any local process: the DNS server, the reverse proxy and the local certificate
+        authority. Check input validation, private key handling and file permissions, and anything
+        that writes outside ~/.containeria/net without the user's approval.
+    - path: "crates/data/**"
+      instructions: >-
+        The database browser. Passwords live in the macOS Keychain and must never be logged,
+        serialised to the UI or written to disk. Check SQL built from user input and SSH tunnels
+        that outlive their connection.
+    - path: "apps/desktop/src-tauri/src/commands/**"
+      instructions: >-
+        Tauri commands are the boundary between the web view and the Mac. Check that every argument
+        from the UI is validated before it reaches a shell, a path or the Docker API, and that
+        errors reach the UI as CommandError with a message a user can act on.
+    - path: "apps/desktop/src/**/*.{ts,tsx}"
+      instructions: >-
+        Follow docs/frontend-conventions.md and DESIGN.md. The UI must feel like a native Mac app:
+        arrow cursor, no hover dimming, Title Case menu items, Finder-style selection. It talks to
+        Rust only through the generated bindings, never invoke(). Times go through lib/clock.ts.
+        Flag effects that should be derived state, missing cleanup, and query keys that drift.
+    - path: "**/*.test.{ts,tsx}"
+      instructions: >-
+        Follow docs/testing.md: tests go through roles and text, assert on recorded IPC calls, and
+        name one behaviour each. Flag tests that can pass without exercising what they name.
+    - path: ".github/workflows/**"
+      instructions: >-
+        Actions stay pinned to a full commit SHA with the version in a comment; permissions stay
+        read-only at the top level and are widened per job.
+    - path: "**/*.md"
+      instructions: >-
+        Check that the docs match the code they describe, especially docs/features.md statuses.
+  pre_merge_checks:
+    docstrings:
+      mode: "off"
+    title:
+      mode: warning
+      requirements: >-
+        Imperative sentence case describing the change for a user, no Conventional Commits prefix,
+        under 72 characters. Example: "Start the engine with the app".
+    description:
+      mode: warning
+  finishing_touches:
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: true
+  tools:
+    languagetool:
+      enabled: false
+
+chat:
+  auto_reply: true
+  art: false
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - CLAUDE.md
+      - DESIGN.md
+      - docs/*.md
+      - docs/adr/*.md
+  learnings:
+    scope: local
+  web_search:
+    enabled: true
