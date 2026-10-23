@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -129,6 +129,15 @@ describe("TableView", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
+  it("takes Tab into the first cell, then moves with the arrow keys", async () => {
+    setup();
+    const first = (await screen.findAllByRole("button", { name: "1" }))[0];
+    expect(first?.tabIndex).toBe(0);
+    act(() => first?.focus());
+    await userEvent.keyboard("{ArrowRight}");
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "ada@example.com" }));
+  });
+
   it("moves between cells with the arrow keys", async () => {
     setup();
     await userEvent.click(await screen.findByRole("button", { name: "ada@example.com" }));
@@ -209,6 +218,13 @@ describe("TableView right-click menus", () => {
     await userEvent.click(await screen.findByRole("menuitem", { name: "Delete Row" }));
     const bar = await screen.findByRole("status");
     expect(bar.textContent).toContain("1 edited · 1 deleted");
+  });
+
+  it("sets a NULL cell to an empty string", async () => {
+    setup();
+    fireEvent.contextMenu((await screen.findAllByRole("button", { name: "NULL" }))[0] as Element);
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Set to Empty String" }));
+    expect((await screen.findByRole("status")).textContent).toContain("1 edited");
   });
 
   it("filters by the right-clicked value", async () => {

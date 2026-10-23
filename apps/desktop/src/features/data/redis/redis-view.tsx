@@ -117,7 +117,7 @@ export function RedisView({ info }: { info: ServerInfo }) {
               entries={[
                 { label: "Open", onSelect: () => setSelected(key.key) },
                 { kind: "separator" },
-                { label: "Copy key", onSelect: () => copyText("Key", key.key) },
+                { label: "Copy Key", onSelect: () => copyText("Key", key.key) },
                 { kind: "separator" },
                 {
                   label: "Delete…",

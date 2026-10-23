@@ -14,6 +14,24 @@ export type RowActions = {
   onDelete: ((row: GridRow) => void) | undefined;
 };
 
+/** Values a cell can be set to without typing. */
+function setters(
+  row: GridRow,
+  column: Column,
+  value: Value,
+  onEdit: (row: GridRow, column: Column, text: string | null) => void,
+): MenuEntry[] {
+  return [
+    ...(column.nullable && value !== null
+      ? [{ label: "Set to NULL", onSelect: () => onEdit(row, column, null) }]
+      : []),
+    // The editor reads an emptied NULL cell as untouched, so this is how to store "".
+    ...(column.kind === "text" && value !== ""
+      ? [{ label: "Set to Empty String", onSelect: () => onEdit(row, column, "") }]
+      : []),
+  ];
+}
+
 /** The menu for a row, and for the cell in `column` when the click landed on one. */
 export function cellMenu(
   columns: Column[],
@@ -25,9 +43,7 @@ export function cellMenu(
   const value = column === undefined ? null : (row.values[column] ?? null);
   const actions: MenuEntry[] = target
     ? [
-        ...(onEdit && target.nullable && value !== null && !row.deleted
-          ? [{ label: "Set to NULL", onSelect: () => onEdit(row, target, null) }]
-          : []),
+        ...(onEdit && !row.deleted ? setters(row, target, value, onEdit) : []),
         ...(onFilter
           ? [{ label: "Filter by This Value", onSelect: () => onFilter(target, value) }]
           : []),

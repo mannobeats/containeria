@@ -144,6 +144,7 @@ export function DataGrid({
                 columns={columns}
                 selected={selected.has(row.id)}
                 activeColumn={active?.row === index ? active.column : null}
+                entry={active === null && index === shown.first}
                 editing={editing && active?.row === index}
                 onToggle={() => onToggleRow(row)}
                 onSelect={(column, edit) => {
