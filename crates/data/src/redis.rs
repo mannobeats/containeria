@@ -52,10 +52,14 @@ pub enum RedisValue {
 }
 
 impl Redis {
+    /// Through an SSH tunnel the driver dials 127.0.0.1, which the server's certificate never
+    /// names; SSH has already checked the host and encrypts the hop, so the name check is skipped
+    /// there only.
     fn address(target: &Target) -> ConnectionAddr {
         let (host, port) = (target.host.clone(), target.port.unwrap_or(6379));
         if target.tls {
-            ConnectionAddr::TcpTls { host, port, insecure: false, tls_params: None }
+            let insecure = target.ssh.is_some();
+            ConnectionAddr::TcpTls { host, port, insecure, tls_params: None }
         } else {
             ConnectionAddr::Tcp(host, port)
         }
@@ -211,5 +215,30 @@ mod tests {
         ));
         target.tls = false;
         assert_eq!(Redis::address(&target), ConnectionAddr::Tcp("cache.example.com".into(), 6380));
+    }
+
+    #[test]
+    fn checks_the_certificate_name_except_through_an_ssh_tunnel() {
+        let mut target = Target {
+            engine: Engine::Redis,
+            host: "127.0.0.1".into(),
+            port: Some(41234),
+            user: None,
+            password: None,
+            database: None,
+            file: None,
+            tls: true,
+            ssh: Some(crate::tunnel::SshTunnel {
+                host: "bastion.example.com".into(),
+                port: 22,
+                user: "ada".into(),
+                auth: crate::tunnel::SshAuth::Agent,
+                key_file: None,
+            }),
+            ssh_secret: None,
+        };
+        assert!(matches!(Redis::address(&target), ConnectionAddr::TcpTls { insecure: true, .. }));
+        target.ssh = None;
+        assert!(matches!(Redis::address(&target), ConnectionAddr::TcpTls { insecure: false, .. }));
     }
 }
