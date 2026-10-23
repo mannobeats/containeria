@@ -85,8 +85,14 @@ fn pick(mut containers: Vec<ContainerSummary>, name: &str) -> Result<ContainerSu
     let mut by_id = containers.into_iter().filter(|container| container.id.starts_with(name));
     match (by_id.next(), by_id.next()) {
         (Some(container), None) => Ok(container),
-        (Some(_), Some(_)) => Err(format!("{name} starts more than one container ID").into()),
-        (None, _) => Err(format!("no container named {name}").into()),
+        (Some(_), Some(_)) => Err(format!(
+            "{name} starts more than one container ID; use more of the ID, or the container's name"
+        )
+        .into()),
+        (None, _) => Err(format!(
+            "no container is named {name} or has an ID starting with it; `cx ps` lists them"
+        )
+        .into()),
     }
 }
 
@@ -211,11 +217,25 @@ mod tests {
     #[test]
     fn a_name_wins_over_another_containers_id_prefix() {
         let newest_first = vec![container("db41aa", "web"), container("77c0ff", "db")];
-        assert_eq!(pick(newest_first.clone(), "db").unwrap().name, "db");
-        assert_eq!(pick(newest_first.clone(), "77c").unwrap().name, "db");
+        assert_eq!(pick(newest_first, "db").unwrap().name, "db");
+    }
+
+    #[test]
+    fn finds_a_container_by_a_unique_id_prefix() {
+        let containers = vec![container("db41aa", "web"), container("77c0ff", "db")];
+        assert_eq!(pick(containers, "77c").unwrap().name, "db");
+    }
+
+    #[test]
+    fn refuses_an_id_prefix_two_containers_share() {
         let shared = vec![container("ab12", "web"), container("ab34", "api")];
-        assert!(pick(shared, "ab").is_err());
-        assert!(pick(newest_first, "zz").is_err());
+        assert!(pick(shared, "ab").unwrap_err().to_string().contains("more than one"));
+    }
+
+    #[test]
+    fn says_how_to_list_containers_when_none_matches() {
+        let containers = vec![container("db41aa", "web")];
+        assert!(pick(containers, "zz").unwrap_err().to_string().contains("cx ps"));
     }
 
     #[test]

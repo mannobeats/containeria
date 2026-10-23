@@ -5,7 +5,7 @@ use futures::{AsyncBufReadExt, Stream, StreamExt, TryStreamExt, stream};
 use k8s_openapi::api::apps::v1::Deployment;
 use k8s_openapi::api::core::v1::{Pod, Service};
 use kube::Api;
-use kube::api::LogParams;
+use kube::api::{LogParams, Portforwarder};
 use kube::runtime::{WatchStreamExt, watcher};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::task::JoinSet;
@@ -15,12 +15,21 @@ use crate::{Error, Kube, Result};
 /// How long to wait after a failed accept, which repeats at once while file descriptors run out.
 const ACCEPT_RETRY: Duration = Duration::from_millis(50);
 
+/// Stops the forwarder's WebSocket task, which dropping a `Portforwarder` leaves running.
+struct Forwarder(Portforwarder);
+
+impl Drop for Forwarder {
+    fn drop(&mut self) {
+        self.0.abort();
+    }
+}
+
 async fn tunnel(api: Api<Pod>, pod: String, pod_port: u16, mut connection: TcpStream) {
-    let Ok(mut forwarder) = api.portforward(&pod, &[pod_port]).await else { return };
-    if let Some(mut upstream) = forwarder.take_stream(pod_port) {
+    let Ok(forwarder) = api.portforward(&pod, &[pod_port]).await else { return };
+    let mut forwarder = Forwarder(forwarder);
+    if let Some(mut upstream) = forwarder.0.take_stream(pod_port) {
         let _ = tokio::io::copy_bidirectional(&mut connection, &mut upstream).await;
     }
-    let _ = forwarder.join().await;
 }
 
 impl Kube {
