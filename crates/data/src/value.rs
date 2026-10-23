@@ -120,8 +120,16 @@ impl ValueKind {
     /// Classifies a type name from any supported engine.
     #[must_use]
     pub fn of(type_name: &str) -> Self {
-        let name = type_name.to_ascii_lowercase();
-        let base = name.split(['(', ' ']).next().unwrap_or(&name);
+        let lowered = type_name.to_ascii_lowercase();
+        let mut name = lowered.as_str();
+        while let Some(inner) = ["nullable(", "lowcardinality("]
+            .iter()
+            .find_map(|wrapper| name.strip_prefix(wrapper))
+            .and_then(|inner| inner.strip_suffix(')'))
+        {
+            name = inner;
+        }
+        let base = name.split(['(', ' ']).next().unwrap_or(name);
         if name.starts_with("tinyint(1)") || matches!(base, "bool" | "boolean") {
             return Self::Bool;
         }
@@ -163,12 +171,11 @@ impl ValueKind {
             "oid",
             "number",
         ];
-        let lower = base.trim_start_matches("nullable(").trim_start_matches("lowcardinality(");
-        if numeric.contains(&lower)
-            || lower.starts_with("uint")
-            || lower.starts_with("int")
-            || lower.starts_with("float")
-            || lower.starts_with("decimal")
+        if numeric.contains(&base)
+            || base.starts_with("uint")
+            || base.starts_with("int")
+            || base.starts_with("float")
+            || base.starts_with("decimal")
         {
             return Self::Number;
         }
@@ -222,6 +229,15 @@ mod tests {
         assert_eq!(ValueKind::of("bytea"), ValueKind::Binary);
         assert_eq!(ValueKind::of("LowCardinality(String)"), ValueKind::Text);
         assert_eq!(ValueKind::of("point"), ValueKind::Other);
+    }
+
+    #[test]
+    fn classifies_clickhouse_types_inside_nullable_and_low_cardinality() {
+        assert_eq!(ValueKind::of("Nullable(UInt64)"), ValueKind::Number);
+        assert_eq!(ValueKind::of("Nullable(Decimal(10, 2))"), ValueKind::Number);
+        assert_eq!(ValueKind::of("Nullable(Bool)"), ValueKind::Bool);
+        assert_eq!(ValueKind::of("Nullable(Date)"), ValueKind::Time);
+        assert_eq!(ValueKind::of("LowCardinality(Nullable(String))"), ValueKind::Text);
     }
 
     #[test]

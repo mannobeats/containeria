@@ -168,8 +168,12 @@ pub(crate) fn select_rows(
     let filters = builder.where_clause(&request.filters)?;
     let order = match &request.sort {
         Some(sort) => {
-            let column = builder.column(&sort.column)?;
-            format!(" ORDER BY {}", dialect.order(&dialect.quote(&column.name), sort.descending))
+            let mut column = dialect.quote(&builder.column(&sort.column)?.name);
+            // A bare name would sort by the `::text` copy in the select list, putting 10 before 9.
+            if dialect == Dialect::Postgres {
+                column = format!("{}.{column}", builder.target());
+            }
+            format!(" ORDER BY {}", dialect.order(&column, sort.descending))
         }
         None => String::new(),
     };
@@ -253,9 +257,21 @@ pub(crate) mod tests {
             statement.sql,
             "SELECT \"id\"::text AS \"id\", \"status\"::text AS \"status\", \"total\"::text AS \"total\" \
              FROM \"public\".\"orders\" WHERE \"total\" > CAST($1 AS numeric(10,2)) AND \"status\"::text ILIKE $2 \
-             ESCAPE '\\' ORDER BY \"total\" DESC NULLS LAST LIMIT 100 OFFSET 200"
+             ESCAPE '\\' ORDER BY \"public\".\"orders\".\"total\" DESC NULLS LAST LIMIT 100 OFFSET 200"
         );
         assert_eq!(statement.params, vec![Some("10".into()), Some("%pa\\%d%".into())]);
+    }
+
+    #[test]
+    fn sorts_postgres_by_the_table_column_not_its_text_copy() {
+        let sort = Some(Sort { column: "total".into(), descending: false });
+        let statement =
+            select_rows(Dialect::Postgres, &orders(), &request(Vec::new(), sort)).unwrap();
+        assert!(
+            statement.sql.contains(" ORDER BY \"public\".\"orders\".\"total\" ASC"),
+            "{}",
+            statement.sql
+        );
     }
 
     #[test]

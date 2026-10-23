@@ -74,9 +74,12 @@ pub(crate) async fn storage_move(
         ));
     }
     let guard = MoveGuard::take()?;
+    let engine_ran = running(state.engine.status().await.ok().map(|status| status.phase))?;
+    let machines_ran = running(state.machines.status().await.ok().map(|status| status.phase))?;
     Ok(state.streams.spawn(async move {
+        let ran = (engine_ran, machines_ran);
         let (moved, restarted) =
-            move_and_restart(&app, folder.map(PathBuf::from), &channel, guard).await;
+            move_and_restart(&app, folder.map(PathBuf::from), &channel, guard, ran).await;
         let state = app.state::<AppState>();
         let event = match moved {
             Ok(()) => MoveEvent::Done {
@@ -89,18 +92,27 @@ pub(crate) async fn storage_move(
     }))
 }
 
+/// Whether a VM runs now. Refused while it starts or stops, when its disks are in use but stopping
+/// it first isn't possible.
+fn running(phase: Option<EnginePhase>) -> Result<bool> {
+    match phase {
+        Some(EnginePhase::Starting | EnginePhase::Stopping) => Err(CommandError::new(
+            ErrorKind::InvalidInput,
+            "A VM is starting or stopping. Move the data once it has finished.",
+        )),
+        phase => Ok(phase == Some(EnginePhase::Running)),
+    }
+}
+
 /// Whether the move worked, and whether everything that ran before runs again.
 async fn move_and_restart(
     app: &AppHandle,
     folder: Option<PathBuf>,
     channel: &Channel<MoveEvent>,
     guard: MoveGuard,
+    (engine_ran, machines_ran): (bool, bool),
 ) -> (Result<()>, Result<()>) {
     let state = app.state::<AppState>();
-    let engine_ran =
-        state.engine.status().await.is_ok_and(|status| status.phase == EnginePhase::Running);
-    let machines_ran =
-        state.machines.status().await.is_ok_and(|status| status.phase == EnginePhase::Running);
     let _ = channel.send(MoveEvent::Stopping);
     let moved = match stop(app, engine_ran, machines_ran).await {
         Ok(()) => copy(&state, folder, channel).await,
@@ -183,4 +195,23 @@ pub(crate) async fn containers_prune(state: State<'_, AppState>) -> Result<Prune
 #[specta::specta]
 pub(crate) async fn build_cache_prune(state: State<'_, AppState>) -> Result<PruneReport> {
     Ok(state.engine.docker().await?.prune_build_cache().await?)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn refuses_to_move_while_a_vm_starts_or_stops() {
+        for phase in [EnginePhase::Starting, EnginePhase::Stopping] {
+            assert_eq!(running(Some(phase)).unwrap_err().kind, ErrorKind::InvalidInput);
+        }
+    }
+
+    #[test]
+    fn restarts_only_a_vm_that_was_running() {
+        assert!(running(Some(EnginePhase::Running)).unwrap());
+        assert!(!running(Some(EnginePhase::Stopped)).unwrap());
+        assert!(!running(None).unwrap());
+    }
 }
