@@ -2,6 +2,7 @@ use std::convert::Infallible;
 use std::error::Error as StdError;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::{Arc, PoisonError, RwLock};
+use std::time::Duration;
 
 use http_body_util::{Either, Full};
 use hyper::body::{Bytes, Incoming};
@@ -43,10 +44,17 @@ pub(crate) async fn bind_first(ports: &[u16]) -> std::io::Result<TcpListener> {
     Err(last)
 }
 
+/// How long to wait after a failed accept: it fails again at once while the app is out of file
+/// descriptors, and retrying without a pause spins a core.
+pub(crate) const ACCEPT_RETRY: Duration = Duration::from_millis(50);
+
 /// Serves plain HTTP until the task is dropped.
 pub(crate) async fn serve_http(listener: TcpListener, table: Table) {
     loop {
-        let Ok((stream, peer)) = listener.accept().await else { continue };
+        let Ok((stream, peer)) = listener.accept().await else {
+            tokio::time::sleep(ACCEPT_RETRY).await;
+            continue;
+        };
         let table = Arc::clone(&table);
         tokio::spawn(serve_connection(stream, peer, table, "http"));
     }
@@ -56,7 +64,10 @@ pub(crate) async fn serve_http(listener: TcpListener, table: Table) {
 pub(crate) async fn serve_https(listener: TcpListener, table: Table, tls: Arc<ServerConfig>) {
     let acceptor = TlsAcceptor::from(tls);
     loop {
-        let Ok((stream, peer)) = listener.accept().await else { continue };
+        let Ok((stream, peer)) = listener.accept().await else {
+            tokio::time::sleep(ACCEPT_RETRY).await;
+            continue;
+        };
         let (acceptor, table) = (acceptor.clone(), Arc::clone(&table));
         tokio::spawn(async move {
             if let Ok(stream) = acceptor.accept(stream).await {

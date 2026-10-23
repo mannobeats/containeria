@@ -18,6 +18,7 @@ impl Host {
     pub async fn detect() -> Result<Self> {
         let output = tokio::process::Command::new("/usr/sbin/sysctl")
             .args(["-n", "machdep.cpu.brand_string", "hw.ncpu", "hw.memsize"])
+            .kill_on_drop(true)
             .output()
             .await?;
         Self::parse(&String::from_utf8_lossy(&output.stdout))
@@ -36,7 +37,8 @@ impl Host {
 }
 
 /// Whether this Mac can run full VMs inside the engine: nested virtualization needs an M3 or newer
-/// chip and macOS 15 or newer.
+/// chip and macOS 15 or newer. Runs `sysctl` on the calling thread: the app asks once, while it
+/// starts, before any async work.
 #[must_use]
 pub fn supports_nested_virtualization() -> bool {
     let chip = sysctl("machdep.cpu.brand_string").as_deref().and_then(chip_generation);

@@ -60,7 +60,9 @@ pub(crate) fn state_from_inspect(
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, specta::Type,
+)]
 #[serde(rename_all = "camelCase")]
 pub enum PortProtocol {
     Tcp,
@@ -133,7 +135,7 @@ fn dedupe_ports(raw: Vec<bollard::models::PortSummary>) -> Vec<Port> {
             },
         })
         .collect();
-    ports.sort_by_key(|port| (port.container, port.host));
+    ports.sort_by_key(|port| (port.container, port.protocol, port.host));
     ports.dedup();
     ports
 }
@@ -261,6 +263,25 @@ mod tests {
             vec![
                 Port { container: 80, host: None, protocol: PortProtocol::Tcp },
                 Port { container: 5432, host: Some(5432), protocol: PortProtocol::Tcp },
+            ]
+        );
+    }
+
+    #[test]
+    fn shows_a_port_published_for_tcp_and_udp_once_each() {
+        let udp =
+            |ip| PortSummary { typ: Some(PortSummaryTypeEnum::UDP), ..port(53, Some(53), ip) };
+        let ports = dedupe_ports(vec![
+            port(53, Some(53), "0.0.0.0"),
+            udp("0.0.0.0"),
+            port(53, Some(53), "::"),
+            udp("::"),
+        ]);
+        assert_eq!(
+            ports,
+            vec![
+                Port { container: 53, host: Some(53), protocol: PortProtocol::Tcp },
+                Port { container: 53, host: Some(53), protocol: PortProtocol::Udp },
             ]
         );
     }

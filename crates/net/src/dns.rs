@@ -45,7 +45,10 @@ pub(crate) fn answer(packet: &[u8], resolves: impl Fn(&str) -> bool) -> Option<V
 pub(crate) async fn serve(socket: UdpSocket, table: Arc<RwLock<RouteTable>>) {
     let mut buffer = [0_u8; 1500];
     loop {
-        let Ok((length, peer)) = socket.recv_from(&mut buffer).await else { continue };
+        let Ok((length, peer)) = socket.recv_from(&mut buffer).await else {
+            tokio::time::sleep(crate::proxy::ACCEPT_RETRY).await;
+            continue;
+        };
         let reply = {
             let table = table.read().unwrap_or_else(PoisonError::into_inner);
             answer(&buffer[..length], |name| table.resolves(name))

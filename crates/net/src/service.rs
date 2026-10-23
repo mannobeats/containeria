@@ -209,12 +209,13 @@ impl Domains {
             https: https.local_addr()?.port(),
         };
         let tls = proxy::tls_config(Arc::new(self.authority()?), Arc::clone(&self.table))?;
+        // Written before the servers start: if it fails, the sockets close with this function.
+        fs::write(self.dir.join(RUNNING_FILE), serde_json::to_string(&ports)?)?;
         let tasks = vec![
             tokio::spawn(dns::serve(socket, Arc::clone(&self.table))),
             tokio::spawn(proxy::serve_http(http, Arc::clone(&self.table))),
             tokio::spawn(proxy::serve_https(https, Arc::clone(&self.table), tls)),
         ];
-        fs::write(self.dir.join(RUNNING_FILE), serde_json::to_string(&ports)?)?;
         tracing::info!(?ports, "domains started");
         *running = Some(Running { ports, tasks });
         Ok(ports)

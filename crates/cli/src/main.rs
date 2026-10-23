@@ -73,11 +73,21 @@ fn docker() -> Result<Docker> {
 }
 
 async fn find(docker: &Docker, name: &str) -> Result<ContainerSummary> {
-    let containers = docker.containers().await?;
-    containers
-        .into_iter()
-        .find(|container| container.name == name || container.id.starts_with(name))
-        .ok_or_else(|| format!("no container named {name}").into())
+    pick(docker.containers().await?, name)
+}
+
+/// A name wins over an ID prefix, since names like `db` or `cafe` are valid hex too. An ID prefix
+/// counts only when one container has it.
+fn pick(mut containers: Vec<ContainerSummary>, name: &str) -> Result<ContainerSummary> {
+    if let Some(index) = containers.iter().position(|container| container.name == name) {
+        return Ok(containers.swap_remove(index));
+    }
+    let mut by_id = containers.into_iter().filter(|container| container.id.starts_with(name));
+    match (by_id.next(), by_id.next()) {
+        (Some(container), None) => Ok(container),
+        (Some(_), Some(_)) => Err(format!("{name} starts more than one container ID").into()),
+        (None, _) => Err(format!("no container named {name}").into()),
+    }
 }
 
 async fn act(names: &[String], action: ContainerAction) -> Result {
@@ -182,6 +192,31 @@ mod tests {
     use clap::CommandFactory;
 
     use super::*;
+
+    fn container(id: &str, name: &str) -> ContainerSummary {
+        ContainerSummary {
+            id: id.to_owned(),
+            name: name.to_owned(),
+            image: "postgres".to_owned(),
+            state: containeria_docker::ContainerState::Running,
+            status: "Up".to_owned(),
+            project: None,
+            service: None,
+            pod: None,
+            ports: Vec::new(),
+            created_at: 0,
+        }
+    }
+
+    #[test]
+    fn a_name_wins_over_another_containers_id_prefix() {
+        let newest_first = vec![container("db41aa", "web"), container("77c0ff", "db")];
+        assert_eq!(pick(newest_first.clone(), "db").unwrap().name, "db");
+        assert_eq!(pick(newest_first.clone(), "77c").unwrap().name, "db");
+        let shared = vec![container("ab12", "web"), container("ab34", "api")];
+        assert!(pick(shared, "ab").is_err());
+        assert!(pick(newest_first, "zz").is_err());
+    }
 
     #[test]
     fn the_command_line_is_well_formed() {
