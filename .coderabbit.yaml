@@ -21,7 +21,8 @@ reviews:
     enabled: true
     drafts: false
     auto_incremental_review: true
-    base_branches: ["main", "review/.*"]
+    auto_pause_after_reviewed_commits: 0
+    base_branches: [".*"]
   path_filters:
     - "!apps/desktop/src/lib/ipc/bindings.ts"
     - "!design/**"
