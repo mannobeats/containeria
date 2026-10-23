@@ -1,0 +1,26 @@
+# Advisories OpenSSF Scorecard reports through OSV that don't reach the app Containeria ships.
+# The Rust ones cargo-deny can see are also listed in deny.toml.
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0429"
+reason = "glib comes only through Tauri's Linux GTK backend; Containeria builds for macOS only."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0370"
+reason = "proc-macro-error is unmaintained, used only by the Linux GTK crates Tauri pulls in."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0370"
+reason = "zvariant is unmaintained, used only by notify-rust's Linux D-Bus backend."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0371"
+reason = "zbus_names is unmaintained, used only by notify-rust's Linux D-Bus backend."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2026-0372"
+reason = "zvariant_derive is unmaintained, used only by notify-rust's Linux D-Bus backend."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0436"
+reason = "paste is unmaintained, a compile-time proc-macro used by specta. Also ignored in deny.toml."

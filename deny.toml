@@ -1,0 +1,42 @@
+[graph]
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin"]
+all-features = false
+
+[advisories]
+version = 2
+yanked = "deny"
+ignore = [
+  # `paste` is a compile-time proc-macro pulled in by specta; unmaintained, no known vulnerability.
+  # Remove once specta 2.0 replaces it (tracked upstream in specta-rs/specta).
+  { id = "RUSTSEC-2024-0436", reason = "proc-macro used only at compile time by specta" },
+]
+
+[licenses]
+version = 2
+confidence-threshold = 0.93
+allow = [
+  "0BSD",
+  "Apache-2.0",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "BSL-1.0",
+  "CC0-1.0",
+  "CDLA-Permissive-2.0",
+  "ISC",
+  "MIT",
+  "MIT-0",
+  "MPL-2.0",
+  "Unicode-3.0",
+  "Unlicense",
+  "Zlib",
+]
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
