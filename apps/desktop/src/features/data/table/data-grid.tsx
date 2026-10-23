@@ -4,7 +4,13 @@ import type { Column, Sort, Value } from "@/lib/ipc/bindings";
 
 import { GridHeader } from "./grid-header";
 import type { RowActions } from "./grid-menu";
-import { type CellPosition, columnWidth, moveFrom, type GridRow as Row } from "./grid-model";
+import {
+  type CellPosition,
+  columnKeys,
+  columnWidth,
+  moveFrom,
+  type GridRow as Row,
+} from "./grid-model";
 import { GridRow } from "./grid-row";
 
 type DataGridProps = RowActions & {
@@ -49,7 +55,8 @@ function useRowWindow(scroller: React.RefObject<HTMLDivElement | null>, count: n
       element.removeEventListener("scroll", update);
     };
   }, [scroller]);
-  const first = Math.max(0, Math.floor(view.top / ROW_HEIGHT) - OVERSCAN);
+  const top = Math.min(Math.floor(view.top / ROW_HEIGHT), Math.max(0, count - 1));
+  const first = Math.max(0, top - OVERSCAN);
   const last = Math.min(count, Math.ceil((view.top + view.height) / ROW_HEIGHT) + OVERSCAN);
   const reveal = (index: number) => {
     const element = scroller.current;
@@ -63,7 +70,7 @@ function useRowWindow(scroller: React.RefObject<HTMLDivElement | null>, count: n
       element.scrollTo({ top: bottom - element.clientHeight });
     }
   };
-  return { first, last, reveal };
+  return { first, last, top, reveal };
 }
 
 function Spacer({ height, columns }: { height: number; columns: number }) {
@@ -94,7 +101,8 @@ export function DataGrid({
 }: DataGridProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const [resized, setResized] = useState<Record<string, number>>({});
-  const widths = columns.map((column) => resized[column.name] ?? columnWidth(column));
+  const keys = columnKeys(columns);
+  const widths = columns.map((column, index) => resized[keys[index] ?? ""] ?? columnWidth(column));
   const [editing, setEditing] = useState(false);
   const shown = useRowWindow(scroller, rows.length);
   const added = rows.filter((row) => row.added !== null).length;
@@ -130,7 +138,9 @@ export function DataGrid({
           widths={widths}
           sort={sort}
           onSort={onSort}
-          onResize={(column, width) => setResized((current) => ({ ...current, [column]: width }))}
+          onResize={(index, width) =>
+            setResized((current) => ({ ...current, [keys[index] ?? ""]: width }))
+          }
         />
         <tbody>
           <Spacer height={shown.first * ROW_HEIGHT} columns={columns.length} />
@@ -144,7 +154,7 @@ export function DataGrid({
                 columns={columns}
                 selected={selected.has(row.id)}
                 activeColumn={active?.row === index ? active.column : null}
-                entry={active === null && index === shown.first}
+                entry={active === null && index === shown.top}
                 editing={editing && active?.row === index}
                 onToggle={() => onToggleRow(row)}
                 onSelect={(column, edit) => {

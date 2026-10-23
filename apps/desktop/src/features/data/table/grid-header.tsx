@@ -13,7 +13,8 @@ type HeaderProps = {
   widths: number[];
   sort: Sort | null;
   onSort: ((sort: Sort | null) => void) | undefined;
-  onResize: (column: string, width: number) => void;
+  /** The column's position and its new width. */
+  onResize: (column: number, width: number) => void;
 };
 
 function ariaSort(sorted: Sort | null): "ascending" | "descending" | "none" {
@@ -103,9 +104,7 @@ export function GridHeader({ columns, widths, sort, onSort, onResize }: HeaderPr
                 <span
                   aria-hidden
                   onPointerDown={(event) =>
-                    startResize(event, widths[index] ?? 120, (width) =>
-                      onResize(column.name, width),
-                    )
+                    startResize(event, widths[index] ?? 120, (width) => onResize(index, width))
                   }
                   className="absolute top-0 -right-[3px] bottom-0 z-[4] w-1.5 cursor-col-resize hover:bg-[linear-gradient(var(--brand),var(--brand))] hover:bg-size-[2px_100%] hover:bg-center hover:bg-no-repeat"
                 />

@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -132,9 +132,12 @@ describe("TableView", () => {
   it("takes Tab into the first cell, then moves with the arrow keys", async () => {
     setup();
     const first = (await screen.findAllByRole("button", { name: "1" }))[0];
-    expect(first?.tabIndex).toBe(0);
-    act(() => first?.focus());
-    await userEvent.keyboard("{ArrowRight}");
+    const user = userEvent.setup();
+    for (let step = 0; step < 40 && document.activeElement !== first; step += 1) {
+      await user.tab();
+    }
+    expect(document.activeElement).toBe(first);
+    await user.keyboard("{ArrowRight}");
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "ada@example.com" }));
   });
 
@@ -221,10 +224,16 @@ describe("TableView right-click menus", () => {
   });
 
   it("sets a NULL cell to an empty string", async () => {
-    setup();
+    const calls = setup();
     fireEvent.contextMenu((await screen.findAllByRole("button", { name: "NULL" }))[0] as Element);
     await userEvent.click(await screen.findByRole("menuitem", { name: "Set to Empty String" }));
-    expect((await screen.findByRole("status")).textContent).toContain("1 edited");
+    const bar = await screen.findByRole("status");
+    await userEvent.click(within(bar).getByRole("button", { name: /Commit/ }));
+    await waitFor(() =>
+      expect(calls.find((call) => call.command === "dataCommit")?.args.changes).toMatchObject({
+        updates: [{ set: [{ column: "email", value: "" }] }],
+      }),
+    );
   });
 
   it("filters by the right-clicked value", async () => {
