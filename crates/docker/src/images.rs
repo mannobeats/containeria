@@ -31,13 +31,24 @@ pub struct ImageSummary {
     pub dangling: bool,
 }
 
-/// `ghcr.io:443/acme/api:1.2` → (`ghcr.io:443/acme/api`, `1.2`). A colon only marks a tag after the
-/// last slash; a reference without one is `latest`.
+/// `ghcr.io:443/acme/api:1.2` → (`ghcr.io:443/acme/api`, `1.2`), for display. A digest shows as
+/// its first 12 characters, `@d3e1620b530c`; API calls use [`pull_parts`], which keeps all of it.
 #[must_use]
 pub fn split_reference(reference: &str) -> (String, String) {
     if let Some((repository, digest)) = reference.split_once('@') {
         let short = digest.split_once(':').map_or(digest, |(_, hex)| hex);
-        return (repository.to_owned(), format!("@{}", &short[..short.len().min(12)]));
+        return (repository.to_owned(), format!("@{}", short.chars().take(12).collect::<String>()));
+    }
+    pull_parts(reference)
+}
+
+/// The `fromImage` and `tag` the Docker API takes for `reference`: `postgres@sha256:…` →
+/// (`postgres`, `sha256:…`). A colon only marks a tag after the last slash; a reference without
+/// one is `latest`.
+#[must_use]
+pub(crate) fn pull_parts(reference: &str) -> (String, String) {
+    if let Some((repository, digest)) = reference.split_once('@') {
+        return (repository.to_owned(), digest.to_owned());
     }
     let name_start = reference.rfind('/').map_or(0, |slash| slash + 1);
     match reference[name_start..].rfind(':') {
@@ -209,7 +220,7 @@ impl Docker {
 
     /// Pulls `reference`, reporting layer progress until the image is stored.
     pub fn pull(&self, reference: &str) -> impl Stream<Item = Result<PullProgress>> + use<> {
-        let (repository, tag) = split_reference(reference);
+        let (repository, tag) = pull_parts(reference);
         let options = CreateImageOptionsBuilder::new().from_image(&repository).tag(&tag).build();
         self.api
             .create_image(Some(options), None, None)
@@ -227,7 +238,7 @@ impl Docker {
     /// # Errors
     /// Fails when the image doesn't exist or the reference is invalid.
     pub async fn tag_image(&self, id: &str, reference: &str) -> Result<()> {
-        let (repository, tag) = split_reference(reference);
+        let (repository, tag) = pull_parts(reference);
         let options = TagImageOptionsBuilder::new().repo(&repository).tag(&tag).build();
         Ok(self.api.tag_image(id, Some(options)).await?)
     }
@@ -293,6 +304,17 @@ mod tests {
         let (repository, tag) =
             split_reference("postgres@sha256:d3e1620b530c944afa9e887d22eb899824da68");
         assert_eq!((repository.as_str(), tag.as_str()), ("postgres", "@d3e1620b530c"));
+        let (_, odd) = split_reference("x@sha256:aaaaaaaaaaaéé");
+        assert_eq!(odd, "@aaaaaaaaaaaé");
+    }
+
+    #[test]
+    fn pulls_a_digest_reference_by_its_whole_digest() {
+        assert_eq!(
+            pull_parts("postgres@sha256:d3e1620b530c944afa9e887d22eb899824da68"),
+            ("postgres".into(), "sha256:d3e1620b530c944afa9e887d22eb899824da68".into())
+        );
+        assert_eq!(pull_parts("localhost:5000/app:v2"), ("localhost:5000/app".into(), "v2".into()));
     }
 
     #[test]

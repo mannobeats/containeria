@@ -1,14 +1,36 @@
 use std::net::{Ipv4Addr, SocketAddr};
+use std::time::Duration;
 
 use futures::{AsyncBufReadExt, Stream, StreamExt, TryStreamExt, stream};
 use k8s_openapi::api::apps::v1::Deployment;
 use k8s_openapi::api::core::v1::{Pod, Service};
 use kube::Api;
-use kube::api::LogParams;
+use kube::api::{LogParams, Portforwarder};
 use kube::runtime::{WatchStreamExt, watcher};
-use tokio::net::TcpListener;
+use tokio::net::{TcpListener, TcpStream};
+use tokio::task::JoinSet;
 
 use crate::{Error, Kube, Result};
+
+/// How long to wait after a failed accept, which repeats at once while file descriptors run out.
+const ACCEPT_RETRY: Duration = Duration::from_millis(50);
+
+/// Stops the forwarder's WebSocket task, which dropping a `Portforwarder` leaves running.
+struct Forwarder(Portforwarder);
+
+impl Drop for Forwarder {
+    fn drop(&mut self) {
+        self.0.abort();
+    }
+}
+
+async fn tunnel(api: Api<Pod>, pod: String, pod_port: u16, mut connection: TcpStream) {
+    let Ok(forwarder) = api.portforward(&pod, &[pod_port]).await else { return };
+    let mut forwarder = Forwarder(forwarder);
+    if let Some(mut upstream) = forwarder.0.take_stream(pod_port) {
+        let _ = tokio::io::copy_bidirectional(&mut connection, &mut upstream).await;
+    }
+}
 
 impl Kube {
     /// Follows a pod's log from its last `tail` lines.
@@ -46,17 +68,18 @@ impl Kube {
         let api: Api<Pod> = self.namespaced(namespace);
         let pod = pod.to_owned();
         Ok(async move {
-            while let Ok((mut connection, _)) = listener.accept().await {
-                let (api, pod) = (api.clone(), pod.clone());
-                tokio::spawn(async move {
-                    let Ok(mut forwarder) = api.portforward(&pod, &[pod_port]).await else {
-                        return;
-                    };
-                    if let Some(mut upstream) = forwarder.take_stream(pod_port) {
-                        let _ = tokio::io::copy_bidirectional(&mut connection, &mut upstream).await;
-                    }
-                    let _ = forwarder.join().await;
-                });
+            // Owned by the future, so stopping the forward closes the tunnels already open.
+            let mut tunnels = JoinSet::new();
+            loop {
+                tokio::select! {
+                    accepted = listener.accept() => match accepted {
+                        Ok((connection, _)) => {
+                            tunnels.spawn(tunnel(api.clone(), pod.clone(), pod_port, connection));
+                        }
+                        Err(_) => tokio::time::sleep(ACCEPT_RETRY).await,
+                    },
+                    Some(_) = tunnels.join_next(), if !tunnels.is_empty() => {}
+                }
             }
         })
     }

@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::containers::PortProtocol;
 use crate::details::EnvVar;
+use crate::images::pull_parts;
 use crate::{Docker, Error, Result};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, specta::Type)]
@@ -112,14 +113,6 @@ fn create_body(spec: &RunSpec) -> ContainerCreateBody {
     }
 }
 
-/// `nginx:1.29` → (`nginx`, `1.29`); a registry port isn't a tag; no tag means `latest`.
-fn split_reference(reference: &str) -> (&str, &str) {
-    match reference.rsplit_once(':') {
-        Some((repo, tag)) if !tag.contains('/') => (repo, tag),
-        _ => (reference, "latest"),
-    }
-}
-
 impl Docker {
     /// Pulls the image unless it's already here, creates the container and starts it.
     ///
@@ -148,8 +141,8 @@ impl Docker {
         if self.api.inspect_image(reference).await.is_ok() {
             return Ok(());
         }
-        let (repo, tag) = split_reference(reference);
-        let options = CreateImageOptionsBuilder::new().from_image(repo).tag(tag).build();
+        let (repo, tag) = pull_parts(reference);
+        let options = CreateImageOptionsBuilder::new().from_image(&repo).tag(&tag).build();
         self.api.create_image(Some(options), None, None).try_collect::<Vec<_>>().await?;
         Ok(())
     }
@@ -166,11 +159,11 @@ impl Docker {
     /// # Errors
     /// Fails when the container is gone or the reference is invalid.
     pub async fn commit(&self, id: &str, reference: &str) -> Result<String> {
-        let (repo, tag) = split_reference(reference);
+        let (repo, tag) = pull_parts(reference);
         let options = CommitContainerOptionsBuilder::new()
             .container(id)
-            .repo(repo)
-            .tag(tag)
+            .repo(&repo)
+            .tag(&tag)
             .pause(true)
             .build();
         let committed =
@@ -240,8 +233,8 @@ impl Docker {
         let image =
             inspect.config.as_ref().and_then(|config| config.image.clone()).unwrap_or_default();
         if pull {
-            let (repo, tag) = split_reference(&image);
-            let options = CreateImageOptionsBuilder::new().from_image(repo).tag(tag).build();
+            let (repo, tag) = pull_parts(&image);
+            let options = CreateImageOptionsBuilder::new().from_image(&repo).tag(&tag).build();
             self.api.create_image(Some(options), None, None).try_collect::<Vec<_>>().await?;
         }
         let body = recreate_body(inspect)?;
@@ -342,13 +335,5 @@ mod tests {
         assert_eq!(body.env.unwrap(), ["POSTGRES_PASSWORD=a=b"]);
         assert_eq!(host.binds.unwrap(), ["pg:/var/lib/postgresql", "/Users/ada/seed:/seed:ro"]);
         assert_eq!(host.restart_policy.unwrap().name, Some(RestartPolicyNameEnum::ON_FAILURE));
-    }
-
-    #[test]
-    fn splits_image_references() {
-        assert_eq!(split_reference("nginx"), ("nginx", "latest"));
-        assert_eq!(split_reference("postgres:18-alpine"), ("postgres", "18-alpine"));
-        assert_eq!(split_reference("localhost:5000/app"), ("localhost:5000/app", "latest"));
-        assert_eq!(split_reference("localhost:5000/app:v2"), ("localhost:5000/app", "v2"));
     }
 }

@@ -3,7 +3,8 @@
 
 use std::env;
 use std::ffi::OsStr;
-use std::io;
+use std::io::{self, Write};
+use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
@@ -220,8 +221,18 @@ fn write_config(dir: &Path, user: Option<&Path>, plugins: &Path) -> io::Result<(
         .and_then(|bytes| serde_json::from_slice(&bytes).ok())
         .unwrap_or_default();
     config.insert("cliPluginsExtraDirs".to_owned(), serde_json::json!([plugins.to_string_lossy()]));
-    std::fs::create_dir_all(dir)?;
-    std::fs::write(dir.join("config.json"), serde_json::to_vec_pretty(&config)?)
+    // The copy holds the user's registry logins, so only they may read it, as with ~/.docker.
+    std::fs::DirBuilder::new().recursive(true).mode(0o700).create(dir)?;
+    std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700))?;
+    let path = dir.join("config.json");
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(&path)?;
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))?;
+    file.write_all(&serde_json::to_vec_pretty(&config)?)
 }
 
 #[cfg(test)]
@@ -268,6 +279,20 @@ mod tests {
         assert_eq!(written["credsStore"], "osxkeychain");
         assert!(written["auths"]["ghcr.io"].is_object());
         assert_eq!(written["cliPluginsExtraDirs"][0], "/App/tools/cli-plugins");
+    }
+
+    #[test]
+    fn only_the_user_can_read_the_copied_logins() {
+        let dir = tempfile::tempdir().unwrap();
+        let own = dir.path().join("own");
+        std::fs::create_dir(&own).unwrap();
+        std::fs::write(own.join("config.json"), "{}").unwrap();
+        std::fs::set_permissions(own.join("config.json"), std::fs::Permissions::from_mode(0o644))
+            .unwrap();
+        write_config(&own, None, Path::new("/App/tools/cli-plugins")).unwrap();
+        let mode = |path: &Path| std::fs::metadata(path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode(&own), 0o700);
+        assert_eq!(mode(&own.join("config.json")), 0o600);
     }
 
     #[test]

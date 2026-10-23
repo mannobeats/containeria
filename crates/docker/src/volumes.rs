@@ -231,7 +231,12 @@ impl Docker {
         let source = inside_mount(MOUNT, path)?;
         let archive = tempfile::NamedTempFile::new()?;
         self.save_archive(name, &source, archive.as_file().try_clone()?).await?;
-        tar::Archive::new(File::open(archive.path())?).unpack(destination)?;
+        let into = destination.to_path_buf();
+        tokio::task::spawn_blocking(move || {
+            tar::Archive::new(File::open(archive.path())?).unpack(into)
+        })
+        .await
+        .map_err(|error| Error::Engine(error.to_string()))??;
         Ok(destination.join(source.rsplit('/').next().unwrap_or(name)))
     }
 

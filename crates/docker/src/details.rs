@@ -153,7 +153,7 @@ fn ports(map: BTreeMap<String, Option<Vec<PortBinding>>>) -> Vec<Port> {
             hosts.into_iter().map(move |host| Port { container, host, protocol })
         })
         .collect();
-    ports.sort_by_key(|port| (port.container, port.host));
+    ports.sort_by_key(|port| (port.container, port.protocol, port.host));
     ports.dedup();
     ports
 }
