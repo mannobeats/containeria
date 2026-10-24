@@ -58,7 +58,7 @@
     "@vitejs/plugin-react": "6.1.2",
     "@vitest/coverage-v8": "5.0.5",
     "babel-plugin-react-compiler": "1.0.0",
-    "happy-dom": "21.0.3",
+    "happy-dom": "21.0.4",
     "react-doctor": "0.9.18",
     "tailwindcss": "4.3.3",
     "typescript": "7.0.2",
