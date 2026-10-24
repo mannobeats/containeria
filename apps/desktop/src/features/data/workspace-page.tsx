@@ -133,8 +133,28 @@ function ActiveView({
   }
 }
 
+function SchemaFailed({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+  return (
+    <EmptyState
+      title="Couldn't read the schema"
+      actions={
+        <Button variant="brand" onClick={onRetry}>
+          <IconRefresh />
+          Try again
+        </Button>
+      }
+    >
+      {errorMessage(error)}
+    </EmptyState>
+  );
+}
+
+/** Tables and the empty workspace need the schema; queries, history and keys work without it. */
+const needsSchema = (tab: Tab | undefined) => tab === undefined || tab.kind === "table";
+
 function Workspace({ info, tabKey }: { info: ServerInfo; tabKey: string | undefined }) {
-  const { data: namespaces = [] } = useSchema(info.id, info.capabilities.tables);
+  const schema = useSchema(info.id, info.capabilities.tables);
+  const namespaces = schema.data ?? [];
   const stored = useWorkspace((state) => state.tabs[info.id]) ?? [];
   const active = (tabKey ? tabFromKey(tabKey) : undefined) ?? defaultTab(info, namespaces);
   const tabs =
@@ -153,7 +173,11 @@ function Workspace({ info, tabKey }: { info: ServerInfo; tabKey: string | undefi
       <section className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <WorkspaceTabs info={info} tabs={tabs} active={active?.key} />
         <SafeBanner info={info} />
-        <ActiveView info={info} tab={active} namespaces={namespaces} />
+        {schema.isError && needsSchema(active) ? (
+          <SchemaFailed error={schema.error} onRetry={() => schema.refetch()} />
+        ) : (
+          <ActiveView info={info} tab={active} namespaces={namespaces} />
+        )}
       </section>
       <TableActionSheets info={info} />
     </div>

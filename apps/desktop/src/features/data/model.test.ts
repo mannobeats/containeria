@@ -53,6 +53,17 @@ describe("cellText", () => {
 describe("pending changes", () => {
   const key = keyCells([7, "ada@example.com", null], columns);
 
+  /** One edited cell, one added row and one deleted row. */
+  function staged() {
+    if (!key) {
+      throw new Error("expected a key");
+    }
+    const edited = withEdit(EMPTY_PENDING, key, "credit", null, "12.50");
+    return withDeleteToggled({ ...edited, added: [{ email: "new@example.com", credit: "" }] }, [
+      { column: "id", value: "9" },
+    ]);
+  }
+
   it("finds a row by its primary key", () => {
     expect(key).toEqual([{ column: "id", value: "7" }]);
     expect(keyCells(["x"], [column("name")])).toBeNull();
@@ -79,20 +90,20 @@ describe("pending changes", () => {
   });
 
   it("builds the change set the commit sends", () => {
-    if (!key) {
-      throw new Error("expected a key");
-    }
-    let pending = withEdit(EMPTY_PENDING, key, "credit", null, "12.50");
-    pending = { ...pending, added: [{ email: "new@example.com", credit: "" }] };
-    pending = withDeleteToggled(pending, [{ column: "id", value: "9" }]);
-    expect(toChangeSet(pending, table)).toEqual({
+    expect(toChangeSet(staged(), table)).toEqual({
       table,
       updates: [{ key, set: [{ column: "credit", value: "12.50" }] }],
       inserts: [[{ column: "email", value: "new@example.com" }]],
       deletes: [[{ column: "id", value: "9" }]],
     });
-    expect(pendingSummary(pending)).toBe("1 edited · 1 added · 1 deleted");
-    expect(pendingCount(withDeleteToggled(pending, [{ column: "id", value: "9" }]))).toBe(2);
+  });
+
+  it("sums up what is staged", () => {
+    expect(pendingSummary(staged())).toBe("1 edited · 1 added · 1 deleted");
+  });
+
+  it("unmarks a row deleted twice", () => {
+    expect(pendingCount(withDeleteToggled(staged(), [{ column: "id", value: "9" }]))).toBe(2);
   });
 });
 
@@ -144,6 +155,19 @@ describe("parseConnectionUrl", () => {
       tls: true,
       name: "ep-cool",
     });
+  });
+
+  it("keeps a stray percent sign in the password and database as typed", () => {
+    expect(parseConnectionUrl("postgres://app:50%off@db.example.com/sales%")).toMatchObject({
+      password: "50%off",
+      database: "sales%",
+    });
+  });
+
+  it("decodes the escapes beside a stray percent sign", () => {
+    expect(parseConnectionUrl("postgres://app:50%off%40word@db.example.com/sales")?.password).toBe(
+      "50%off@word",
+    );
   });
 
   it("knows the other schemes and rejects text that isn't a URL", () => {

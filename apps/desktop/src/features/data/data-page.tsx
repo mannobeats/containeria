@@ -138,7 +138,7 @@ export function DataPage() {
         ) : null}
       </div>
       <ConnectionSheet
-        key={sheet.connection?.id ?? "new"}
+        key={sheet.opens}
         open={sheet.open}
         connection={sheet.connection}
         onOpenChange={sheet.setOpen}

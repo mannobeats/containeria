@@ -31,6 +31,12 @@ describe("connection form", () => {
     expect(formProblem({ ...blankForm("mysql"), name: "auth" })).toBeNull();
   });
 
+  it("rejects a port above 65535", () => {
+    expect(formProblem({ ...blankForm("mysql"), name: "auth", port: "70000" })).toBe(
+      "The port is a number up to 65535.",
+    );
+  });
+
   it("keeps the saved password unless it was changed", () => {
     const form = formFromConnection({
       id: "billing",
@@ -49,6 +55,46 @@ describe("connection form", () => {
     expect(toInput(form).password).toBeNull();
     expect(toInput({ ...form, password: "new", passwordChanged: true }).password).toBe("new");
     expect(toInput({ ...form, port: "" }).port).toBeNull();
+  });
+
+  it("asks for a password when the connection has none saved", () => {
+    const form = formFromConnection({
+      id: "local",
+      name: "local",
+      engine: "postgres",
+      provider: null,
+      host: "localhost",
+      port: 5432,
+      user: "postgres",
+      database: null,
+      file: null,
+      tls: false,
+      environment: "local",
+      hasPassword: false,
+      ssh: { host: "bastion", port: 22, user: "deploy", auth: "agent", keyFile: null },
+      hasSshSecret: false,
+    });
+    expect(form.passwordChanged).toBe(true);
+  });
+
+  it("asks for an SSH password when the tunnel has none saved", () => {
+    const form = formFromConnection({
+      id: "local",
+      name: "local",
+      engine: "postgres",
+      provider: null,
+      host: "localhost",
+      port: 5432,
+      user: "postgres",
+      database: null,
+      file: null,
+      tls: false,
+      environment: "local",
+      hasPassword: true,
+      ssh: { host: "bastion", port: 22, user: "deploy", auth: "password", keyFile: null },
+      hasSshSecret: false,
+    });
+    expect(form.sshSecretChanged).toBe(true);
   });
 
   it("sends an SSH tunnel only when it is on, and only the secret its login needs", () => {

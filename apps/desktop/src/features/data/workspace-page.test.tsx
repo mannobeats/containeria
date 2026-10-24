@@ -5,13 +5,32 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { Namespace, ServerInfo } from "@/lib/ipc/bindings";
 import { infoFixture, namespacesFixture, pageFixture } from "@/test/data-fixtures";
 import { mockCommands, renderWithApp } from "@/test/harness";
+import { Toaster } from "@/ui/toaster";
 
 import { WorkspacePage } from "./workspace-page";
 import { useWorkspace } from "./workspace-store";
 
-type Setup = { info?: ServerInfo; namespaces?: Namespace[]; tab?: string; fail?: boolean };
+type Setup = {
+  info?: ServerInfo;
+  namespaces?: Namespace[];
+  tab?: string;
+  fail?: boolean;
+  schemaFails?: boolean;
+  writesFail?: boolean;
+};
 
-function setup({ info = infoFixture(), namespaces = namespacesFixture, tab, fail }: Setup = {}) {
+const refuse = (message: string) => {
+  throw { kind: "database", message };
+};
+
+function setup({
+  info = infoFixture(),
+  namespaces = namespacesFixture,
+  tab,
+  fail,
+  schemaFails,
+  writesFail,
+}: Setup = {}) {
   const calls = mockCommands({
     dataConnect: () => {
       if (fail) {
@@ -19,15 +38,24 @@ function setup({ info = infoFixture(), namespaces = namespacesFixture, tab, fail
       }
       return info;
     },
-    dataSchema: () => namespaces,
+    dataSchema: () => (schemaFails ? refuse("permission denied for schema public") : namespaces),
     dataRows: () => pageFixture(),
     dataHistory: () => [],
     dataSavedQueries: () => [],
-    dataAllowWrites: () => ({ ...info, readOnly: false, writableUntilMs: Date.now() + 900_000 }),
+    dataAllowWrites: () =>
+      writesFail
+        ? refuse("the session was closed")
+        : { ...info, readOnly: false, writableUntilMs: Date.now() + 900_000 },
     dataSafeMode: () => ({ ...info, readOnly: true }),
   });
   const url = tab ? `/data/pg?tab=${encodeURIComponent(tab)}` : "/data/pg";
-  renderWithApp(<WorkspacePage />, { route: { path: "data/$connection", url } });
+  renderWithApp(
+    <>
+      <WorkspacePage />
+      <Toaster />
+    </>,
+    { route: { path: "data/$connection", url } },
+  );
   return calls;
 }
 
@@ -35,13 +63,25 @@ beforeEach(() => useWorkspace.setState({ tabs: {}, sql: {}, views: {}, pending: 
 
 describe("WorkspacePage", () => {
   it("connects, lists the schema, and opens the first table", async () => {
-    setup();
+    const calls = setup();
     const tree = await screen.findByRole("navigation", { name: "Tables" });
     expect(await within(tree).findByText("teams")).toBeDefined();
     expect(within(tree).getByText("now_utc")).toBeDefined();
     expect(within(tree).getByText("role")).toBeDefined();
     expect(await screen.findByRole("button", { name: "ada@example.com" })).toBeDefined();
     expect(screen.getByRole("tab", { name: "users" }).getAttribute("aria-selected")).toBe("true");
+    expect(calls).toContainEqual({ command: "dataConnect", args: { id: "pg" } });
+    expect(calls).toContainEqual({ command: "dataSchema", args: { id: "pg", refresh: false } });
+  });
+
+  it("says why it couldn't read the schema and reads it again", async () => {
+    const calls = setup({ schemaFails: true });
+    expect(await screen.findByText("Couldn't read the schema")).toBeDefined();
+    expect(screen.getByText(/permission denied for schema public/)).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() =>
+      expect(calls.filter((call) => call.command === "dataSchema")).toHaveLength(2),
+    );
   });
 
   it("says why it couldn't connect and tries again", async () => {
@@ -128,5 +168,18 @@ describe("Safe mode", () => {
     await userEvent.click(screen.getByRole("button", { name: "Turn safe mode back on" }));
     await waitFor(() => expect(calls.map((call) => call.command)).toContain("dataSafeMode"));
     expect(calls).toContainEqual({ command: "dataAllowWrites", args: { id: "pg", minutes: 15 } });
+  });
+
+  it("says why writes weren't allowed", async () => {
+    const calls = setup({
+      info: infoFixture({ environment: "production", readOnly: true }),
+      writesFail: true,
+    });
+    await userEvent.click(await screen.findByRole("button", { name: "Allow writes for 15 min" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Allow writes" }));
+    expect(await screen.findByText("Writes weren't allowed")).toBeDefined();
+    expect(await screen.findByText(/the session was closed/)).toBeDefined();
+    expect(calls).toContainEqual({ command: "dataAllowWrites", args: { id: "pg", minutes: 15 } });
+    expect(screen.getByText("Production, read-only.")).toBeDefined();
   });
 });

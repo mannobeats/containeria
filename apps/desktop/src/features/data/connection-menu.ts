@@ -33,7 +33,7 @@ export function connectionMenu(
           .catch(() => undefined),
     },
     {
-      label: connection.engine === "sqlite" ? "Copy file path" : "Copy address",
+      label: connection.engine === "sqlite" ? "Copy File Path" : "Copy Address",
       onSelect: () => copyText("Address", address(connection)),
     },
     { kind: "separator" },
