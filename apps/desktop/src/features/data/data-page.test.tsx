@@ -156,7 +156,10 @@ describe("DataPage", () => {
   it("keeps a saved query without a connection in reach of the keyboard", async () => {
     setup();
     const query = await screen.findByRole("button", { name: "Anywhere" });
-    query.focus();
+    const user = userEvent.setup();
+    for (let step = 0; step < 60 && document.activeElement !== query; step += 1) {
+      await user.tab();
+    }
     expect(document.activeElement).toBe(query);
     expect(query.getAttribute("aria-disabled")).toBe("true");
   });

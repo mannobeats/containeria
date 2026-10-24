@@ -164,6 +164,12 @@ describe("parseConnectionUrl", () => {
     });
   });
 
+  it("decodes the escapes beside a stray percent sign", () => {
+    expect(parseConnectionUrl("postgres://app:50%off%40word@db.example.com/sales")?.password).toBe(
+      "50%off@word",
+    );
+  });
+
   it("knows the other schemes and rejects text that isn't a URL", () => {
     expect(parseConnectionUrl("mongodb://localhost:27017")?.engine).toBe("mongodb");
     expect(parseConnectionUrl("rediss://cache.example.com")?.tls).toBe(true);

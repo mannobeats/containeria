@@ -74,7 +74,27 @@ describe("connection form", () => {
       ssh: { host: "bastion", port: 22, user: "deploy", auth: "agent", keyFile: null },
       hasSshSecret: false,
     });
-    expect([form.passwordChanged, form.sshSecretChanged]).toEqual([true, true]);
+    expect(form.passwordChanged).toBe(true);
+  });
+
+  it("asks for an SSH password when the tunnel has none saved", () => {
+    const form = formFromConnection({
+      id: "local",
+      name: "local",
+      engine: "postgres",
+      provider: null,
+      host: "localhost",
+      port: 5432,
+      user: "postgres",
+      database: null,
+      file: null,
+      tls: false,
+      environment: "local",
+      hasPassword: true,
+      ssh: { host: "bastion", port: 22, user: "deploy", auth: "password", keyFile: null },
+      hasSshSecret: false,
+    });
+    expect(form.sshSecretChanged).toBe(true);
   });
 
   it("sends an SSH tunnel only when it is on, and only the secret its login needs", () => {

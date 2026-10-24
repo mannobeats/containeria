@@ -171,10 +171,15 @@ describe("Safe mode", () => {
   });
 
   it("says why writes weren't allowed", async () => {
-    setup({ info: infoFixture({ environment: "production", readOnly: true }), writesFail: true });
+    const calls = setup({
+      info: infoFixture({ environment: "production", readOnly: true }),
+      writesFail: true,
+    });
     await userEvent.click(await screen.findByRole("button", { name: "Allow writes for 15 min" }));
     await userEvent.click(await screen.findByRole("button", { name: "Allow writes" }));
     expect(await screen.findByText("Writes weren't allowed")).toBeDefined();
+    expect(await screen.findByText(/the session was closed/)).toBeDefined();
+    expect(calls).toContainEqual({ command: "dataAllowWrites", args: { id: "pg", minutes: 15 } });
     expect(screen.getByText("Production, read-only.")).toBeDefined();
   });
 });

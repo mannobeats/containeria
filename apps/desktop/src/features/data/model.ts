@@ -208,10 +208,13 @@ const SCHEMES: Record<string, Engine> = {
   sqlite: "sqlite",
 };
 
-/** Percent-decodes, keeping a stray `%` as typed: `p%ss` is a real password. */
+/**
+ * Percent-decodes, keeping a stray `%` as typed: in `50%off%40word` the `%of` is literal and the
+ * `%40` is `@`. Bytes that aren't valid UTF-8 leave the whole value as typed.
+ */
 function decode(text: string): string {
   try {
-    return decodeURIComponent(text);
+    return decodeURIComponent(text.replaceAll(/%(?![0-9A-Fa-f]{2})/g, "%25"));
   } catch {
     return text;
   }
