@@ -41,6 +41,7 @@ export function EnginePicker({ onPick }: { onPick: (form: ConnectionForm) => voi
           autoComplete="off"
           spellCheck={false}
           onPaste={(event) => fromUrl(event.clipboardData.getData("text/plain"))}
+          onBlur={(event) => fromUrl(event.currentTarget.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               fromUrl(event.currentTarget.value);
