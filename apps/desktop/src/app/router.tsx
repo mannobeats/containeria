@@ -1,0 +1,203 @@
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  lazyRouteComponent,
+  redirect,
+} from "@tanstack/react-router";
+
+import { AppShell } from "@/shell/app-shell";
+import { NotFound } from "@/shell/not-found";
+
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: typeof router;
+  }
+  interface StaticDataRouteOption {
+    /** The view lists what runs in the engine, so it waits for the engine to run. */
+    needsEngine?: boolean;
+    /** Full-window views without the sidebar, like first launch. */
+    bare?: boolean;
+    title?: string;
+  }
+}
+
+type TabSearch = { tab?: string };
+
+const tabSearch = (search: Record<string, unknown>): TabSearch =>
+  typeof search.tab === "string" ? { tab: search.tab } : {};
+
+const root = createRootRoute({ component: AppShell, notFoundComponent: NotFound });
+
+const index = createRoute({
+  getParentRoute: () => root,
+  path: "/",
+  beforeLoad: () => {
+    throw redirect({ to: "/containers" });
+  },
+});
+
+type PageModule = Promise<{ default: () => React.JSX.Element }>;
+
+function page<const Path extends string>(
+  path: Path,
+  title: string,
+  load: () => PageModule,
+  needsEngine = true,
+) {
+  return createRoute({
+    getParentRoute: () => root,
+    path,
+    staticData: { needsEngine, title },
+    component: lazyRouteComponent(load),
+  });
+}
+
+const containers = page("containers", "Containers", () =>
+  import("@/features/containers/containers-page").then((module) => ({
+    default: module.ContainersPage,
+  })),
+);
+
+const containerDetail = createRoute({
+  getParentRoute: () => root,
+  path: "containers/$id",
+  staticData: { needsEngine: true, title: "Container" },
+  validateSearch: tabSearch,
+  component: lazyRouteComponent(() =>
+    import("@/features/containers/container-page").then((module) => ({
+      default: module.ContainerPage,
+    })),
+  ),
+});
+
+const welcome = createRoute({
+  getParentRoute: () => root,
+  path: "welcome",
+  staticData: { bare: true, title: "Welcome" },
+  component: lazyRouteComponent(() =>
+    import("@/features/welcome/welcome-page").then((module) => ({ default: module.WelcomePage })),
+  ),
+});
+
+const machineDetail = createRoute({
+  getParentRoute: () => root,
+  path: "machines/$name",
+  staticData: { needsEngine: false, title: "Linux machine" },
+  validateSearch: tabSearch,
+  component: lazyRouteComponent(() =>
+    import("@/features/machines/machine-page").then((module) => ({ default: module.MachinePage })),
+  ),
+});
+
+const dataWorkspace = createRoute({
+  getParentRoute: () => root,
+  path: "data/$connection",
+  staticData: { needsEngine: false, title: "Data" },
+  validateSearch: tabSearch,
+  component: lazyRouteComponent(() =>
+    import("@/features/data/workspace-page").then((module) => ({ default: module.WorkspacePage })),
+  ),
+});
+
+const routeTree = root.addChildren([
+  index,
+  containers,
+  containerDetail,
+  machineDetail,
+  dataWorkspace,
+  page("images", "Images", () =>
+    import("@/features/images/images-page").then((module) => ({ default: module.ImagesPage })),
+  ),
+  page("builds", "Builds", () =>
+    import("@/features/builds/builds-page").then((module) => ({ default: module.BuildsPage })),
+  ),
+  createRoute({
+    getParentRoute: () => root,
+    path: "builds/$id",
+    staticData: { needsEngine: true, title: "Build" },
+    validateSearch: tabSearch,
+    component: lazyRouteComponent(() =>
+      import("@/features/builds/build-page").then((module) => ({ default: module.BuildPage })),
+    ),
+  }),
+  page("volumes", "Volumes", () =>
+    import("@/features/volumes/volumes-page").then((module) => ({ default: module.VolumesPage })),
+  ),
+  page("networks", "Networks", () =>
+    import("@/features/networks/networks-page").then((module) => ({
+      default: module.NetworksPage,
+    })),
+  ),
+  page("images/$id", "Image", () =>
+    import("@/features/images/image-page").then((module) => ({ default: module.ImagePage })),
+  ),
+  page("volumes/$name", "Volume", () =>
+    import("@/features/volumes/volume-page").then((module) => ({ default: module.VolumePage })),
+  ),
+  page("networks/$id", "Network", () =>
+    import("@/features/networks/network-page").then((module) => ({ default: module.NetworkPage })),
+  ),
+  createRoute({
+    getParentRoute: () => root,
+    path: "kubernetes",
+    staticData: { needsEngine: true, title: "Kubernetes" },
+    validateSearch: tabSearch,
+    component: lazyRouteComponent(() =>
+      import("@/features/kubernetes/kubernetes-page").then((module) => ({
+        default: module.KubernetesPage,
+      })),
+    ),
+  }),
+  createRoute({
+    getParentRoute: () => root,
+    path: "kubernetes/pods/$namespace/$name",
+    staticData: { needsEngine: true, title: "Pod" },
+    validateSearch: tabSearch,
+    component: lazyRouteComponent(() =>
+      import("@/features/kubernetes/pod-page").then((module) => ({ default: module.PodPage })),
+    ),
+  }),
+  page(
+    "machines",
+    "Linux machines",
+    () =>
+      import("@/features/machines/machines-page").then((module) => ({
+        default: module.MachinesPage,
+      })),
+    false,
+  ),
+  page(
+    "data",
+    "Data",
+    () => import("@/features/data/data-page").then((module) => ({ default: module.DataPage })),
+    false,
+  ),
+  page("domains", "Domains", () =>
+    import("@/features/domains/domains-page").then((module) => ({ default: module.DomainsPage })),
+  ),
+  page(
+    "activity",
+    "Activity",
+    () =>
+      import("@/features/activity/activity-page").then((module) => ({
+        default: module.ActivityPage,
+      })),
+    false,
+  ),
+  page("import", "Import", () =>
+    import("@/features/welcome/import-page").then((module) => ({ default: module.ImportPage })),
+  ),
+  page("engine/shell", "Engine shell", () =>
+    import("@/features/engine/engine-shell-page").then((module) => ({
+      default: module.EngineShellPage,
+    })),
+  ),
+  welcome,
+]);
+
+export const router = createRouter({
+  routeTree,
+  defaultPreload: "intent",
+  scrollRestoration: true,
+});
