@@ -6,7 +6,8 @@ Open source and free for commercial use: a replacement for Docker Desktop and Or
 - **Containers** grouped by Compose project, with live CPU and memory, logs, a terminal, files and
   inspect.
 - **The memory ledger** shows where the engine's memory goes, project by project.
-- **Kubernetes** (k3s) and **Linux machines** (Incus) in the same engine.
+- **Kubernetes** (k3s) in the engine, and **Linux machines** (Incus) in a second VM that runs only
+  while you use them.
 - **A database browser** for Postgres, MySQL, SQLite, Redis, MongoDB and more, that finds the
   databases running in your containers.
 - `docker`, `docker compose` and `kubectl` keep working as before.
@@ -22,15 +23,16 @@ In active development. The approved design prototype lives in [`design/`](design
 
 ## Development
 
-Requirements: macOS 13+, Node 26, pnpm 11, Rust (pinned by `rust-toolchain.toml`), and for the
-engine `brew install colima incus` (Colima starts Incus for Linux machines only when its client is on `PATH`).
+Requirements: macOS 13+, Node 26, pnpm 11, Rust (pinned by `rust-toolchain.toml`), `cargo-deny`
+for `pnpm check` (`cargo install cargo-deny --locked`), and for the engine
+`brew install colima incus` (Colima starts Incus for Linux machines only when its client is on `PATH`).
 
 ```sh
 pnpm install
 pnpm dev                     # runs the app with its own engine in ~/.containeria
 CONTAINERIA_DOCKER_SOCKET=/var/run/docker.sock pnpm dev   # or against any running Docker engine
 pnpm check                   # the full quality gate
-sh scripts/fetch-tools.sh    # pinned Colima, Lima, Docker CLI, Compose, Buildx, kubectl, Incus
+sh scripts/fetch-tools.sh    # pinned Colima, Lima, krunkit, Docker CLI, Compose, Buildx, kubectl, Incus (Apple silicon only)
 pnpm build                   # the .app and .dmg, with those tools inside
 ```
 
