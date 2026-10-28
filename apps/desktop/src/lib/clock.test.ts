@@ -1,9 +1,12 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { formatClock, formatDateTime, formatPreciseClock, useClock } from "./clock";
 
 const evening = Date.parse("2026-10-18T02:54:07.123Z");
 
+// A Mac in a zone other than UTC, so following the Mac and following UTC read differently.
+beforeAll(() => vi.stubEnv("TZ", "America/Los_Angeles"));
+afterAll(() => vi.unstubAllEnvs());
 beforeEach(() => useClock.setState({ timeZone: "UTC", hour12: true }));
 
 describe("clock", () => {
@@ -16,8 +19,8 @@ describe("clock", () => {
   });
 
   it("shows the zone it is set to", () => {
-    expect(formatDateTime(evening)).toMatch(/Oct 18, 2026.*2:54/);
+    expect(formatDateTime(evening)).toMatch(/^Oct 18, 2026, 2:54\sAM$/);
     useClock.setState({ timeZone: undefined });
-    expect(formatDateTime(evening)).toMatch(/2026/);
+    expect(formatDateTime(evening)).toMatch(/^Oct 17, 2026, 7:54\sPM$/);
   });
 });

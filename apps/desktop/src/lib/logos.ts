@@ -137,6 +137,7 @@ const RULES: [string, LogoKey][] = [
   ["fedora", "fedora"],
   ["arch", "archlinux"],
   ["nixos", "nixos"],
+  ["opensuse", "opensuse"],
   ["suse", "opensuse"],
   ["rocky", "rockylinux"],
   ["kali", "kali"],
@@ -146,6 +147,16 @@ const RULES: [string, LogoKey][] = [
   ["helm", "helm"],
   ["docker", "docker"],
 ];
+
+/** Whether `keyword` begins a word of `subject`: `arch` begins `archlinux` but not `opensearch`. */
+function startsWord(subject: string, keyword: string): boolean {
+  for (let at = subject.indexOf(keyword); at !== -1; at = subject.indexOf(keyword, at + 1)) {
+    if (!/[a-z0-9]/.test(subject.charAt(at - 1))) {
+      return true;
+    }
+  }
+  return false;
+}
 
 const EXACT: Record<string, LogoKey> = {
   go: "go",
@@ -161,15 +172,16 @@ export function logoFor(...hints: (string | null | undefined)[]): LogoKey | unde
     if (!hint) {
       continue;
     }
-    const subject = (hint.toLowerCase().split(":")[0] ?? "").replace(
-      /^docker\.io\/(library\/)?/,
-      "",
-    );
+    const subject = hint
+      .toLowerCase()
+      .replace(/@.*$/, "")
+      .replace(/:[^/:]*$/, "")
+      .replace(/^docker\.io\/(library\/)?/, "");
     const exact = EXACT[subject];
     if (exact) {
       return exact;
     }
-    const rule = RULES.find(([keyword]) => subject.includes(keyword));
+    const rule = RULES.find(([keyword]) => startsWord(subject, keyword));
     if (rule) {
       return rule[1];
     }

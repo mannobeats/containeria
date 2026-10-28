@@ -7,7 +7,7 @@ import { newDraft } from "@/features/compose/model";
 import { chooseComposeFile, useCompose } from "@/features/compose/store";
 import { useContainers } from "@/features/containers/api";
 import { useRunSheet } from "@/features/containers/run/api";
-import { isServing, useEngineControl, useEngineStatus } from "@/features/engine/api";
+import { canControl, useEngineControl, useEngineStatus } from "@/features/engine/api";
 import { useImageSheet } from "@/features/images/sheet-store";
 import { openSettings } from "@/features/settings/api";
 import { applyAppearance, useIsDark } from "@/lib/theme";
@@ -43,13 +43,26 @@ function Item({
 const groupClass =
   "[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-12 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-ink-3";
 
+const CONTROLS = [
+  ["start", "Start engine"],
+  ["stop", "Stop engine"],
+  ["restart", "Restart engine"],
+] as const;
+
+/** Start, stop and restart, each only while the engine's phase allows it. */
+function EngineControls({ run }: { run: (action: () => void) => () => void }) {
+  const { data: engine } = useEngineStatus();
+  const control = useEngineControl();
+  return CONTROLS.filter(([verb]) => canControl(verb, engine?.phase)).map(([verb, label]) => (
+    <Item key={verb} label={label} onSelect={run(() => control.mutate(verb))} />
+  ));
+}
+
 export function CommandPalette() {
   const open = useUi((state) => state.paletteOpen);
   const setOpen = useUi((state) => state.setPaletteOpen);
   const toggleSidebar = useUi((state) => state.toggleSidebar);
   const navigate = useNavigate();
-  const { data: engine } = useEngineStatus();
-  const control = useEngineControl();
   const { data: containers } = useContainers();
   const dark = useIsDark();
   const setImageSheet = useImageSheet((state) => state.setSheet);
@@ -127,12 +140,7 @@ export function CommandPalette() {
                 />
               </Command.Group>
               <Command.Group heading="Engine" className={groupClass}>
-                {isServing(engine?.phase) ? (
-                  <Item label="Stop engine" onSelect={run(() => control.mutate("stop"))} />
-                ) : (
-                  <Item label="Start engine" onSelect={run(() => control.mutate("start"))} />
-                )}
-                <Item label="Restart engine" onSelect={run(() => control.mutate("restart"))} />
+                <EngineControls run={run} />
                 <Item
                   label="Open engine shell"
                   onSelect={run(() => navigate({ to: "/engine/shell" }))}

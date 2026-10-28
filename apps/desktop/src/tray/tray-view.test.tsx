@@ -27,9 +27,11 @@ const names = (calls: { command: string }[]) => calls.map((call) => call.command
 describe("TrayView", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("sizes its window to the content", async () => {
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(412);
     vi.stubGlobal(
       "ResizeObserver",
       class {
@@ -46,7 +48,9 @@ describe("TrayView", () => {
       },
     );
     const calls = renderTray("running");
-    await waitFor(() => expect(names(calls)).toContain("windowFit"));
+    await waitFor(() =>
+      expect(calls).toContainEqual({ command: "windowFit", args: { height: 412 } }),
+    );
   });
 
   it("lists what runs and stops a container", async () => {
@@ -72,6 +76,25 @@ describe("TrayView", () => {
     );
   });
 
+  it("opens a container's menu from its ⋯ button", async () => {
+    const calls = renderTray("running");
+    await userEvent.click(await screen.findByRole("button", { name: "More for shop-db-1" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Restart" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        command: "containerAct",
+        args: { id: "db", action: "restart" },
+      }),
+    );
+  });
+
+  it("can't start an engine Colima isn't installed for", async () => {
+    renderTray("missing");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Start" }).hasAttribute("disabled")).toBe(true),
+    );
+  });
+
   it("starts a stopped engine", async () => {
     const calls = renderTray("stopped");
     await userEvent.click(await screen.findByRole("button", { name: "Start" }));
@@ -85,15 +108,23 @@ describe("TrayView", () => {
     await waitFor(() => expect(names(calls)).toContain("windowHide"));
   });
 
-  it("opens the window and quits", async () => {
+  it("opens the main window", async () => {
     const calls = renderTray("running");
     await userEvent.click(await screen.findByRole("button", { name: "Open Containeria" }));
-    await userEvent.click(screen.getByRole("button", { name: "Settings…" }));
-    await userEvent.click(screen.getByRole("button", { name: "Quit Containeria" }));
+    await waitFor(() => expect(calls).toContainEqual({ command: "windowShowMain", args: {} }));
+  });
+
+  it("opens Settings at General", async () => {
+    const calls = renderTray("running");
+    await userEvent.click(await screen.findByRole("button", { name: "Settings…" }));
     await waitFor(() =>
-      expect(names(calls)).toEqual(
-        expect.arrayContaining(["windowShowMain", "settingsOpen", "appQuit"]),
-      ),
+      expect(calls).toContainEqual({ command: "settingsOpen", args: { pane: "general" } }),
     );
+  });
+
+  it("quits", async () => {
+    const calls = renderTray("running");
+    await userEvent.click(await screen.findByRole("button", { name: "Quit Containeria" }));
+    await waitFor(() => expect(calls).toContainEqual({ command: "appQuit", args: {} }));
   });
 });

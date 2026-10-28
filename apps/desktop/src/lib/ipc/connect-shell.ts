@@ -35,7 +35,8 @@ export function connectShell(
       onStatus({ state: "closed" });
     }
   });
-  open(terminal.cols, terminal.rows, channel)
+  const { cols, rows } = terminal;
+  open(cols, rows, channel)
     .then((opened) => {
       stream = opened;
       if (!connected) {
@@ -43,6 +44,9 @@ export function connectShell(
         return;
       }
       onStatus({ state: "open" });
+      if (terminal.cols !== cols || terminal.rows !== rows) {
+        commands.shellResize(opened, terminal.cols, terminal.rows).catch(() => undefined);
+      }
       terminal.focus();
     })
     .catch((error: unknown) => onStatus({ state: "failed", message: errorMessage(error) }));

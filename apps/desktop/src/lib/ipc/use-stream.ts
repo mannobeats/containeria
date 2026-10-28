@@ -26,7 +26,13 @@ export function useStream<T>(
         commands.streamCancel(id).catch(() => undefined);
       }
     };
-    begin(new Channel<T>((message) => handle(message)))
+    begin(
+      new Channel<T>((message) => {
+        if (!cancelled) {
+          handle(message);
+        }
+      }),
+    )
       .then((streamId) => {
         id = streamId;
         if (cancelled) {

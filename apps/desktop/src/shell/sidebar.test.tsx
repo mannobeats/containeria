@@ -60,4 +60,21 @@ describe("Sidebar", () => {
     await userEvent.click(await screen.findByRole("menuitem", { name: "Start Engine" }));
     await waitFor(() => expect(calls.map((call) => call.command)).toContain("engineStart"));
   });
+
+  it("can't copy the socket path before the engine reports one", async () => {
+    const calls = mockCommands({
+      engineStatus: () => {
+        throw new Error("no engine");
+      },
+      dataConnections: () => [],
+    });
+    renderWithApp(<Sidebar />);
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Containeria Couldn't check the engine/ }),
+    );
+    const copy = await screen.findByRole("menuitem", { name: "Copy Docker Socket Path" });
+    expect(copy.getAttribute("aria-disabled")).toBe("true");
+    await userEvent.click(copy);
+    expect(calls.some((call) => String(call.command).endsWith("writeText"))).toBe(false);
+  });
 });
