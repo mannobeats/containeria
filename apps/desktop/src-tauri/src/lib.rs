@@ -177,9 +177,11 @@ fn on_window_event(window: &Window, event: &WindowEvent) {
     }
 }
 
-/// Clicking the Dock icon brings the hidden window back.
+/// Clicking the Dock icon brings the hidden window back; quitting stops the engine.
 fn on_run_event(app: &AppHandle, event: &RunEvent) {
-    if let RunEvent::Reopen { has_visible_windows: false, .. } = event {
-        tray::show_main(app);
+    match event {
+        RunEvent::Reopen { has_visible_windows: false, .. } => tray::show_main(app),
+        RunEvent::Exit => engine::stop_with_app(app),
+        _ => {}
     }
 }

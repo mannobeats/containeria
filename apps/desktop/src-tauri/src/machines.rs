@@ -99,6 +99,14 @@ impl MachinesEngine {
             .await
     }
 
+    /// Stops a running machines VM as the app quits, like `Engine::stop_on_quit`.
+    pub(crate) async fn stop_on_quit(&self) -> Result<()> {
+        if self.status().await?.phase != EnginePhase::Running {
+            return Ok(());
+        }
+        Ok(self.colima()?.stop(Profile::Machines, |_| {}).await?)
+    }
+
     /// Deletes the machines VM and every machine in it.
     pub(crate) async fn delete(&self, app: &AppHandle) -> Result<()> {
         let colima = self.colima()?;
