@@ -23,6 +23,7 @@ type VolumeDialogsProps = {
 function DeleteVolume({ volume, onClose }: { volume: VolumeSummary; onClose: () => void }) {
   const remove = useRemoveVolume();
   const users = volume.usedBy.map((user) => user.container).join(", ");
+  const one = volume.usedBy.length === 1;
   const size =
     volume.sizeBytes === null ? "Its files" : `All ${formatBytes(volume.sizeBytes)} of files`;
   return (
@@ -34,7 +35,9 @@ function DeleteVolume({ volume, onClose }: { volume: VolumeSummary; onClose: () 
       pending={remove.isPending}
       onConfirm={() => remove.mutate(volume.name, { onSuccess: onClose })}
     >
-      {users ? `${users} still mounts it; stop those containers first. ` : ""}
+      {users
+        ? `${users} still ${one ? "mounts" : "mount"} it; delete ${one ? "that container" : "those containers"} first. `
+        : ""}
       {size} are deleted and can't be recovered. Back it up first if you might need it.
     </ConfirmSheet>
   );

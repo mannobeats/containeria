@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { formatClock, formatDateTime, formatPreciseClock, useClock } from "./clock";
+import { formatClock, formatDateTime, formatFileDate, formatPreciseClock, useClock } from "./clock";
 
 const evening = Date.parse("2026-10-18T02:54:07.123Z");
 
@@ -16,6 +16,16 @@ describe("clock", () => {
     useClock.setState({ hour12: false });
     expect(formatClock(evening)).toBe("02:54");
     expect(formatPreciseClock(evening)).toBe("02:54:07.123");
+  });
+
+  it("dates a file by the day in the clock's zone", () => {
+    expect(formatFileDate(evening)).toBe("2026-10-18");
+    useClock.setState({ timeZone: undefined });
+    const local = new Date(evening);
+    const pad = (value: number) => String(value).padStart(2, "0");
+    expect(formatFileDate(evening)).toBe(
+      `${local.getFullYear()}-${pad(local.getMonth() + 1)}-${pad(local.getDate())}`,
+    );
   });
 
   it("shows the zone it is set to", () => {

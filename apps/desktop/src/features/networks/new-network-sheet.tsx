@@ -56,6 +56,8 @@ export function NewNetworkSheet({
   const [spec, setSpec] = useState<NetworkSpec>(EMPTY);
   const create = useCreateNetwork();
   const problem = spec.name === "" ? null : specProblem(spec, taken);
+  const errorIn = (field: "name" | "subnet" | "gateway") =>
+    problem?.field === field ? problem.message : undefined;
   const set = (change: Partial<NetworkSpec>) => setSpec((current) => ({ ...current, ...change }));
   const text = (value: string) => (value.trim() === "" ? null : value.trim());
   return (
@@ -86,7 +88,7 @@ export function NewNetworkSheet({
           create.mutate(spec, { onSuccess: onClose });
         }}
       >
-        <Field label="Name" htmlFor={`${ids}-network-name`} error={problem ?? undefined}>
+        <Field label="Name" htmlFor={`${ids}-network-name`} error={errorIn("name")}>
           <Input
             id={`${ids}-network-name`}
             autoFocus
@@ -107,7 +109,12 @@ export function NewNetworkSheet({
           ]}
         />
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Subnet" htmlFor={`${ids}-network-subnet`} hint="Optional">
+          <Field
+            label="Subnet"
+            htmlFor={`${ids}-network-subnet`}
+            hint="Optional"
+            error={errorIn("subnet")}
+          >
             <Input
               id={`${ids}-network-subnet`}
               className="font-mono text-mono-13"
@@ -115,7 +122,12 @@ export function NewNetworkSheet({
               onChange={(event) => set({ subnet: text(event.target.value) })}
             />
           </Field>
-          <Field label="Gateway" htmlFor={`${ids}-network-gateway`} hint="Optional">
+          <Field
+            label="Gateway"
+            htmlFor={`${ids}-network-gateway`}
+            hint="Optional"
+            error={errorIn("gateway")}
+          >
             <Input
               id={`${ids}-network-gateway`}
               className="font-mono text-mono-13"

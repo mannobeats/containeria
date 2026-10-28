@@ -1,8 +1,6 @@
 import { IconDots } from "@tabler/icons-react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import { toast } from "sonner";
-
+import { copyText } from "@/lib/clipboard";
 import type { ContainerSummary, NetworkSummary } from "@/lib/ipc/bindings";
 import { logoFor } from "@/lib/logos";
 import type { Selection } from "@/lib/use-selection";
@@ -36,26 +34,22 @@ export function NetworkRow({ network, containers, onDelete, selection }: Network
     };
   });
   const subnet = network.subnet;
+  const blocked = undeletable(network);
   const menu: MenuEntry[] = [
     {
       label: "Open",
       onSelect: () => navigate({ to: "/networks/$id", params: { id: network.id } }),
     },
-    ...(subnet
-      ? [
-          {
-            label: "Copy Subnet",
-            onSelect: () =>
-              writeText(subnet)
-                .then(() => toast("Copied", { description: subnet }))
-                .catch(() => undefined),
-          },
-        ]
-      : []),
+    ...(subnet ? [{ label: "Copy Subnet", onSelect: () => copyText("Subnet", subnet) }] : []),
     { kind: "separator" },
     network.builtIn
       ? { label: "Built-in Networks Can't Be Deleted", disabled: true, onSelect: () => undefined }
-      : { label: "Delete Network…", danger: true, onSelect: () => onDelete(network) },
+      : {
+          label: blocked ? "Delete (in use)" : "Delete Network…",
+          danger: true,
+          disabled: blocked !== undefined,
+          onSelect: () => onDelete(network),
+        },
   ];
   return (
     <ContextMenu entries={menu}>
@@ -67,7 +61,7 @@ export function NetworkRow({ network, containers, onDelete, selection }: Network
           selection={selection}
           id={network.id}
           label={`Select ${network.name}`}
-          blocked={undeletable(network)}
+          blocked={blocked}
         />
         <td className="max-w-0">
           <Link to="/networks/$id" params={{ id: network.id }} className={rowLink} data-row-link>

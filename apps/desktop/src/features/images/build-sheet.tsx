@@ -64,6 +64,7 @@ function BuildForm({ onClose }: { onClose: () => void }) {
           setForm((current) => ({
             ...current,
             context: folder,
+            dockerfile: folder === current.context ? current.dockerfile : "",
             tag: current.tag || defaultTag(folder),
           }));
         }

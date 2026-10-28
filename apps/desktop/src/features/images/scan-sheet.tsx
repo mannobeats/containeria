@@ -1,9 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useState } from "react";
 
 import { plural } from "@/lib/format";
-import { commands, type Severity, type Vulnerability } from "@/lib/ipc/bindings";
+import type { Severity, Vulnerability } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
 import { Banner } from "@/ui/banner";
 import { Button } from "@/ui/button";
@@ -11,6 +10,8 @@ import { Chip } from "@/ui/chip";
 import { Progress } from "@/ui/progress";
 import { Segmented } from "@/ui/segmented";
 import { Sheet } from "@/ui/sheet";
+
+import { useImageScan } from "./api";
 
 const SEVERITIES: { value: Severity; label: string; tone: "bad" | "warn" | "neutral" }[] = [
   { value: "critical", label: "Critical", tone: "bad" },
@@ -44,7 +45,7 @@ function Findings({ found }: { found: Vulnerability[] }) {
           const severity = SEVERITIES.find((candidate) => candidate.value === item.severity);
           return (
             <li
-              key={`${item.id}-${item.package}`}
+              key={`${item.id}-${item.package}-${item.installed}-${item.target}`}
               className="grid grid-cols-[76px_minmax(0,1fr)_auto] items-start gap-3 border-t-[0.5px] border-line py-2 first:border-t-0"
             >
               <Chip tone={severity?.tone ?? "neutral"}>{severity?.label}</Chip>
@@ -103,13 +104,7 @@ type ScanSheetProps = { reference: string | null; onClose: () => void };
 
 /** Scans an image with Trivy and lists what it finds, worst first. */
 export function ScanSheet({ reference, onClose }: ScanSheetProps) {
-  const scan = useQuery({
-    queryKey: ["images", "scan", reference],
-    queryFn: () => commands.imageScan(reference ?? ""),
-    enabled: reference !== null,
-    retry: false,
-    staleTime: 10 * 60_000,
-  });
+  const scan = useImageScan(reference);
   return (
     <Sheet
       open={reference !== null}

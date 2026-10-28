@@ -3,6 +3,7 @@ import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { copyText } from "@/lib/clipboard";
+import { plural } from "@/lib/format";
 import type { NetworkDetail, NetworkEndpoint } from "@/lib/ipc/bindings";
 import { Crumb, Page } from "@/shell/page";
 import { ParentCrumb } from "@/shell/parent-crumb";
@@ -16,33 +17,41 @@ import { ContextMenu, type MenuEntry } from "@/ui/menu";
 import { ResourceHeader } from "@/ui/resource-header";
 import { HeadRow, Row, RowActions, Table } from "@/ui/table";
 import { Tile } from "@/ui/tile";
+import { Tip } from "@/ui/tooltip";
 
 import { useDisconnectNetwork, useNetwork } from "./api";
 import { ConnectSheet } from "./connect-sheet";
 import { DeleteNetworkSheet } from "./delete-network-sheet";
+import { hostAddress, undeletable } from "./model";
 
 const route = getRouteApi("/networks/$id");
 
 function Endpoints({ detail }: { detail: NetworkDetail }) {
   const navigate = useNavigate();
   const disconnect = useDisconnectNetwork();
-  const leave = (container: string) =>
+  const leave = ({ containerId, container }: NetworkEndpoint) =>
     disconnect.mutate({
       network: detail.network.id,
-      container,
+      container: containerId,
       networkName: detail.network.name,
+      containerName: container,
     });
-  const menu = ({ containerId, container, ipv4 }: NetworkEndpoint): MenuEntry[] => [
-    {
-      label: "Open",
-      onSelect: () => navigate({ to: "/containers/$id", params: { id: containerId } }),
-    },
-    { kind: "separator" },
-    ...(ipv4 ? [{ label: "Copy IP Address", onSelect: () => copyText("IP address", ipv4) }] : []),
-    { label: "Copy Name", onSelect: () => copyText("Name", container) },
-    { kind: "separator" },
-    { label: "Disconnect", danger: true, onSelect: () => leave(containerId) },
-  ];
+  const menu = (endpoint: NetworkEndpoint): MenuEntry[] => {
+    const { containerId, container, ipv4 } = endpoint;
+    return [
+      {
+        label: "Open",
+        onSelect: () => navigate({ to: "/containers/$id", params: { id: containerId } }),
+      },
+      { kind: "separator" },
+      ...(ipv4
+        ? [{ label: "Copy IP Address", onSelect: () => copyText("IP address", hostAddress(ipv4)) }]
+        : []),
+      { label: "Copy Name", onSelect: () => copyText("Name", container) },
+      { kind: "separator" },
+      { label: "Disconnect", danger: true, onSelect: () => leave(endpoint) },
+    ];
+  };
   if (detail.endpoints.length === 0) {
     return (
       <EmptyState
@@ -89,7 +98,7 @@ function Endpoints({ detail }: { detail: NetworkDetail }) {
                 <IconAction
                   label="Disconnect"
                   target={endpoint.container}
-                  onClick={() => leave(endpoint.containerId)}
+                  onClick={() => leave(endpoint)}
                 >
                   <IconPlugConnectedX />
                 </IconAction>
@@ -156,6 +165,7 @@ export function NetworkPage() {
     );
   }
   const { network } = detail;
+  const blocked = undeletable(network);
   return (
     <Page crumbs={crumbs}>
       <ResourceHeader
@@ -167,7 +177,7 @@ export function NetworkPage() {
             {network.subnet ? (
               <span className="font-mono text-mono-12">{network.subnet}</span>
             ) : null}
-            <span>{detail.endpoints.length} containers</span>
+            <span>{plural(detail.endpoints.length, "container")}</span>
           </>
         }
         actions={
@@ -180,14 +190,17 @@ export function NetworkPage() {
               Connect container
             </Button>
             {network.builtIn ? null : (
-              <Button
-                variant="dangerGhost"
-                iconOnly
-                aria-label="Delete network"
-                onClick={() => setDialog("delete")}
-              >
-                <IconTrash />
-              </Button>
+              <Tip label={blocked ?? "Delete network"}>
+                <Button
+                  variant="dangerGhost"
+                  iconOnly
+                  aria-label={blocked ?? "Delete network"}
+                  disabled={blocked !== undefined}
+                  onClick={() => setDialog("delete")}
+                >
+                  <IconTrash />
+                </Button>
+              </Tip>
             )}
           </>
         }

@@ -5,11 +5,15 @@ import { useTransition } from "react";
 import { toast } from "sonner";
 
 import { queryKeys } from "@/app/query-keys";
+import { useRemoveMany } from "@/app/use-remove-many";
 import { useToastedMutation } from "@/app/use-toasted-mutation";
 import { isServing, useEngineStatus } from "@/features/engine/api";
-import { formatBytes } from "@/lib/format";
-import { commands } from "@/lib/ipc/bindings";
+import { formatFileDate } from "@/lib/clock";
+import { formatBytes, plural } from "@/lib/format";
+import { commands, type VolumeSummary } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
+
+import { volumeName } from "./model";
 
 export function useVolumes() {
   const { data: engine } = useEngineStatus();
@@ -41,6 +45,15 @@ export function useRemoveVolume() {
     run: (name: string) => commands.volumeRemove(name),
     done: (name) => `Deleted ${name}`,
     failed: "The volume wasn't deleted",
+    invalidates: queryKeys.volumes,
+  });
+}
+
+export function useRemoveVolumes() {
+  return useRemoveMany({
+    remove: (volume: VolumeSummary) => commands.volumeRemove(volume.name),
+    name: volumeName,
+    noun: "volume",
     invalidates: queryKeys.volumes,
   });
 }
@@ -80,7 +93,7 @@ export function usePruneVolumes() {
     mutationFn: commands.volumesPrune,
     onSuccess: (report) =>
       toast.success(`Freed ${formatBytes(report.reclaimedBytes)}`, {
-        description: `${report.removed} volumes deleted`,
+        description: `${plural(report.removed, "volume")} deleted`,
       }),
     onError: (error) => toast.error("Clean-up failed", { description: errorMessage(error) }),
     onSettled: () => client.invalidateQueries({ queryKey: queryKeys.volumes }),
@@ -114,7 +127,7 @@ function useSaveToMac<T>(save: (input: T) => Promise<string | null>, failure: st
 /** Asks where to save, then writes the volume there as a `.tar.gz`. */
 export function useBackupVolume() {
   return useSaveToMac(async (name: string) => {
-    const date = new Date().toISOString().slice(0, 10);
+    const date = formatFileDate(Date.now());
     const destination = await save({
       defaultPath: `${name}-${date}.tar.gz`,
       filters: [{ name: "Backup", extensions: ["gz"] }],

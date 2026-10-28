@@ -22,7 +22,10 @@ function Pairs({ pairs }: { pairs: EnvVar[] }) {
 /** The image the build made, linked while it is still on the engine. */
 function Image({ id }: { id: string }) {
   const { data: images } = useImages();
-  const image = images?.find((candidate) => candidate.id === id);
+  if (!images) {
+    return null;
+  }
+  const image = images.find((candidate) => candidate.id === id);
   if (!image) {
     return <span className="text-ink-3">No longer on this engine</span>;
   }

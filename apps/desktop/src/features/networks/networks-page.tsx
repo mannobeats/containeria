@@ -1,10 +1,8 @@
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { useState } from "react";
 
-import { queryKeys } from "@/app/query-keys";
-import { useRemoveMany } from "@/app/use-remove-many";
 import { useContainers } from "@/features/containers/api";
-import { type ContainerSummary, commands, type NetworkSummary } from "@/lib/ipc/bindings";
+import type { ContainerSummary, NetworkSummary } from "@/lib/ipc/bindings";
 import { type Selection, useSelection, useSelectionKeys } from "@/lib/use-selection";
 import { Crumb, Page } from "@/shell/page";
 import { Button } from "@/ui/button";
@@ -15,7 +13,7 @@ import { Lede, PageHeading } from "@/ui/page-heading";
 import { SelectionBar } from "@/ui/selection-bar";
 import { HeadRow, SelectAll, Table } from "@/ui/table";
 
-import { useNetworks } from "./api";
+import { useNetworks, useRemoveNetworks } from "./api";
 import { DeleteNetworkSheet } from "./delete-network-sheet";
 import { matchesNetwork, undeletable } from "./model";
 import { NetworkRow } from "./network-row";
@@ -80,12 +78,7 @@ export function NetworksPage() {
   );
   const chosen = visible.filter((network) => selection.has(network.id));
   const [removing, setRemoving] = useState<NetworkSummary[]>([]);
-  const removeMany = useRemoveMany({
-    remove: (network: NetworkSummary) => commands.networkRemove(network.id),
-    name: (network) => network.name,
-    noun: "network",
-    invalidates: queryKeys.networks,
-  });
+  const removeMany = useRemoveNetworks();
   useSelectionKeys(selection, () => setRemoving(chosen));
   return (
     <Page crumbs={<Crumb>Networks</Crumb>}>

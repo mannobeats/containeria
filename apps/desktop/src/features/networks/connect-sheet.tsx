@@ -40,7 +40,12 @@ export function ConnectSheet({
             loading={connect.isPending}
             onClick={() =>
               connect.mutate(
-                { network: network.id, container, networkName: network.name },
+                {
+                  network: network.id,
+                  container,
+                  networkName: network.name,
+                  containerName: container,
+                },
                 { onSuccess: onClose },
               )
             }

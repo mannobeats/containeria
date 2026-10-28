@@ -3,9 +3,11 @@ import { getRouteApi, Link } from "@tanstack/react-router";
 import { useContainers } from "@/features/containers/api";
 import { formatBytes } from "@/lib/format";
 import type { ImageDetail, ImageLayer } from "@/lib/ipc/bindings";
+import { errorMessage, isCommandError } from "@/lib/ipc/errors";
 import { logoFor } from "@/lib/logos";
 import { Crumb, Page } from "@/shell/page";
 import { ParentCrumb } from "@/shell/parent-crumb";
+import { Button } from "@/ui/button";
 import { Chip } from "@/ui/chip";
 import { EmptyState } from "@/ui/empty-state";
 import { Kv } from "@/ui/kv";
@@ -125,7 +127,7 @@ function UsedBy({ id }: { id: string }) {
 
 export function ImagePage() {
   const { id } = route.useParams();
-  const { data: image, isError } = useImage(id);
+  const { data: image, error, refetch } = useImage(id);
   const name = image?.references[0] ?? shortId(id);
   const crumbs = (
     <>
@@ -133,15 +135,21 @@ export function ImagePage() {
       <Crumb>{name}</Crumb>
     </>
   );
-  if (isError) {
+  if (error) {
+    const gone = isCommandError(error) && error.kind === "notFound";
     return (
       <Page crumbs={crumbs}>
         <EmptyState
           art={<Tile icon="image" size="xl" />}
-          title={`${name} isn't on this engine`}
+          title={gone ? `${name} isn't on this engine` : `${name} couldn't be read`}
           className="h-full"
+          actions={
+            gone ? null : (
+              <Button onClick={() => refetch().catch(() => undefined)}>Try Again</Button>
+            )
+          }
         >
-          It may have been deleted. Pull it again to use it.
+          {gone ? "It may have been deleted. Pull it again to use it." : errorMessage(error)}
         </EmptyState>
       </Page>
     );
@@ -150,7 +158,7 @@ export function ImagePage() {
     <Page crumbs={crumbs}>
       <ResourceHeader
         face={<Tile logo={logoFor(name)} icon="image" size="lg" />}
-        title={image?.references.length ? name : "Dangling build layer"}
+        title={image?.references.length === 0 ? "Dangling build layer" : name}
         meta={
           image ? (
             <>
