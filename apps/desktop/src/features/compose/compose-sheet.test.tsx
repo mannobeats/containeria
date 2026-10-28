@@ -36,7 +36,10 @@ function setup() {
   return calls;
 }
 
-beforeEach(() => useCompose.setState({ draft: null, run: null, runVisible: false }));
+beforeEach(() => {
+  channel = undefined;
+  useCompose.setState({ draft: null, run: null, runVisible: false });
+});
 
 describe("ComposeSheet", () => {
   it("checks pasted YAML, then deploys it and shows Compose's output", async () => {
@@ -102,11 +105,11 @@ describe("ComposeSheet", () => {
   });
 
   it("offers to edit the file when a deploy fails", async () => {
-    setup();
+    const calls = setup();
     useCompose.getState().edit({ ...newDraft(), name: "shop" });
     renderWithApp(sheets);
     await userEvent.click(await screen.findByRole("button", { name: "Deploy" }));
-    await waitFor(() => expect(channel).toBeDefined());
+    await waitFor(() => expect(calls.map((call) => call.command)).toContain("composeDeploy"));
     sendToChannel(channel, { kind: "failed", message: "port 8080 is already allocated" });
     expect(await screen.findByText("port 8080 is already allocated")).toBeDefined();
     await userEvent.click(screen.getByRole("button", { name: "Edit File" }));

@@ -117,14 +117,52 @@ describe("ContainersPage", () => {
     );
   });
 
-  it("stops a project and removes it, with its volumes, from its right-click menu", async () => {
+  it("stops every container of a project from its right-click menu", async () => {
     const calls = setup();
     fireEvent.contextMenu(await screen.findByRole("button", { name: "Collapse shop" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Stop Project" }));
-    await waitFor(() =>
-      expect(calls).toContainEqual({ command: "containerAct", args: { id: "db", action: "stop" } }),
-    );
+    await waitFor(() => {
+      expect(calls).toContainEqual({ command: "containerAct", args: { id: "db", action: "stop" } });
+      expect(calls).toContainEqual({
+        command: "containerAct",
+        args: { id: "api", action: "stop" },
+      });
+    });
+  });
+
+  it("stops the whole project while a search hides some of it", async () => {
+    const calls = setup();
+    await userEvent.type(await screen.findByPlaceholderText("Filter containers"), "api");
+    expect(screen.getByText("2 of 2 running")).toBeDefined();
     fireEvent.contextMenu(screen.getByRole("button", { name: "Collapse shop" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Stop Project" }));
+    await waitFor(() => {
+      expect(calls).toContainEqual({ command: "containerAct", args: { id: "db", action: "stop" } });
+      expect(calls).toContainEqual({
+        command: "containerAct",
+        args: { id: "api", action: "stop" },
+      });
+    });
+  });
+
+  it("forgets the volumes choice when the remove sheet is cancelled", async () => {
+    setup();
+    fireEvent.contextMenu(await screen.findByRole("button", { name: "Collapse shop" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Remove Project…" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Also delete its volumes" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.contextMenu(screen.getByRole("button", { name: "Collapse shop" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Remove Project…" }));
+    expect(
+      screen
+        .getByRole("checkbox", { name: "Also delete its volumes" })
+        .getAttribute("aria-checked"),
+    ).toBe("false");
+  });
+
+  it("removes a project with its volumes from its right-click menu", async () => {
+    const calls = setup();
+    fireEvent.contextMenu(await screen.findByRole("button", { name: "Collapse shop" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Remove Project…" }));
     await userEvent.click(screen.getByRole("checkbox", { name: "Also delete its volumes" }));
     await userEvent.click(screen.getByRole("button", { name: "Remove Project" }));

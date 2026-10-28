@@ -10,6 +10,8 @@ import { ProjectRow } from "./project-row";
 
 type ContainerTableProps = ContainerCallbacks & {
   groups: ContainerGroup[];
+  /** Each group's containers before filtering, by group `id`, for its project actions. */
+  members: Map<string, ContainerSummary[]>;
   usage: Map<string, ContainerUsage>;
   selected: ReadonlySet<string>;
   onSelect: (ids: string[], selected: boolean) => void;
@@ -38,6 +40,7 @@ function headerState(
 
 export function ContainerTable({
   groups,
+  members,
   usage,
   selected,
   onSelect,
@@ -95,6 +98,7 @@ export function ContainerTable({
           <tbody key={group.id}>
             <ProjectRow
               group={group}
+              members={members.get(group.id) ?? group.containers}
               usage={usage}
               collapsed={!open}
               onCollapse={() => onCollapse(group.id)}

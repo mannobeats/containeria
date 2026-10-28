@@ -14,8 +14,15 @@ export function exitCode(container: ContainerSummary): number | null {
   return code === 0 ? null : code;
 }
 
+/**
+ * 143 (128 + SIGTERM) is what `docker stop` leaves when the process doesn't trap the signal, so it
+ * isn't an error. 137 is, since an out-of-memory kill and `docker kill` look the same.
+ */
+export const isErrorExit = (code: number) => code !== 0 && code !== 143;
+
 export function isCrashed(container: ContainerSummary): boolean {
-  return container.state === "dead" || exitCode(container) !== null;
+  const code = exitCode(container);
+  return container.state === "dead" || (code !== null && isErrorExit(code));
 }
 
 export function matches(container: ContainerSummary, filter: Filter, query: string): boolean {

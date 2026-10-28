@@ -13,19 +13,25 @@ type RemoveSheetProps = {
 
 export function RemoveProjectSheet({ project, open, onOpenChange, onRemove }: RemoveSheetProps) {
   const [volumes, setVolumes] = useState(false);
+  const change = (next: boolean) => {
+    if (!next) {
+      setVolumes(false);
+    }
+    onOpenChange(next);
+  };
   return (
     <Sheet
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={change}
       title={`Remove ${project}?`}
       description="Its containers and networks are deleted. Images and the Compose file stay."
       footer={
         <>
-          <Button onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={() => change(false)}>Cancel</Button>
           <Button
             variant="danger"
             onClick={() => {
-              onOpenChange(false);
+              change(false);
               onRemove(volumes);
             }}
           >

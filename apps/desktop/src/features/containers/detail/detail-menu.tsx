@@ -22,15 +22,11 @@ export function DetailMenu({ details }: { details: ContainerDetails }) {
   const [dialog, setDialog] = useState<Dialog>(null);
   const navigate = useNavigate();
   const action = useContainerAction();
-  const recreate = useRecreate();
+  const recreate = useRecreate((id) =>
+    navigate({ to: "/containers/$id", params: { id } }).catch(() => undefined),
+  );
   const recreateWith = (pull: boolean) =>
-    recreate.mutate(
-      { id: details.id, name: details.name, pull },
-      {
-        onSuccess: (id) =>
-          navigate({ to: "/containers/$id", params: { id } }).catch(() => undefined),
-      },
-    );
+    recreate.mutate({ id: details.id, name: details.name, pull });
   const rename = useRename(details.id);
   const commit = useCommit(details.id);
   const exportFiles = useExport(details.id, details.name);

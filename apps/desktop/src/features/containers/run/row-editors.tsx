@@ -9,7 +9,11 @@ import { IconAction } from "@/ui/icon-action";
 
 import { type EnvRow, type PortRow, rowId, type StorageRow } from "./run-model";
 
-type ListProps<Row> = { rows: Row[]; onChange: (rows: Row[]) => void };
+type ListProps<Row> = {
+  rows: Row[];
+  onChange: (rows: Row[]) => void;
+  error?: string | undefined;
+};
 
 const replace = <Row,>(rows: Row[], index: number, row: Row) =>
   rows.map((current, at) => (at === index ? row : current));
@@ -49,7 +53,7 @@ export function PortsEditor({
   onChange,
   error,
   nextPort,
-}: ListProps<PortRow> & { error?: string | undefined; nextPort: () => number }) {
+}: ListProps<PortRow> & { nextPort: () => number }) {
   return (
     <Group
       title="Ports"
@@ -97,10 +101,11 @@ export function PortsEditor({
   );
 }
 
-export function EnvEditor({ rows, onChange }: ListProps<EnvRow>) {
+export function EnvEditor({ rows, onChange, error }: ListProps<EnvRow>) {
   return (
     <Group
       title="Environment"
+      error={error}
       actions={
         <Button
           variant="ghost"
@@ -141,7 +146,7 @@ export function EnvEditor({ rows, onChange }: ListProps<EnvRow>) {
   );
 }
 
-export function StorageEditor({ rows, onChange }: ListProps<StorageRow>) {
+export function StorageEditor({ rows, onChange, error }: ListProps<StorageRow>) {
   const addFolder = async () => {
     const folder = await open({ directory: true });
     if (folder) {
@@ -151,6 +156,7 @@ export function StorageEditor({ rows, onChange }: ListProps<StorageRow>) {
   return (
     <Group
       title="Storage"
+      error={error}
       actions={
         <>
           <Button variant="ghost" size="sm" onClick={() => addFolder().catch(() => undefined)}>

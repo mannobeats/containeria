@@ -33,6 +33,11 @@ describe("exitCode", () => {
     expect(isCrashed(container({ state: "exited", status: "Exited (1) now" }))).toBe(true);
     expect(isCrashed(container({ state: "exited", status: "Exited (0) now" }))).toBe(false);
   });
+
+  it("doesn't call a container that docker stop ended with SIGTERM crashed", () => {
+    expect(isCrashed(container({ state: "exited", status: "Exited (143) now" }))).toBe(false);
+    expect(isCrashed(container({ state: "exited", status: "Exited (137) now" }))).toBe(true);
+  });
 });
 
 describe("matches", () => {

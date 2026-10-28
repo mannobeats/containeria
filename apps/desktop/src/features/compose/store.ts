@@ -16,6 +16,8 @@ export type OutputLine = { id: number; text: string };
 
 /** A tool run whose output the run sheet shows. It keeps going when the sheet is hidden. */
 export type ComposeRun = {
+  /** Tells this run's events from those of a run it replaced. */
+  id: number;
   title: string;
   /** Said in the toast when it worked, e.g. "shop is up". */
   done: string;
@@ -52,22 +54,27 @@ export const useCompose = create<ComposeState>((set) => ({
 
 const MAX_LINES = 2000;
 
-function update(change: (run: ComposeRun) => Partial<ComposeRun>) {
+let runs = 0;
+
+function update(id: number, change: (run: ComposeRun) => Partial<ComposeRun>) {
   useCompose.setState((state) =>
-    state.run ? { run: { ...state.run, ...change(state.run) } } : {},
+    state.run?.id === id ? { run: { ...state.run, ...change(state.run) } } : {},
   );
 }
 
-function finish(failure: string | null) {
-  const { run, runVisible } = useCompose.getState();
-  update(() => ({ status: failure === null ? "done" : "failed", message: failure }));
+/** Settles run `id` once: its channel and its command can both report the end. */
+function finish(id: number, failure: string | null) {
   queryClient.invalidateQueries({ queryKey: queryKeys.containers }).catch(() => undefined);
   queryClient.invalidateQueries({ queryKey: queryKeys.images }).catch(() => undefined);
-  if (run) {
-    const title = failure === null ? run.done : `${run.title} failed`;
-    notifyWhenAway(title, failure).catch(() => undefined);
+  const { run, runVisible } = useCompose.getState();
+  if (run?.id !== id || run.status !== "running") {
+    return;
   }
-  if (run && !runVisible) {
+  update(id, () => ({ status: failure === null ? "done" : "failed", message: failure }));
+  notifyWhenAway(failure === null ? run.done : `${run.title} failed`, failure).catch(
+    () => undefined,
+  );
+  if (!runVisible) {
     if (failure === null) {
       toast.success(run.done);
     } else {
@@ -86,23 +93,25 @@ type RunStart = {
 
 /** Starts a tool run (Compose, an image build or push) and shows its output. */
 export function startRun({ title, done, draft, start }: RunStart) {
+  runs += 1;
+  const id = runs;
   useCompose.setState({
-    run: { title, done, lines: [], status: "running", message: null, draft: draft ?? null },
+    run: { id, title, done, lines: [], status: "running", message: null, draft: draft ?? null },
     runVisible: true,
   });
   const channel = new Channel<OutputEvent>((event) => {
     if (event.kind === "line") {
-      update((run) => ({
+      update(id, (run) => ({
         lines: [
           ...run.lines.slice(-MAX_LINES),
           { id: (run.lines.at(-1)?.id ?? 0) + 1, text: event.text },
         ],
       }));
     } else {
-      finish(event.kind === "failed" ? event.message : null);
+      finish(id, event.kind === "failed" ? event.message : null);
     }
   });
-  start(channel).catch((error: unknown) => finish(errorMessage(error)));
+  start(channel).catch((error: unknown) => finish(id, errorMessage(error)));
 }
 
 /** Opens a Compose file from the Mac in the editor. */

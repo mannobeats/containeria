@@ -6,6 +6,7 @@ import {
   dockerRun,
   emptyForm,
   freePort,
+  nextHostPort,
   splitCommand,
   suggestedName,
   toSpec,
@@ -53,17 +54,54 @@ describe("ports", () => {
   });
 });
 
+describe("nextHostPort", () => {
+  it("counts on from the ports typed so far", () => {
+    expect(nextHostPort([{ id: "a", host: "9000", container: "80" }], new Map())).toBe(9001);
+  });
+
+  it("skips a Mac port that isn't a number", () => {
+    expect(nextHostPort([{ id: "a", host: "web", container: "80" }], new Map())).toBe(8080);
+  });
+});
+
 describe("validate", () => {
-  it("asks for an image, a valid name and real ports", () => {
-    const errors = validate(
-      { ...emptyForm, name: "bad name", ports: [{ id: "a", host: "0", container: "80" }] },
-      new Map(),
-    );
-    expect(errors).toEqual({
-      image: "Choose an image to run.",
+  const form = { ...emptyForm, image: "nginx" };
+  const port = (host: string) =>
+    validate({ ...form, ports: [{ id: "a", host, container: "80" }] }, new Map());
+
+  it("asks for an image", () => {
+    expect(validate(emptyForm, new Map())).toEqual({ image: "Choose an image to run." });
+  });
+
+  it("refuses a name Docker wouldn't take", () => {
+    expect(validate({ ...form, name: "bad name" }, new Map())).toEqual({
       name: "Use letters, numbers, dots, dashes and underscores.",
-      ports: "Ports are numbers from 1 to 65535.",
     });
+  });
+
+  it("takes ports from 1 to 65535 only", () => {
+    expect(port("65535")).toEqual({});
+    expect(port("0").ports).toBe("Ports are numbers from 1 to 65535.");
+    expect(port("65536").ports).toBe("Ports are numbers from 1 to 65535.");
+    expect(port("80.5").ports).toBe("Ports are numbers from 1 to 65535.");
+  });
+
+  it("refuses a variable with a value but no name", () => {
+    const env = [{ id: "a", key: " ", value: "dev" }];
+    expect(validate({ ...form, env }, new Map())).toEqual({ env: "Give each variable a name." });
+  });
+
+  it("refuses a mount with only one side filled in", () => {
+    const storage = [{ id: "a", source: "pg", target: "", readOnly: false }];
+    expect(validate({ ...form, storage }, new Map())).toEqual({
+      storage: "Give each mount a volume or folder and a path in the container.",
+    });
+  });
+
+  it("lets empty rows through, since Run leaves them out", () => {
+    const env = [{ id: "a", key: "", value: "" }];
+    const storage = [{ id: "b", source: "", target: "", readOnly: false }];
+    expect(validate({ ...form, env, storage }, new Map())).toEqual({});
   });
 });
 

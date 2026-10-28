@@ -10,7 +10,7 @@ import clsx from "clsx";
 import { useProjectMenu } from "@/features/compose/project-menu";
 import { segmentColor } from "@/features/metrics/segment-color";
 import { formatMemory } from "@/lib/format";
-import type { ContainerUsage } from "@/lib/ipc/bindings";
+import type { ContainerSummary, ContainerUsage } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
 import { IconAction } from "@/ui/icon-action";
 import { ContextMenu, Menu, type MenuEntry } from "@/ui/menu";
@@ -20,6 +20,8 @@ import { type ContainerGroup, isRunning } from "./model";
 
 type ProjectRowProps = Pick<ContainerCallbacks, "act"> & {
   group: ContainerGroup;
+  /** Every container in the project, including those the filter or search hides. */
+  members: ContainerSummary[];
   usage: Map<string, ContainerUsage>;
   collapsed: boolean;
   onCollapse: () => void;
@@ -27,17 +29,25 @@ type ProjectRowProps = Pick<ContainerCallbacks, "act"> & {
 };
 
 /** The header row of a Compose project: its colour in the ledger, what runs, and project actions. */
-export function ProjectRow({ group, usage, collapsed, onCollapse, columns, act }: ProjectRowProps) {
+export function ProjectRow({
+  group,
+  members,
+  usage,
+  collapsed,
+  onCollapse,
+  columns,
+  act,
+}: ProjectRowProps) {
   const label = group.project ?? "Standalone";
-  const up = group.containers.filter(isRunning);
+  const up = members.filter(isRunning);
   const memory = up.reduce(
     (total, container) => total + (usage.get(container.id)?.memoryBytes ?? 0),
     0,
   );
   const project = useProjectMenu(label);
-  const start = () => act(group.containers, "start", label);
+  const start = () => act(members, "start", label);
   const stop = () => act(up, "stop", label);
-  const restart = () => act(group.containers, "restart", label);
+  const restart = () => act(members, "restart", label);
   const menu: MenuEntry[] = [
     up.length > 0
       ? { label: "Stop Project", icon: <IconPlayerStop />, onSelect: stop }
@@ -75,7 +85,7 @@ export function ProjectRow({ group, usage, collapsed, onCollapse, columns, act }
           />
           <b className="text-13 font-semibold text-ink">{label}</b>
           <span className="text-12 text-ink-3">
-            {up.length} of {group.containers.length} running
+            {up.length} of {members.length} running
           </span>
           <span className="ml-auto text-12 text-ink-3 tabular">
             {up.length > 0 ? formatMemory(memory) : null}

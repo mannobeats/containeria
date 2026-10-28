@@ -39,15 +39,18 @@ type Recreate = { id: string; name: string; pull: boolean };
 
 /**
  * Creates a container again from its own settings, so changed engine settings or, with `pull`,
- * a newer image take effect. Resolves to the new container's ID.
+ * a newer image take effect. `onRecreated` gets the new container's ID. It runs here, not in
+ * `mutate`'s options, because the old container's removal can unmount the caller first.
  */
-export function useRecreate() {
+export function useRecreate(onRecreated?: (id: string) => unknown) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: ({ id, pull }: Recreate) => commands.containerRecreate(id, pull),
     onMutate: ({ name }) => toast.loading(`Recreating ${name}…`),
-    onSuccess: (_, { name }, loading) =>
-      toast.success(`Recreated ${name}`, loading === undefined ? {} : { id: loading }),
+    onSuccess: (id, { name }, loading) => {
+      toast.success(`Recreated ${name}`, loading === undefined ? {} : { id: loading });
+      onRecreated?.(id);
+    },
     onError: (error, _, loading) =>
       toast.error("Couldn't recreate the container", {
         description: errorMessage(error),
