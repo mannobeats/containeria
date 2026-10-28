@@ -114,4 +114,17 @@ describe("NetworkPage", () => {
     renderWithApp(<NetworkPage />, { route });
     expect(await screen.findByText("This network was deleted")).toBeDefined();
   });
+
+  it("offers to try again when the network can't be read", async () => {
+    mockCommands({
+      engineStatus: () => engineFixture(),
+      networkDetail: () => {
+        throw { kind: "engineStopped", message: "the engine didn't answer" };
+      },
+    });
+    renderWithApp(<NetworkPage />, { route });
+    expect(await screen.findByText("This network couldn't be read")).toBeDefined();
+    expect(screen.getByText("the engine didn't answer")).toBeDefined();
+    expect(screen.getByRole("button", { name: "Try Again" })).toBeDefined();
+  });
 });

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { copyText } from "@/lib/clipboard";
 import { plural } from "@/lib/format";
 import type { NetworkDetail, NetworkEndpoint } from "@/lib/ipc/bindings";
+import { errorMessage, isCommandError } from "@/lib/ipc/errors";
 import { Crumb, Page } from "@/shell/page";
 import { ParentCrumb } from "@/shell/parent-crumb";
 import { Button } from "@/ui/button";
@@ -141,9 +142,23 @@ function Details({ detail }: { detail: NetworkDetail }) {
   );
 }
 
+function Unreadable({ error, retry }: { error: unknown; retry: () => void }) {
+  const gone = isCommandError(error) && error.kind === "notFound";
+  return (
+    <EmptyState
+      art={<Tile icon="network" size="xl" />}
+      title={gone ? "This network was deleted" : "This network couldn't be read"}
+      className="h-full"
+      actions={gone ? null : <Button onClick={retry}>Try Again</Button>}
+    >
+      {gone ? null : errorMessage(error)}
+    </EmptyState>
+  );
+}
+
 export function NetworkPage() {
   const { id } = route.useParams();
-  const { data: detail, isError } = useNetwork(id);
+  const { data: detail, error, refetch } = useNetwork(id);
   const [dialog, setDialog] = useState<"connect" | "delete" | null>(null);
   const crumbs = (
     <>
@@ -151,18 +166,15 @@ export function NetworkPage() {
       <Crumb>{detail?.network.name ?? id.slice(0, 12)}</Crumb>
     </>
   );
-  if (isError || !detail) {
+  if (error) {
     return (
       <Page crumbs={crumbs}>
-        {isError ? (
-          <EmptyState
-            art={<Tile icon="network" size="xl" />}
-            title="This network was deleted"
-            className="h-full"
-          />
-        ) : null}
+        <Unreadable error={error} retry={() => refetch().catch(() => undefined)} />
       </Page>
     );
+  }
+  if (!detail) {
+    return <Page crumbs={crumbs}>{null}</Page>;
   }
   const { network } = detail;
   const blocked = undeletable(network);
