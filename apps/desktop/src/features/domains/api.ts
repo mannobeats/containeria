@@ -41,16 +41,10 @@ export function useSetDomainsEnabled() {
   });
 }
 
-/** `replaces` is the host the route had before an edit, removed once the new one is saved. */
+/** `replaces` is the host the route had before an edit, removed in the same save. */
 export function useSaveRoute() {
   return useDomainsChange<{ route: CustomRoute; replaces: string | null }>({
-    run: async ({ route, replaces }) => {
-      await commands.domainsAddRoute(route);
-      if (replaces !== null && replaces !== route.host) {
-        await commands.domainsRemoveRoute(replaces);
-      }
-      return null;
-    },
+    run: ({ route, replaces }) => commands.domainsAddRoute(route, replaces),
     done: ({ route }) => `${route.host} points to ${route.container}:${route.port}`,
     failed: "The route wasn't saved",
   });

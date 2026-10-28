@@ -93,6 +93,20 @@ describe("PodPage", () => {
     await waitFor(() => logsOf("envoy"));
   });
 
+  it("opens a newly picked container's log at its end, even after scrolling up", async () => {
+    vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(1000);
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(200);
+    setup("/kubernetes/pods/shop/api-5c8d-q1");
+    const picker = await screen.findByRole("combobox", { name: "Container" });
+    const before = screen.getByRole("log", { name: "Logs of api-5c8d-q1" });
+    before.scrollTop = 100;
+    fireEvent.scroll(before);
+    await userEvent.selectOptions(picker, "envoy");
+    await waitFor(() =>
+      expect(screen.getByRole("log", { name: "Logs of api-5c8d-q1" }).scrollTop).toBe(1000),
+    );
+  });
+
   it("marks warning events in words, not only in red", async () => {
     setup("/kubernetes/pods/shop/checkout-7d9f-x2?tab=events");
     const event = await screen.findByRole("listitem");

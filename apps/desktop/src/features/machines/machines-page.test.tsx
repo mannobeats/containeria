@@ -228,7 +228,7 @@ describe("NewMachineSheet", () => {
     expect(within(again).getByLabelText("Name")).toHaveProperty("value", "ubuntu-2");
   });
 
-  it("waits for the distributions before it can create", async () => {
+  it("can't create without a distribution to pick", async () => {
     const { sheet } = await openSheet(false, undefined, []);
     expect(within(sheet).getByRole("button", { name: "Create machine" })).toHaveProperty(
       "disabled",

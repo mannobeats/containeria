@@ -103,7 +103,10 @@ describe("DomainsPage", () => {
     await waitFor(() =>
       expect(calls).toContainEqual({
         command: "domainsAddRoute",
-        args: { route: { host: "blog.test", container: "shop-web-1", port: 3000, https: true } },
+        args: {
+          route: { host: "blog.test", container: "shop-web-1", port: 3000, https: true },
+          replaces: null,
+        },
       }),
     );
   });
@@ -117,12 +120,35 @@ describe("DomainsPage", () => {
     await userEvent.type(host, "store.test");
     await userEvent.click(screen.getByRole("button", { name: "Save route" }));
     await waitFor(() =>
-      expect(calls).toContainEqual({ command: "domainsRemoveRoute", args: { host: "shop.test" } }),
+      expect(calls).toContainEqual({
+        command: "domainsAddRoute",
+        args: {
+          route: { host: "store.test", container: "shop-api-1", port: 8080, https: true },
+          replaces: "shop.test",
+        },
+      }),
     );
-    expect(calls).toContainEqual({
-      command: "domainsAddRoute",
-      args: { route: { host: "store.test", container: "shop-api-1", port: 8080, https: true } },
-    });
+    expect(calls.map((call) => call.command)).not.toContain("domainsRemoveRoute");
+  });
+
+  it("refuses to save a route onto a name another route uses", async () => {
+    const blog = {
+      host: "blog.test",
+      kind: "custom",
+      container: "shop-api-1",
+      port: 8080,
+      https: true,
+      down: null,
+    } as const;
+    const calls = setup(status({ routes: [...status().routes, blog] }));
+    await userEvent.click(await screen.findByRole("button", { name: "More for shop.test" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Edit Route…" }));
+    const host = await screen.findByLabelText("Domain");
+    await userEvent.clear(host);
+    await userEvent.type(host, "Blog.Test");
+    await userEvent.click(screen.getByRole("button", { name: "Save route" }));
+    expect(await screen.findByText("Another route already uses blog.test")).toBeDefined();
+    expect(calls.map((call) => call.command)).not.toContain("domainsAddRoute");
   });
 
   it("keeps a route's container when it's no longer listed", async () => {
@@ -142,7 +168,10 @@ describe("DomainsPage", () => {
     await waitFor(() =>
       expect(calls).toContainEqual({
         command: "domainsAddRoute",
-        args: { route: { host: "shop.test", container: "shop-api-1", port: 8080, https: true } },
+        args: {
+          route: { host: "shop.test", container: "shop-api-1", port: 8080, https: true },
+          replaces: "shop.test",
+        },
       }),
     );
   });

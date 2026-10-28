@@ -12,7 +12,14 @@ export function PodLogs({ pod }: { pod: PodSummary }) {
   const [picked, setPicked] = useState<string | null>(null);
   const container = podContainer(pod, picked);
   const lines = usePodLog(pod, container);
-  const log = <LogView label={`Logs of ${pod.name}`} lines={lines} />;
+  // A new stream starts at its end, not wherever the reader left the previous one.
+  const log = (
+    <LogView
+      key={`${pod.namespace}/${pod.name}/${container ?? ""}`}
+      label={`Logs of ${pod.name}`}
+      lines={lines}
+    />
+  );
   if (container === null) {
     return log;
   }

@@ -19,7 +19,9 @@ const rename = (open: boolean) => (
 describe("PromptSheet", () => {
   it("starts again from the initial value each time it opens", async () => {
     const { rerender } = render(rename(true));
-    await userEvent.type(screen.getByRole("textbox", { name: "Name" }), "-old");
+    const name = screen.getByRole<HTMLInputElement>("textbox", { name: "Name" });
+    await userEvent.type(name, "-old");
+    expect(name.value).toBe("web-old");
     rerender(rename(false));
     rerender(rename(true));
     expect(screen.getByRole<HTMLInputElement>("textbox", { name: "Name" }).value).toBe("web");

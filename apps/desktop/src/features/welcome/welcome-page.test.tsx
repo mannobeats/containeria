@@ -111,6 +111,22 @@ describe("WelcomePage", () => {
     expect(screen.queryByText(/Neither Docker Desktop nor OrbStack/)).toBeNull();
   });
 
+  it("says why Check again failed instead of keeping the old answer", async () => {
+    let looked = false;
+    renderWelcome(() => {
+      if (looked) {
+        throw { kind: "io", message: "Spotlight is off" };
+      }
+      looked = true;
+      return [{ source: "dockerDesktop", installed: true, running: false }];
+    });
+    await throughEngine();
+    expect(await screen.findByText(/Open Docker Desktop to copy/)).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: "Check again" }));
+    expect(await screen.findByText(/Spotlight is off/)).toBeDefined();
+    expect(screen.queryByText(/Open Docker Desktop to copy/)).toBeNull();
+  });
+
   it("can be skipped, and doesn't open again", async () => {
     const { calls, router } = renderWelcome([]);
     await userEvent.click(await screen.findByRole("button", { name: "Skip setup" }));

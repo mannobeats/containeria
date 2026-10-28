@@ -12,6 +12,7 @@ import { Tile } from "@/ui/tile";
 
 import { useDomains, useRemoveRoute, useSaveRoute, useSetDomainsEnabled } from "./api";
 import { DomainsSettings } from "./domains-settings";
+import { otherCustomHosts } from "./model";
 import { RouteSheet } from "./route-sheet";
 import { RouteTable } from "./route-table";
 import { SetupBanners } from "./setup-banners";
@@ -84,6 +85,7 @@ function Domains({ status }: { status: DomainsStatus }) {
       {editing ? (
         <RouteSheet
           editing={editing === "new" ? null : editing}
+          taken={otherCustomHosts(status.routes, editing === "new" ? null : editing.host)}
           onClose={() => setEditing(null)}
           onSave={(route) =>
             save.mutate(

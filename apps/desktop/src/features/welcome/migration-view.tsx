@@ -263,7 +263,8 @@ export function MigrationView({ onDone, doneLabel = "Continue" }: MigrationViewP
   const source = picked && running.includes(picked) ? picked : (running[0] ?? null);
   const { data: inventory } = useInventory(source);
   const retry = () => refetch().catch(() => undefined);
-  if (sources === undefined && error) {
+  // Also after a failed Check again, which keeps the last sources; a running one stays on screen.
+  if (error && source === null) {
     return <SourcesFailed error={error} onRetry={retry} onDone={onDone} doneLabel={doneLabel} />;
   }
   if (sources === undefined) {

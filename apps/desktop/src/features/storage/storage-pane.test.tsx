@@ -26,8 +26,11 @@ const usage: DiskUsage = {
 };
 
 let channel: unknown;
+let location: DataLocation;
 
-function setup(location: DataLocation = atHome) {
+function setup(at: DataLocation = atHome) {
+  channel = undefined;
+  location = at;
   return mockCommands({
     storageLocation: () => location,
     storageUsage: () => usage,
@@ -97,16 +100,20 @@ describe("StoragePane", () => {
         }),
       ),
     );
+    location = atHome;
     sendToChannel(channel, { kind: "done", location: atHome, restartError: null });
-    expect(await screen.findByRole("button", { name: "Move Back" })).toBeDefined();
+    expect(await screen.findByText(atHome.path)).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Move Back" })).toBeNull();
+    expect(screen.queryByText(/isn't connected/)).toBeNull();
   });
 
   it("still shows a move after switching to another pane and back", async () => {
-    setup();
+    const calls = setup();
     const { unmount } = renderWithApp(<StoragePane />);
     await userEvent.click(await screen.findByRole("button", { name: "Change…" }));
     await userEvent.click(await screen.findByRole("button", { name: "Move Data" }));
     expect(await screen.findByText("Stopping the engine and Linux machines…")).toBeDefined();
+    await waitFor(() => expect(calls.map((call) => call.command)).toContain("storageMove"));
     unmount();
     renderWithApp(<StoragePane />);
     expect(await screen.findByText("Stopping the engine and Linux machines…")).toBeDefined();

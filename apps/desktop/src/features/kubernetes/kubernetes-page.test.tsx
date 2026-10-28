@@ -1,6 +1,8 @@
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { toast } from "sonner";
+import { describe, expect, it, vi } from "vitest";
 
 import type { Cluster } from "@/lib/ipc/bindings";
 import { engineFixture, metricsFixture } from "@/test/fixtures";
@@ -8,6 +10,11 @@ import { type Call, mockCommands, renderWithApp } from "@/test/harness";
 import { clusterFixture } from "@/test/kube-fixtures";
 
 import { KubernetesPage } from "./kubernetes-page";
+
+vi.mock("@tauri-apps/plugin-clipboard-manager", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tauri-apps/plugin-clipboard-manager")>();
+  return { ...actual, writeText: vi.fn(actual.writeText) };
+});
 
 const on = engineFixture();
 on.config.kubernetes.enabled = true;
@@ -138,12 +145,18 @@ describe("KubernetesPage", () => {
   it("scales past ten replicas from a deployment that already has more", async () => {
     const big = clusterFixture();
     big.deployments = big.deployments.map((deployment) => ({ ...deployment, desired: 15 }));
-    setup({ url: "/kubernetes?tab=deployments", cluster: () => big });
+    const calls = setup({ url: "/kubernetes?tab=deployments", cluster: () => big });
     await userEvent.click(await screen.findByRole("button", { name: "Scale storefront" }));
     const slider = await screen.findByRole("slider");
     expect(slider).toHaveProperty("value", "15");
     fireEvent.change(slider, { target: { value: "12" } });
-    expect(slider).toHaveProperty("value", "12");
+    await userEvent.click(screen.getByRole("button", { name: "Scale" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        command: "kubernetesScaleDeployment",
+        args: { namespace: "shop", name: "storefront", replicas: 12 },
+      }),
+    );
   });
 
   it("reveals a secret value only when asked", async () => {
@@ -167,6 +180,22 @@ describe("KubernetesPage", () => {
     const sheet = await screen.findByRole("dialog", { name: "db-credentials" });
     await userEvent.click(within(sheet).getByRole("button", { name: "Reveal password" }));
     expect(await within(sheet).findByText('secrets "db-credentials" not found')).toBeDefined();
+  });
+
+  it("says the clipboard refused a value it read", async () => {
+    vi.mocked(writeText).mockRejectedValueOnce(new Error("The pasteboard is locked"));
+    const failed = vi.spyOn(toast, "error");
+    setup({ url: "/kubernetes?tab=config" });
+    await userEvent.click(await screen.findByRole("button", { name: /db-credentials/ }));
+    const sheet = await screen.findByRole("dialog", { name: "db-credentials" });
+    await userEvent.click(within(sheet).getByRole("button", { name: "Copy value password" }));
+    await waitFor(() =>
+      expect(failed).toHaveBeenCalledWith("password wasn't copied", {
+        description: "The pasteboard is locked",
+      }),
+    );
+    expect(writeText).toHaveBeenCalledWith("hunter2");
+    failed.mockRestore();
   });
 
   it("applies a manifest", async () => {

@@ -186,13 +186,16 @@ export function useConfigValue(config: ConfigSummary, key: string, shown: boolea
   };
   const value = useQuery({ ...options, enabled: shown });
   const copy = () =>
-    client
-      .fetchQuery(options)
-      .then((text) => writeText(text))
-      .then(() => toast("Copied", { description: key }))
-      .catch((error: unknown) =>
+    client.fetchQuery(options).then(
+      (text) =>
+        writeText(text).then(
+          () => toast("Copied", { description: key }),
+          (error: unknown) =>
+            toast.error(`${key} wasn't copied`, { description: errorMessage(error) }),
+        ),
+      (error: unknown) =>
         toast.error("The value couldn't be read", { description: errorMessage(error) }),
-      );
+    );
   return { value, copy };
 }
 

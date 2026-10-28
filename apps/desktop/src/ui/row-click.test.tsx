@@ -6,7 +6,7 @@ import { renderWithApp } from "@/test/harness";
 
 import { Row, Table } from "./table";
 
-function images(opened: (name: string) => void, acted = () => undefined) {
+function images(opened: (name: string) => void, acted = () => undefined, picked = () => undefined) {
   renderWithApp(
     <Table label="Images">
       <tbody>
@@ -19,7 +19,7 @@ function images(opened: (name: string) => void, acted = () => undefined) {
           <td>13.6 MB</td>
           <td />
         </Row>
-        <Row>
+        <Row onClick={picked}>
           <td>
             <button type="button" data-row-link onClick={() => opened("redis")}>
               redis
@@ -54,13 +54,15 @@ describe("openRowOnClick", () => {
     expect(opened).not.toHaveBeenCalled();
   });
 
-  it("doesn't open the row on a ⌘-click, which selects it instead", async () => {
+  it("leaves a ⌘-click to the row's own handler instead of opening its link", async () => {
     const opened = vi.fn();
-    images(opened);
+    const picked = vi.fn();
+    images(opened, undefined, picked);
     const user = userEvent.setup();
     await user.keyboard("{Meta>}");
     await user.click(await screen.findByText("117 MB"));
     await user.keyboard("{/Meta}");
+    expect(picked).toHaveBeenCalledOnce();
     expect(opened).not.toHaveBeenCalled();
   });
 });

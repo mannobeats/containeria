@@ -14,6 +14,8 @@ import { isValidHost } from "./model";
 type RouteSheetProps = {
   /** The route being edited, or `null` to add one. */
   editing: CustomRoute | null;
+  /** Hosts the user's other routes use; saving onto one would replace that route. */
+  taken: string[];
   onClose: () => void;
   onSave: (route: CustomRoute) => void;
 };
@@ -26,10 +28,20 @@ function draftOf(route: CustomRoute | null, firstContainer: string): Draft {
     : { host: "", container: firstContainer, port: "3000", https: true };
 }
 
-function problems(draft: Draft): { host?: string; port?: string } {
+const hostOf = (draft: Draft) => draft.host.trim().toLowerCase();
+
+function hostProblem(draft: Draft, taken: string[]): string | null {
+  if (!isValidHost(draft.host)) {
+    return "Use a name like shop.test";
+  }
+  return taken.includes(hostOf(draft)) ? `Another route already uses ${hostOf(draft)}` : null;
+}
+
+function problems(draft: Draft, taken: string[]): { host?: string; port?: string } {
   const port = Number(draft.port);
+  const host = hostProblem(draft, taken);
   return {
-    ...(isValidHost(draft.host) ? {} : { host: "Use a name like shop.test" }),
+    ...(host === null ? {} : { host }),
     ...(Number.isInteger(port) && port > 0 && port < 65_536
       ? {}
       : { port: "Use a port from 1 to 65535" }),
@@ -37,7 +49,7 @@ function problems(draft: Draft): { host?: string; port?: string } {
 }
 
 /** Add or edit a route: any name, pointing at one port of a container. */
-export function RouteSheet({ editing, onClose, onSave }: RouteSheetProps) {
+export function RouteSheet({ editing, taken, onClose, onSave }: RouteSheetProps) {
   const id = useId();
   const { data: containers } = useContainers();
   const [draft, setDraft] = useState(() => draftOf(editing, ""));
@@ -50,13 +62,13 @@ export function RouteSheet({ editing, onClose, onSave }: RouteSheetProps) {
   // Containers may arrive after the sheet opens; until one is picked, the first is the choice.
   const container = draft.container || names[0] || "";
   const [tried, setTried] = useState(false);
-  const errors = tried ? problems(draft) : {};
+  const errors = tried ? problems(draft, taken) : {};
   const submit = (event: FormEvent) => {
     event.preventDefault();
     setTried(true);
-    if (Object.keys(problems(draft)).length === 0) {
+    if (Object.keys(problems(draft, taken)).length === 0) {
       onSave({
-        host: draft.host.trim().toLowerCase(),
+        host: hostOf(draft),
         container,
         port: Number(draft.port),
         https: draft.https,
