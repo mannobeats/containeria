@@ -7,6 +7,9 @@ import { queryKeys } from "@/app/query-keys";
 import { commands, type EngineConfig, type EnginePhase, type LogLine } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
 
+/** A root shell in the engine's VM, for `connectShell`. */
+export const engineShell = commands.engineShell;
+
 export function useEngineStatus() {
   return useQuery({
     queryKey: queryKeys.engine,

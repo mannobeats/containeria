@@ -2,12 +2,13 @@ import { IconCopy } from "@tabler/icons-react";
 import { useState } from "react";
 
 import { copyText } from "@/lib/clipboard";
-import { commands } from "@/lib/ipc/bindings";
 import { connectShell, type TerminalStatus } from "@/lib/ipc/connect-shell";
 import { Crumb, Page } from "@/shell/page";
 import { Button } from "@/ui/button";
 import { TerminalStatusLine } from "@/ui/terminal-status";
 import { TerminalView } from "@/ui/terminal-view";
+
+import { engineShell } from "./api";
 
 function EngineTerminal({ onReconnect }: { onReconnect: () => void }) {
   const [status, setStatus] = useState<TerminalStatus>({ state: "connecting" });
@@ -31,13 +32,7 @@ function EngineTerminal({ onReconnect }: { onReconnect: () => void }) {
       <TerminalStatusLine status={status} onReconnect={onReconnect} />
       <TerminalView
         label="Engine shell"
-        connect={(terminal) =>
-          connectShell(
-            terminal,
-            (cols, rows, channel) => commands.engineShell(cols, rows, channel),
-            setStatus,
-          )
-        }
+        connect={(terminal) => connectShell(terminal, engineShell, setStatus)}
       />
     </div>
   );

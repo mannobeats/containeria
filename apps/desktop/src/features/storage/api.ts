@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Channel } from "@tauri-apps/api/core";
-import { useState } from "react";
 import { toast } from "sonner";
+import { create } from "zustand";
 
 import { queryKeys } from "@/app/query-keys";
 import { formatBytes } from "@/lib/format";
@@ -64,10 +64,24 @@ export type MoveState =
   | { step: "copying"; copied: number; total: number }
   | null;
 
+/** Where the data would land for `folder`, or `null` after saying why it can't go there. */
+export async function checkDestination(folder: string | null): Promise<string | null> {
+  try {
+    return await commands.storageCheck(folder);
+  } catch (error) {
+    toast.error("The data can't go there", { description: errorMessage(error) });
+    return null;
+  }
+}
+
+/** Outside the pane, so a move still shows after switching to another Settings pane and back. */
+const useMove = create<{ state: MoveState }>(() => ({ state: null }));
+const setState = (state: MoveState) => useMove.setState({ state });
+
 /** Moves the engine's data, following the steps until it's done. */
 export function useMoveData() {
   const client = useQueryClient();
-  const [state, setState] = useState<MoveState>(null);
+  const state = useMove((move) => move.state);
   const finish = (outcome: { failure: string } | { restartError: string | null }) => {
     setState(null);
     client.invalidateQueries({ queryKey: queryKeys.storage }).catch(() => undefined);

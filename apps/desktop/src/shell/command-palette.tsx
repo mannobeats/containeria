@@ -9,7 +9,7 @@ import { useContainers } from "@/features/containers/api";
 import { useRunSheet } from "@/features/containers/run/api";
 import { isServing, useEngineControl, useEngineStatus } from "@/features/engine/api";
 import { useImageSheet } from "@/features/images/sheet-store";
-import { commands } from "@/lib/ipc/bindings";
+import { openSettings } from "@/features/settings/api";
 import { applyAppearance, useIsDark } from "@/lib/theme";
 import { CxIcon, type CxIconName } from "@/ui/cx-icon";
 import { Kbd } from "@/ui/kbd";
@@ -141,7 +141,7 @@ export function CommandPalette() {
                   icon="settings"
                   label="Settings…"
                   hint={<Kbd>⌘,</Kbd>}
-                  onSelect={run(() => commands.settingsOpen("general").catch(() => undefined))}
+                  onSelect={run(() => openSettings("general"))}
                 />
               </Command.Group>
               {containers && containers.length > 0 ? (

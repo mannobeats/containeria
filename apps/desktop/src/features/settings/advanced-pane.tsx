@@ -1,18 +1,14 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
-import { toast } from "sonner";
 
-import { type CliTool, commands } from "@/lib/ipc/bindings";
-import { errorMessage, isCommandError } from "@/lib/ipc/errors";
+import type { CliTool } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
 import { Checkbox } from "@/ui/checkbox";
 import { Chip } from "@/ui/chip";
 import { Field, Input } from "@/ui/field";
 import { Sheet } from "@/ui/sheet";
 
+import { useCliTools, useInstallTools, useResetEngine } from "./api";
 import { SettingsRow, SettingsSection } from "./settings-section";
-
-const TOOLS_KEY = ["settings", "cli-tools"];
 
 const STATES: Record<CliTool["state"], { label: string; tone: "ok" | "neutral" | "line" }> = {
   installed: { label: "Installed", tone: "ok" },
@@ -20,22 +16,8 @@ const STATES: Record<CliTool["state"], { label: string; tone: "ok" | "neutral" |
   other: { label: "Your own copy", tone: "line" },
 };
 
-function useInstallTools() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: commands.cliToolsInstall,
-    onSuccess: () => toast.success("Installed the command-line tools"),
-    onError: (error) => {
-      if (!(isCommandError(error) && error.kind === "cancelled")) {
-        toast.error("The tools weren't installed", { description: errorMessage(error) });
-      }
-    },
-    onSettled: () => client.invalidateQueries({ queryKey: TOOLS_KEY }),
-  });
-}
-
 function CommandLineTools() {
-  const { data: tools = [] } = useQuery({ queryKey: TOOLS_KEY, queryFn: commands.cliTools });
+  const { data: tools = [] } = useCliTools();
   const install = useInstallTools();
   const missing = tools.filter((tool) => tool.state === "missing").length;
   return (
@@ -73,17 +55,7 @@ function ResetSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const id = useId();
   const [typed, setTyped] = useState("");
   const [machines, setMachines] = useState(false);
-  const client = useQueryClient();
-  const reset = useMutation({
-    mutationFn: () => commands.engineReset(machines),
-    onSuccess: () => {
-      toast.success("The engine was reset", { description: "Start it to create a fresh one." });
-      onClose();
-    },
-    onError: (error) =>
-      toast.error("The engine wasn't reset", { description: errorMessage(error) }),
-    onSettled: () => client.invalidateQueries(),
-  });
+  const reset = useResetEngine();
   return (
     <Sheet
       open={open}
@@ -97,7 +69,7 @@ function ResetSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
             variant="danger"
             disabled={typed !== "reset"}
             loading={reset.isPending}
-            onClick={() => reset.mutate()}
+            onClick={() => reset.mutate(machines, { onSuccess: onClose })}
           >
             Reset Engine
           </Button>

@@ -40,10 +40,13 @@ function problems(draft: Draft): { host?: string; port?: string } {
 export function RouteSheet({ editing, onClose, onSave }: RouteSheetProps) {
   const id = useId();
   const { data: containers } = useContainers();
-  const names = (containers ?? [])
+  const [draft, setDraft] = useState(() => draftOf(editing, ""));
+  const listed = (containers ?? [])
     .filter((container) => container.pod === null)
     .map((container) => container.name);
-  const [draft, setDraft] = useState(() => draftOf(editing, ""));
+  // A route can outlive its container; keep that name pickable so what's shown is what's saved.
+  const names =
+    draft.container && !listed.includes(draft.container) ? [draft.container, ...listed] : listed;
   // Containers may arrive after the sheet opens; until one is picked, the first is the choice.
   const container = draft.container || names[0] || "";
   const [tried, setTried] = useState(false);

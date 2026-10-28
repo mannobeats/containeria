@@ -68,15 +68,25 @@ export function WelcomePage() {
   const { data: preferences } = usePreferences();
   const setPreferences = useSetPreferences();
   const next = () => setStep(STEPS[STEPS.indexOf(step) + 1] ?? "done");
+  // Leaving before `onboarded` is saved would send the next launch, or the next refetch, back here.
   const finish = () => {
-    if (preferences) {
-      setPreferences.mutate({ ...preferences, onboarded: true });
+    if (!preferences) {
+      return;
     }
     openAtLogin().catch(() => undefined);
-    navigate({ to: "/containers" }).catch(() => undefined);
+    setPreferences.mutate(
+      { ...preferences, onboarded: true },
+      { onSuccess: () => navigate({ to: "/containers" }).catch(() => undefined) },
+    );
   };
   const skip = (
-    <Button variant="ghost" size="sm" onClick={finish}>
+    <Button
+      variant="ghost"
+      size="sm"
+      disabled={!preferences}
+      loading={setPreferences.isPending}
+      onClick={finish}
+    >
       Skip setup
     </Button>
   );
@@ -102,14 +112,14 @@ export function WelcomePage() {
           {step === "resources" ? <StepResources onDone={next} /> : null}
           {step === "engine" ? <StepEngine onDone={next} /> : null}
           {step === "import" ? <StepImport onDone={next} /> : null}
-          {step === "done" ? <Done onFinish={finish} /> : null}
+          {step === "done" ? <Done onFinish={finish} saving={setPreferences.isPending} /> : null}
         </div>
       </div>
     </Page>
   );
 }
 
-function Done({ onFinish }: { onFinish: () => void }) {
+function Done({ onFinish, saving }: { onFinish: () => void; saving: boolean }) {
   return (
     <div className="flex flex-col items-center gap-3 text-center">
       <IconCircleCheck className="size-12 text-ok" aria-hidden />
@@ -121,7 +131,7 @@ function Done({ onFinish }: { onFinish: () => void }) {
         <Kbd>⌘</Kbd>
         <Kbd>K</Kbd>
       </span>
-      <Button size="lg" className="mt-4" onClick={onFinish}>
+      <Button size="lg" className="mt-4" loading={saving} onClick={onFinish}>
         Open Containeria
       </Button>
     </div>

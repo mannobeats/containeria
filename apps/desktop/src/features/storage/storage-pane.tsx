@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { SettingsRow, SettingsSection } from "@/features/settings/settings-section";
 import { formatBytes } from "@/lib/format";
-import { commands, type DataLocation, type UsageGroup } from "@/lib/ipc/bindings";
+import type { DataLocation, UsageGroup } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
 import { Banner } from "@/ui/banner";
 import { Button } from "@/ui/button";
@@ -16,6 +16,7 @@ import { Sheet } from "@/ui/sheet";
 
 import {
   type CleanUp,
+  checkDestination,
   type MoveState,
   useCleanUp,
   useDataLocation,
@@ -57,12 +58,8 @@ function Moving({ state }: { state: Exclude<MoveState, null> }) {
 }
 
 async function check(folder: string | null): Promise<Pending | null> {
-  try {
-    return { folder, target: await commands.storageCheck(folder) };
-  } catch (error) {
-    toast.error("The data can't go there", { description: errorMessage(error) });
-    return null;
-  }
+  const target = await checkDestination(folder);
+  return target === null ? null : { folder, target };
 }
 
 async function pickFolder(): Promise<Pending | null> {
@@ -93,7 +90,14 @@ function LocationRows({ location, onPending }: LocationRowsProps) {
         >
           Show in Finder
         </Button>
-        <Button size="sm" onClick={() => pickFolder().then(onPending, () => undefined)}>
+        <Button
+          size="sm"
+          onClick={() =>
+            pickFolder().then(onPending, (error: unknown) =>
+              toast.error("The folder picker didn't open", { description: errorMessage(error) }),
+            )
+          }
+        >
           Change…
         </Button>
       </SettingsRow>

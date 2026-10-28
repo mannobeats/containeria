@@ -25,6 +25,7 @@ function ListField({ label, hint, placeholder, value, onChange }: ListFieldProps
   return (
     <SettingsRow block label={<label htmlFor={id}>{label}</label>} hint={hint}>
       <textarea
+        key={value.join("\n")}
         id={id}
         rows={3}
         spellCheck={false}

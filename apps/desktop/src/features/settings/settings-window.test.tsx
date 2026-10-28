@@ -66,12 +66,19 @@ describe("SettingsWindow", () => {
     );
   });
 
-  it("switches appearance and menu bar settings", async () => {
-    const calls = renderSection("general");
+  it("switches the appearance", async () => {
+    renderSection("general");
     await userEvent.click(await screen.findByRole("radio", { name: "Dark" }));
     expect(document.documentElement.dataset.theme).toBe("dark");
     await userEvent.click(screen.getByRole("radio", { name: "Automatic" }));
-    await userEvent.click(await screen.findByRole("switch", { name: "Memory in the menu bar" }));
+    expect(document.documentElement.dataset.theme).toBeUndefined();
+  });
+
+  it("hides memory from the menu bar", async () => {
+    const calls = renderSection("general");
+    const memory = await screen.findByRole("switch", { name: "Memory in the menu bar" });
+    expect(memory.getAttribute("aria-checked")).toBe("true");
+    await userEvent.click(memory);
     await waitFor(() =>
       expect(calls).toContainEqual({
         command: "preferencesSet",
@@ -142,7 +149,12 @@ describe("SettingsWindow", () => {
     await userEvent.click(screen.getByRole("switch", { name: "UDP ports" }));
     expect(screen.getByText("Not saved: UDP ports on")).toBeDefined();
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(commandsOf(calls)).toContain("engineSaveConfig"));
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        command: "engineSaveConfig",
+        args: { config: { ...engineFixture().config, udpPorts: true } },
+      }),
+    );
     await userEvent.click(await screen.findByRole("button", { name: "Restart engine" }));
     await waitFor(() => expect(commandsOf(calls)).toContain("engineRestart"));
   });
@@ -174,8 +186,12 @@ describe("SettingsWindow", () => {
     );
     await userEvent.tab();
     expect(await screen.findByText("Not saved: registries")).toBeDefined();
+    expect(screen.getByRole("textbox", { name: "Registry mirrors" })).toHaveProperty(
+      "value",
+      "https://mirror.gcr.io",
+    );
     await userEvent.click(screen.getByRole("button", { name: "Discard" }));
-    expect(screen.getByText(/docker\.sock/)).toBeDefined();
+    expect(screen.getByRole("textbox", { name: "Registry mirrors" })).toHaveProperty("value", "");
   });
 
   it("shows the versions it runs", async () => {

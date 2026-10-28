@@ -7,7 +7,7 @@ import { mockCommands, renderWithApp } from "@/test/harness";
 import { AdvancedPane } from "./advanced-pane";
 
 describe("AdvancedPane", () => {
-  it("installs only the tools that are missing", async () => {
+  it("installs the tools when one is missing", async () => {
     const calls = mockCommands({
       cliTools: () => [
         { name: "cx", target: "/usr/local/bin/cx", state: "missing" },

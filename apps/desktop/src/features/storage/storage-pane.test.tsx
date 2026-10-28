@@ -87,11 +87,32 @@ describe("StoragePane", () => {
     renderWithApp(<StoragePane />);
     expect(await screen.findByText(/isn't connected/)).toBeDefined();
     await userEvent.click(screen.getByRole("button", { name: "Move Back" }));
+    expect(await screen.findByText("/Users/ada/.containeria/colima/_lima")).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: "Move Data" }));
     await waitFor(() =>
       expect(calls).toContainEqual(
-        expect.objectContaining({ command: "storageCheck", args: { folder: null } }),
+        expect.objectContaining({
+          command: "storageMove",
+          args: expect.objectContaining({ folder: null }),
+        }),
       ),
     );
+    sendToChannel(channel, { kind: "done", location: atHome, restartError: null });
+    expect(await screen.findByRole("button", { name: "Move Back" })).toBeDefined();
+  });
+
+  it("still shows a move after switching to another pane and back", async () => {
+    setup();
+    const { unmount } = renderWithApp(<StoragePane />);
+    await userEvent.click(await screen.findByRole("button", { name: "Change…" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Move Data" }));
+    expect(await screen.findByText("Stopping the engine and Linux machines…")).toBeDefined();
+    unmount();
+    renderWithApp(<StoragePane />);
+    expect(await screen.findByText("Stopping the engine and Linux machines…")).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Change…" })).toBeNull();
+    sendToChannel(channel, { kind: "done", location: atHome, restartError: null });
+    expect(await screen.findByRole("button", { name: "Change…" })).toBeDefined();
   });
 
   it("asks before clearing the build cache", async () => {

@@ -39,5 +39,8 @@ export function EngineGate({ title, children }: { title: string; children: React
       </Page>
     );
   }
+  if (!status) {
+    return <Page crumbs={<Crumb>{title}</Crumb>}>{null}</Page>;
+  }
   return children;
 }

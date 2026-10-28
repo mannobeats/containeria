@@ -1,7 +1,8 @@
-import { IconPlus } from "@tabler/icons-react";
+import { IconPlus, IconRefresh } from "@tabler/icons-react";
 import { useState } from "react";
 
 import type { CustomRoute, DomainRoute, DomainsStatus } from "@/lib/ipc/bindings";
+import { errorMessage } from "@/lib/ipc/errors";
 import { Crumb, Page } from "@/shell/page";
 import { Button } from "@/ui/button";
 import { ConfirmSheet } from "@/ui/confirm-sheet";
@@ -84,7 +85,12 @@ function Domains({ status }: { status: DomainsStatus }) {
         <RouteSheet
           editing={editing === "new" ? null : editing}
           onClose={() => setEditing(null)}
-          onSave={(route) => save.mutate(route, { onSuccess: () => setEditing(null) })}
+          onSave={(route) =>
+            save.mutate(
+              { route, replaces: editing === "new" ? null : editing.host },
+              { onSuccess: () => setEditing(null) },
+            )
+          }
         />
       ) : null}
       <ConfirmSheet
@@ -106,11 +112,32 @@ function Domains({ status }: { status: DomainsStatus }) {
   );
 }
 
+function LoadFailed({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+  return (
+    <EmptyState
+      art={<Tile icon="domain" size="xl" />}
+      title="Containeria couldn't read the domains"
+      className="h-full"
+      actions={
+        <Button onClick={onRetry}>
+          <IconRefresh />
+          Try again
+        </Button>
+      }
+    >
+      {errorMessage(error)}
+    </EmptyState>
+  );
+}
+
 export function DomainsPage() {
-  const { data: status } = useDomains();
+  const { data: status, error, refetch } = useDomains();
   return (
     <Page crumbs={<Crumb>Domains</Crumb>}>
-      {status === undefined ? <Skeleton className="m-5 h-4 w-96" /> : null}
+      {status === undefined && error ? (
+        <LoadFailed error={error} onRetry={() => refetch().catch(() => undefined)} />
+      ) : null}
+      {status === undefined && !error ? <Skeleton className="m-5 h-4 w-96" /> : null}
       {status && !status.enabled ? <TurnOn /> : null}
       {status?.enabled ? <Domains status={status} /> : null}
     </Page>

@@ -46,7 +46,6 @@ describe("AppShell", () => {
     expect(await screen.findByRole("heading", { name: "The engine is stopped" })).toBeDefined();
     expect(screen.queryByText("Page content")).toBeNull();
   });
-
   it("opens the command palette with ⌘K and runs a command", async () => {
     const calls = renderShell("running");
     await screen.findByText("Page content");
@@ -83,7 +82,7 @@ describe("AppShell", () => {
 
   it("carries out the menu bar's commands", async () => {
     const calls = renderShell("stopped");
-    await screen.findByText("Page content");
+    await screen.findByRole("heading", { name: "The engine is stopped" });
     await emit("menu-command", "showShortcuts");
     expect(await screen.findByRole("dialog", { name: "Keyboard shortcuts" })).toBeDefined();
     await userEvent.keyboard("{Escape}");

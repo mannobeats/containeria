@@ -7,20 +7,19 @@ import {
   IconInfoCircle,
   type IconProps,
 } from "@tabler/icons-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
 import type { ComponentType } from "react";
 
 import { useEngineEvents } from "@/app/use-engine-events";
 import { StoragePane } from "@/features/storage/storage-pane";
 import { fitWindow } from "@/lib/fit-window";
-import { commands, events, type SettingsPane } from "@/lib/ipc/bindings";
-import { useTauriEvent } from "@/lib/ipc/use-tauri-event";
+import type { SettingsPane } from "@/lib/ipc/bindings";
 import { CxIcon } from "@/ui/cx-icon";
 import { Toaster } from "@/ui/toaster";
 
 import { AboutPane } from "./about-pane";
 import { AdvancedPane } from "./advanced-pane";
+import { openSettings, useShownPane } from "./api";
 import { DockerPane } from "./docker-pane";
 import { EnginePane } from "./engine-pane";
 import { GeneralPane } from "./general-pane";
@@ -46,16 +45,6 @@ const PANES: Pane[] = [
   { id: "advanced", label: "Advanced", icon: IconAdjustmentsHorizontal, component: AdvancedPane },
   { id: "about", label: "About", icon: IconInfoCircle, component: AboutPane },
 ];
-
-const PANE_KEY = ["settings", "pane"];
-
-/** The pane Rust says to show: read once on open, then pushed when the menu or a link asks. */
-function useShownPane(): SettingsPane {
-  const queryClient = useQueryClient();
-  const { data } = useQuery({ queryKey: PANE_KEY, queryFn: commands.settingsPane });
-  useTauriEvent(events.settingsPaneShown, (pane) => queryClient.setQueryData(PANE_KEY, pane));
-  return data ?? "general";
-}
 
 /**
  * The Settings window, as macOS draws one: the pane's name in the title bar, a toolbar of panes
@@ -84,7 +73,7 @@ export function SettingsWindow() {
               key={item.id}
               type="button"
               aria-current={item.id === pane.id ? "page" : undefined}
-              onClick={() => commands.settingsOpen(item.id).catch(() => undefined)}
+              onClick={() => openSettings(item.id)}
               className={clsx(
                 "flex w-[72px] flex-col items-center gap-1 rounded-md pt-1.5 pb-1 text-11 text-ink-2 [&_svg]:size-5",
                 item.id === pane.id ? "bg-press text-ink [&_svg]:text-brand" : "[&_svg]:text-ink-3",
