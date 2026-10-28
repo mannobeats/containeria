@@ -13,6 +13,7 @@ import { copyText } from "@/lib/clipboard";
 import type { DomainRoute } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
 import { Chip } from "@/ui/chip";
+import { rowActions } from "@/ui/classes";
 import { IconAction } from "@/ui/icon-action";
 import { ContextMenu, Menu, type MenuEntry } from "@/ui/menu";
 import { Tip } from "@/ui/tooltip";
@@ -100,7 +101,7 @@ export function DomainRow({ route, url, caTrusted, onEdit, onRemove }: DomainRow
         </td>
         <td>{routeState(route)}</td>
         <td className="pr-5! text-right">
-          <span className="inline-flex gap-0.5 opacity-0 transition-opacity duration-140 group-focus-within/row:opacity-100 group-hover/row:opacity-100">
+          <span className={rowActions}>
             <IconAction label="Open in browser" target={route.host} disabled={!up} onClick={open}>
               <IconExternalLink />
             </IconAction>

@@ -17,7 +17,6 @@ export function Slider({ label, value, min, max, step = 1, format, onChange }: S
     <div className="flex w-full flex-col gap-1.5">
       <div className="flex items-center gap-3.5">
         <Radix.Root
-          aria-label={label}
           value={[value]}
           min={min}
           max={max}
@@ -28,7 +27,10 @@ export function Slider({ label, value, min, max, step = 1, format, onChange }: S
           <Radix.Track className="relative h-1 grow overflow-hidden rounded-xs bg-press">
             <Radix.Range className="absolute h-full bg-brand" />
           </Radix.Track>
-          <Radix.Thumb className="block size-4 rounded-full bg-white shadow-[0_0_0_0.5px_oklch(0_0_0/0.2),0_1px_3px_oklch(0_0_0/0.3)] outline-none focus-visible:shadow-focus" />
+          <Radix.Thumb
+            aria-label={label}
+            className="block size-4 rounded-full bg-white shadow-[0_0_0_0.5px_oklch(0_0_0/0.2),0_1px_3px_oklch(0_0_0/0.3)] outline-none focus-visible:shadow-focus"
+          />
         </Radix.Root>
         <output className="w-[72px] shrink-0 text-right font-medium text-ink tabular">
           {format(value)}

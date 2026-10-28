@@ -4,6 +4,7 @@ import type { ComponentProps, ReactNode } from "react";
 import type { Selection } from "@/lib/use-selection";
 
 import { Checkbox } from "./checkbox";
+import { rowActions } from "./classes";
 import { openRowOnClick } from "./row-click";
 import { Tip } from "./tooltip";
 
@@ -55,9 +56,7 @@ export function Row({ dim = false, selected = false, className, children, ...pro
 export function RowActions({ children }: { children: ReactNode }) {
   return (
     <td className="text-right">
-      <span className="inline-flex gap-0.5 opacity-0 transition-opacity duration-140 group-focus-within/row:opacity-100 group-hover/row:opacity-100">
-        {children}
-      </span>
+      <span className={rowActions}>{children}</span>
     </td>
   );
 }

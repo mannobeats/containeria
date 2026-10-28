@@ -8,6 +8,7 @@ import {
 
 import type { ContainerSummary } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
+import { rowActions } from "@/ui/classes";
 import { IconAction } from "@/ui/icon-action";
 import { Menu, type MenuEntry } from "@/ui/menu";
 
@@ -24,7 +25,7 @@ type RowActionsProps = Pick<ContainerCallbacks, "act"> & {
 export function RowActions({ container, menu, act, onTerminal }: RowActionsProps) {
   const running = isRunning(container);
   return (
-    <span className="inline-flex gap-0.5 opacity-0 transition-opacity duration-140 group-focus-within/row:opacity-100 group-hover/row:opacity-100">
+    <span className={rowActions}>
       {running ? (
         <IconAction label="Stop" target={container.name} onClick={() => act([container], "stop")}>
           <IconPlayerStop />

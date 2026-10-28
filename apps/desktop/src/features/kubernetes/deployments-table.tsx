@@ -6,6 +6,7 @@ import { formatAge } from "@/lib/format";
 import type { DeploymentSummary } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
 import { Chip } from "@/ui/chip";
+import { rowActions } from "@/ui/classes";
 import { type Column, ColumnTable } from "@/ui/column-table";
 import { IconAction } from "@/ui/icon-action";
 import { Menu, type MenuEntry } from "@/ui/menu";
@@ -56,7 +57,7 @@ function deploymentMenu(deployment: DeploymentSummary, { open, restart }: Handle
 
 function Actions({ deployment, handlers }: { deployment: DeploymentSummary; handlers: Handlers }) {
   return (
-    <span className="inline-flex gap-0.5 opacity-0 transition-opacity duration-140 group-focus-within/row:opacity-100 group-hover/row:opacity-100">
+    <span className={rowActions}>
       <IconAction
         label="Scale"
         target={deployment.name}

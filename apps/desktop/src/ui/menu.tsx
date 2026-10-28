@@ -4,10 +4,12 @@ import { ContextMenu as Context, DropdownMenu as Dropdown } from "radix-ui";
 import { type ReactNode, useState } from "react";
 
 const surface =
-  "z-50 min-w-[200px] origin-(--radix-dropdown-menu-content-transform-origin) rounded-[10px] bg-[light-dark(oklch(0.99_0_0/0.86),oklch(0.27_0.005_255/0.86))] p-[5px] text-13 text-ink shadow-3 backdrop-blur-xl backdrop-saturate-180 animate-pop";
+  "z-50 min-w-[200px] origin-(--radix-dropdown-menu-content-transform-origin) rounded-[10px] bg-popover p-[5px] text-13 text-ink shadow-3 backdrop-blur-xl backdrop-saturate-180 animate-pop";
 
 const item =
-  "group flex h-[26px] w-full items-center gap-2 whitespace-nowrap rounded-[5px] px-2 text-left outline-none data-disabled:opacity-45 data-highlighted:bg-brand-solid data-highlighted:text-white [&_.tabler-icon]:text-ink-3 data-highlighted:[&_.tabler-icon]:text-white";
+  "group flex h-[26px] w-full items-center gap-2 whitespace-nowrap rounded-[5px] px-2 text-left outline-none data-disabled:opacity-45 data-highlighted:text-white data-highlighted:[&_.tabler-icon]:text-white";
+
+const normal = "[&_.tabler-icon]:text-ink-3 data-highlighted:bg-brand-solid";
 
 const danger = "text-bad-ink [&_.tabler-icon]:text-bad-ink data-highlighted:bg-bad";
 
@@ -55,7 +57,7 @@ function Entries({ parts, entries }: { parts: Parts; entries: MenuEntry[] }) {
     return (
       <parts.Item
         key={entry.label}
-        className={clsx(item, entry.danger && danger)}
+        className={clsx(item, entry.danger ? danger : normal)}
         disabled={entry.disabled ?? false}
         onSelect={entry.onSelect}
       >
