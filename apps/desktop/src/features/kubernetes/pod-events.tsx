@@ -35,6 +35,7 @@ export function PodEvents({ pod }: { pod: PodSummary }) {
                   event.warning ? "text-bad-ink" : "text-ink",
                 )}
               >
+                {event.warning ? <span className="sr-only">Warning: </span> : null}
                 {event.reason}
               </b>
               {event.count > 1 ? <span className="text-12 text-ink-3">×{event.count}</span> : null}

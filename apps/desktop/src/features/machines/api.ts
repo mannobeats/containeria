@@ -12,13 +12,14 @@ import {
   events,
   type LogLine,
   type MachineAction,
+  type MachineFile,
 } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
 import { useTauriEvent } from "@/lib/ipc/use-tauri-event";
 
 import { type MachineList, withCpu } from "./model";
 
-export const machineKeys = {
+const machineKeys = {
   all: ["machines"],
   status: ["machines", "status"],
   list: ["machines", "list"],
@@ -27,12 +28,8 @@ export const machineKeys = {
   snapshots: (name: string) => ["machines", "snapshots", name],
 } as const;
 
-/** The machines VM's phase. Refetches whenever Rust says machines changed. */
+/** The machines VM's phase. */
 export function useMachinesStatus() {
-  const client = useQueryClient();
-  useTauriEvent(events.machinesChanged, () => {
-    client.invalidateQueries({ queryKey: machineKeys.all }).catch(() => undefined);
-  });
   return useQuery({
     queryKey: machineKeys.status,
     queryFn: commands.machinesStatus,
@@ -42,10 +39,14 @@ export function useMachinesStatus() {
 
 /**
  * Every machine, polled every three seconds while shown so usage stays live. While the machines VM
- * is off, the ones it had, stopped; starting one starts the VM.
+ * is off, the ones it had, stopped; starting one starts the VM. Everything about machines refetches
+ * when Rust says they changed; each page calls this once, so that listener is registered once.
  */
 export function useMachines() {
   const client = useQueryClient();
+  useTauriEvent(events.machinesChanged, () => {
+    client.invalidateQueries({ queryKey: machineKeys.all }).catch(() => undefined);
+  });
   const { data: status } = useMachinesStatus();
   return useQuery({
     queryKey: machineKeys.list,
@@ -70,6 +71,48 @@ export function useMachineFiles(name: string, path: string) {
   return useQuery({
     queryKey: machineKeys.files(name, path),
     queryFn: () => commands.machineFiles(name, path),
+  });
+}
+
+/** Asks for a Mac file and copies it into `folder`; pending from the open panel to the end. */
+export function useUploadFile(name: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (folder: string) => {
+      const source = await open({ multiple: false, directory: false });
+      if (typeof source !== "string") {
+        return false;
+      }
+      await commands.machineFileUpload(name, source, folder);
+      return true;
+    },
+    onSuccess: (uploaded, folder) => {
+      if (uploaded) {
+        toast.success("Uploaded", { description: folder });
+      }
+    },
+    onError: (error) => toast.error("Not uploaded", { description: errorMessage(error) }),
+    onSettled: (_, __, folder) =>
+      client.invalidateQueries({ queryKey: machineKeys.files(name, folder) }),
+  });
+}
+
+/** Asks where on the Mac to save `entry`, then copies it there. */
+export function useDownloadFile(name: string) {
+  return useMutation({
+    mutationFn: async (entry: MachineFile) => {
+      const destination = await save({ defaultPath: entry.name });
+      if (destination) {
+        await commands.machineFileDownload(name, entry.path, destination);
+      }
+      return destination;
+    },
+    onSuccess: (destination, entry) => {
+      if (destination) {
+        toast.success(`Saved ${entry.name}`, { description: destination });
+      }
+    },
+    onError: (error) => toast.error("Not saved", { description: errorMessage(error) }),
   });
 }
 

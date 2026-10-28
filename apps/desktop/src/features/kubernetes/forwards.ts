@@ -32,6 +32,8 @@ export function useStopForward() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (stream: number) => commands.kubernetesStopForward(stream),
+    onError: (error) =>
+      toast.error("The forward didn't stop", { description: errorMessage(error) }),
     onSettled: () => client.invalidateQueries({ queryKey: FORWARDS }),
   });
 }

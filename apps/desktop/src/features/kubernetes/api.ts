@@ -1,12 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Channel } from "@tauri-apps/api/core";
+import { writeText } from "@tauri-apps/plugin-clipboard-manager";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { queryKeys } from "@/app/query-keys";
 import { isServing, useBootLog, useEngineStatus } from "@/features/engine/api";
-import { commands, type LogLine, type PodSummary, type ResourceKind } from "@/lib/ipc/bindings";
+import {
+  type ConfigSummary,
+  commands,
+  type DeploymentSummary,
+  type LogLine,
+  type PodSummary,
+  type ResourceKind,
+} from "@/lib/ipc/bindings";
 import type { OpenShell } from "@/lib/ipc/connect-shell";
 import { errorMessage } from "@/lib/ipc/errors";
+import { useStream } from "@/lib/ipc/use-stream";
 
 import { crashing } from "./model";
 
@@ -33,7 +43,7 @@ export function useFailingPods() {
 }
 
 /** Runs one cluster action and says what happened. The watcher refreshes the lists. */
-export function useKubeAction<Args, Output>(
+function useKubeAction<Args, Output>(
   run: (args: Args) => Promise<Output>,
   done: (args: Args) => string,
 ) {
@@ -89,6 +99,19 @@ export function useYaml(kind: ResourceKind, namespace: string, name: string) {
   });
 }
 
+/**
+ * Reads the deployment's YAML from the cluster, never from cache, so an edit can't put back what a
+ * newer scale or apply changed.
+ */
+export function editYaml(deployment: DeploymentSummary, onManifest: (manifest: string) => void) {
+  commands
+    .kubernetesYaml("deployment", deployment.namespace, deployment.name)
+    .then(onManifest)
+    .catch((error: unknown) =>
+      toast.error("The YAML couldn't be read", { description: errorMessage(error) }),
+    );
+}
+
 export function useKubeEvents(namespace: string, name: string) {
   return useQuery({
     queryKey: [...queryKeys.kubernetes, "events", namespace, name],
@@ -110,6 +133,84 @@ export function useCreateNamespace() {
     (name: string) => commands.kubernetesCreateNamespace(name),
     (name) => `Created namespace ${name}`,
   );
+}
+
+type Target = { namespace: string; name: string };
+
+export function useDeletePod() {
+  return useKubeAction(
+    ({ namespace, name }: Target) => commands.kubernetesDeletePod(namespace, name),
+    ({ name }) => `Deleted ${name}`,
+  );
+}
+
+export function useDeleteDeployment() {
+  return useKubeAction(
+    ({ namespace, name }: Target) => commands.kubernetesDeleteDeployment(namespace, name),
+    ({ name }) => `Deleted ${name}`,
+  );
+}
+
+export function useRestartDeployment() {
+  return useKubeAction(
+    ({ namespace, name }: Target) => commands.kubernetesRestartDeployment(namespace, name),
+    ({ name }) => `Restarting ${name}`,
+  );
+}
+
+export function useScaleDeployment(deployment: DeploymentSummary) {
+  return useKubeAction(
+    (count: number) =>
+      commands.kubernetesScaleDeployment(deployment.namespace, deployment.name, count),
+    (count) => `${deployment.name} scaled to ${count}`,
+  );
+}
+
+type Apply = { manifest: string; namespace: string; dryRun: boolean };
+
+export function useApply() {
+  return useKubeAction(
+    ({ manifest, namespace, dryRun }: Apply) =>
+      commands.kubernetesApply(manifest, namespace, dryRun),
+    ({ dryRun }) => (dryRun ? "The manifest is valid" : "Applied"),
+  );
+}
+
+/** One key of a config map or secret, read only while `shown` or when copied. */
+export function useConfigValue(config: ConfigSummary, key: string, shown: boolean) {
+  const client = useQueryClient();
+  const options = {
+    queryKey: [...queryKeys.kubernetes, "value", config.kind, config.namespace, config.name, key],
+    queryFn: () => commands.kubernetesConfigValue(config.kind, config.namespace, config.name, key),
+    staleTime: Number.POSITIVE_INFINITY,
+  };
+  const value = useQuery({ ...options, enabled: shown });
+  const copy = () =>
+    client
+      .fetchQuery(options)
+      .then((text) => writeText(text))
+      .then(() => toast("Copied", { description: key }))
+      .catch((error: unknown) =>
+        toast.error("The value couldn't be read", { description: errorMessage(error) }),
+      );
+  return { value, copy };
+}
+
+/** Older lines drop off past this, so a chatty pod can't grow the view without bound. */
+const KEEP = 5000;
+
+/** The pod's log, followed live; `container` picks one when it has several. */
+export function usePodLog(pod: PodSummary, container: string | null) {
+  const [lines, setLines] = useState<string[]>([]);
+  useStream<string>(
+    `${pod.namespace}/${pod.name}/${container ?? ""}`,
+    (channel) => {
+      setLines([]);
+      return commands.kubernetesLogs(pod.namespace, pod.name, container, channel);
+    },
+    (line) => setLines((current) => [...current.slice(-(KEEP - 1)), line]),
+  );
+  return lines;
 }
 
 /** A shell in the pod; `container` picks one when it has several. */

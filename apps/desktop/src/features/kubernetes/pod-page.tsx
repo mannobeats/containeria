@@ -12,6 +12,7 @@ import { Chip } from "@/ui/chip";
 import { EmptyState } from "@/ui/empty-state";
 import { IconAction } from "@/ui/icon-action";
 import { ContextMenu, Menu, type MenuEntry } from "@/ui/menu";
+import { Skeleton } from "@/ui/progress";
 import { TabPanel, Tabs } from "@/ui/tabs";
 import { Tile } from "@/ui/tile";
 
@@ -118,7 +119,6 @@ function PodView({ cluster, pod }: { cluster: Cluster; pod: PodSummary }) {
   const { tab } = route.useSearch();
   const navigate = useNavigate();
   const { sheet, open, close } = useKubeSheet();
-  const container = pod.containers.length > 1 ? (pod.containers[0] ?? null) : null;
   const show = (next: PodTab) => navigate({ to: ".", search: { tab: next } });
   const menu: MenuEntry[] = [
     { label: "Terminal", disabled: pod.status !== "Running", onSelect: () => show("terminal") },
@@ -129,7 +129,7 @@ function PodView({ cluster, pod }: { cluster: Cluster; pod: PodSummary }) {
       <PodHeader pod={pod} onForward={() => open({ kind: "forward", pod })} menu={menu} />
       <Tabs tabs={POD_TABS} value={asPodTab(tab)} onChange={show}>
         <TabPanel value="logs">
-          <PodLogs pod={pod} container={container} />
+          <PodLogs pod={pod} />
         </TabPanel>
         <TabPanel value="terminal">
           <PodTerminal pod={pod} />
@@ -146,9 +146,26 @@ function PodView({ cluster, pod }: { cluster: Cluster; pod: PodSummary }) {
   );
 }
 
+/** No cluster to read the pod from: still loading, or Kubernetes is off or not answering. */
+function NoCluster({ loading }: { loading: boolean }) {
+  const navigate = useNavigate();
+  if (loading) {
+    return <Skeleton className="m-5 w-72" />;
+  }
+  return (
+    <EmptyState
+      title="Kubernetes isn't running"
+      className="h-full"
+      actions={<Button onClick={() => navigate({ to: "/kubernetes" })}>Open Kubernetes</Button>}
+    >
+      The pod shows here once the cluster answers.
+    </EmptyState>
+  );
+}
+
 export function PodPage() {
   const { namespace, name } = route.useParams();
-  const { data: cluster } = useCluster();
+  const { data: cluster, isLoading } = useCluster();
   const pod = cluster?.pods.find(
     (candidate) => candidate.namespace === namespace && candidate.name === name,
   );
@@ -160,6 +177,7 @@ export function PodPage() {
   );
   return (
     <Page crumbs={crumbs} flush>
+      {cluster ? null : <NoCluster loading={isLoading} />}
       {cluster && pod ? <PodView cluster={cluster} pod={pod} /> : null}
       {cluster && !pod ? (
         <EmptyState title={`${name} is gone`} className="h-full">

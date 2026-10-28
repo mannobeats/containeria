@@ -1,10 +1,11 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { toast } from "sonner";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { terminals } from "@/test/canvas-mocks";
 import { engineFixture, metricsFixture } from "@/test/fixtures";
-import { mockCommands, renderWithApp, sendToChannel } from "@/test/harness";
+import { type Call, mockCommands, renderWithApp, sendToChannel } from "@/test/harness";
 import { clusterFixture, podFixture } from "@/test/kube-fixtures";
 
 import { PodPage } from "./pod-page";
@@ -23,7 +24,13 @@ let forwards = [forward];
 
 const sidecars = podFixture({ name: "api-5c8d-q1", containers: ["api", "envoy"] });
 
-function setup(url: string) {
+afterEach(() => vi.restoreAllMocks());
+
+const commandsOf = (calls: Call[]) => calls.map((call) => call.command);
+
+type Overrides = Parameters<typeof mockCommands>[0];
+
+function setup(url: string, overrides: Overrides = {}) {
   const calls = mockCommands({
     engineStatus: () => on,
     kubernetesCluster: () => clusterFixture({ pods: [...clusterFixture().pods, sidecars] }),
@@ -46,6 +53,7 @@ function setup(url: string) {
       queueMicrotask(() => sendToChannel(args.channel, { kind: "output", text: "/app # " }));
       return 5;
     },
+    ...overrides,
   });
   renderWithApp(<PodPage />, { route: { path: "/kubernetes/pods/$namespace/$name", url } });
   return calls;
@@ -63,12 +71,32 @@ describe("PodPage", () => {
         }),
       ),
     );
-    expect(screen.getByRole("log", { name: "Logs of checkout-7d9f-x2" })).toBeDefined();
+    const logs = calls.find((call) => call.command === "kubernetesLogs");
+    act(() => sendToChannel(logs?.args.channel, "listening on :8080"));
+    expect(screen.getByRole("log", { name: "Logs of checkout-7d9f-x2" }).textContent).toContain(
+      "listening on :8080",
+    );
   });
 
-  it("shows events with warnings", async () => {
+  it("follows the container picked from a pod with several", async () => {
+    const calls = setup("/kubernetes/pods/shop/api-5c8d-q1");
+    const picker = await screen.findByRole("combobox", { name: "Container" });
+    const logsOf = (container: string) =>
+      expect(calls).toContainEqual(
+        expect.objectContaining({
+          command: "kubernetesLogs",
+          args: expect.objectContaining({ pod: "api-5c8d-q1", container }),
+        }),
+      );
+    await waitFor(() => logsOf("api"));
+    await userEvent.selectOptions(picker, "envoy");
+    await waitFor(() => logsOf("envoy"));
+  });
+
+  it("marks warning events in words, not only in red", async () => {
     setup("/kubernetes/pods/shop/checkout-7d9f-x2?tab=events");
-    expect(await screen.findByText("BackOff")).toBeDefined();
+    const event = await screen.findByRole("listitem");
+    expect(event.textContent).toContain("Warning: BackOff");
     expect(screen.getByText("×9")).toBeDefined();
   });
 
@@ -102,6 +130,24 @@ describe("PodPage", () => {
     );
   });
 
+  it("says when a forward didn't stop", async () => {
+    forwards = [forward];
+    const error = vi.spyOn(toast, "error");
+    setup("/kubernetes/pods/shop/checkout-7d9f-x2", {
+      kubernetesStopForward: () => {
+        throw { kind: "internal", message: "No such stream" };
+      },
+    });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Stop forwarding localhost:8080" }),
+    );
+    await waitFor(() =>
+      expect(error).toHaveBeenCalledWith("The forward didn't stop", {
+        description: "No such stream",
+      }),
+    );
+  });
+
   it("stops a forward from its right-click menu", async () => {
     forwards = [forward];
     const calls = setup("/kubernetes/pods/shop/checkout-7d9f-x2");
@@ -112,9 +158,14 @@ describe("PodPage", () => {
     );
   });
 
-  it("opens a terminal in the pod, types into it and reconnects when it exits", async () => {
+  async function openTerminal(): Promise<Call[]> {
     const calls = setup("/kubernetes/pods/shop/storefront-6f9c-abcde?tab=terminal");
     await waitFor(() => expect(terminals.at(-1)?.written).toBe("/app # "));
+    return calls;
+  }
+
+  it("opens a terminal in a pod with one container", async () => {
+    const calls = await openTerminal();
     expect(calls).toContainEqual(
       expect.objectContaining({
         command: "kubernetesShell",
@@ -126,6 +177,10 @@ describe("PodPage", () => {
       }),
     );
     expect(screen.queryByRole("combobox", { name: "Container" })).toBeNull();
+  });
+
+  it("sends what's typed and the terminal size to the pod", async () => {
+    const calls = await openTerminal();
     const terminal = terminals.at(-1);
     act(() => {
       terminal?.type("ls\r");
@@ -138,6 +193,10 @@ describe("PodPage", () => {
         args: { stream: 5, cols: 100, rows: 30 },
       });
     });
+  });
+
+  it("reconnects the terminal after the shell exits", async () => {
+    const calls = await openTerminal();
     const shell = calls.find((call) => call.command === "kubernetesShell");
     act(() => sendToChannel(shell?.args.channel, { kind: "closed" }));
     await userEvent.click(await screen.findByRole("button", { name: "Reconnect" }));
@@ -185,6 +244,16 @@ describe("PodPage", () => {
     expect(
       await screen.findByRole("heading", { name: "checkout-7d9f-x2 isn't running" }),
     ).toBeDefined();
+  });
+
+  it("says when Kubernetes isn't running instead of showing a blank page", async () => {
+    const calls = setup("/kubernetes/pods/shop/checkout-7d9f-x2", {
+      kubernetesCluster: () => {
+        throw { kind: "kubernetesUnavailable", message: "k3s isn't answering" };
+      },
+    });
+    expect(await screen.findByRole("heading", { name: "Kubernetes isn't running" })).toBeDefined();
+    expect(commandsOf(calls)).not.toContain("kubernetesLogs");
   });
 
   it("says when the pod is gone", async () => {

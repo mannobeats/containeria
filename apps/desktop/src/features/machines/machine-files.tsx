@@ -5,29 +5,18 @@ import {
   IconFolder,
   IconUpload,
 } from "@tabler/icons-react";
-import { useQueryClient } from "@tanstack/react-query";
-import { open, save } from "@tauri-apps/plugin-dialog";
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { copyText } from "@/lib/clipboard";
 import { formatBytes } from "@/lib/format";
-import { commands, type MachineFile } from "@/lib/ipc/bindings";
+import type { MachineFile } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
 import { pathSteps } from "@/lib/paths";
 import { Button } from "@/ui/button";
 import { EmptyState } from "@/ui/empty-state";
 import { IconAction } from "@/ui/icon-action";
 import { ContextMenu, type MenuEntry } from "@/ui/menu";
-import { machineKeys, useMachineFiles } from "./api";
-
-async function download(machine: string, entry: MachineFile) {
-  const destination = await save({ defaultPath: entry.name });
-  if (destination) {
-    await commands.machineFileDownload(machine, entry.path, destination);
-    toast.success(`Saved ${entry.name}`, { description: destination });
-  }
-}
+import { useDownloadFile, useMachineFiles, useUploadFile } from "./api";
 
 function Row({
   machine,
@@ -39,10 +28,8 @@ function Row({
   onOpen: (path: string) => void;
 }) {
   const folder = entry.kind === "directory";
-  const saveToMac = () =>
-    download(machine, entry).catch((error: unknown) =>
-      toast.error("Not saved", { description: errorMessage(error) }),
-    );
+  const download = useDownloadFile(machine);
+  const saveToMac = () => download.mutate(entry);
   const menu: MenuEntry[] = [
     folder
       ? { label: "Open", onSelect: () => onOpen(entry.path) }
@@ -110,25 +97,14 @@ const HOME = "/root";
 /** Browse a running machine's files, download them to the Mac and upload into the open folder. */
 export function MachineFiles({ name }: { name: string }) {
   const [path, setPath] = useState(HOME);
-  const client = useQueryClient();
   const { data: entries, error, refetch } = useMachineFiles(name, path);
-  const upload = async () => {
-    const source = await open({ multiple: false, directory: false });
-    if (typeof source === "string") {
-      await commands.machineFileUpload(name, source, path);
-      await client.invalidateQueries({ queryKey: machineKeys.files(name, path) });
-      toast.success("Uploaded", { description: path });
-    }
-  };
-  const uploadHere = () =>
-    upload().catch((failure: unknown) =>
-      toast.error("Not uploaded", { description: errorMessage(failure) }),
-    );
+  const upload = useUploadFile(name);
+  const uploadHere = () => upload.mutate(path);
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex h-11 shrink-0 items-center gap-2 border-b-[0.5px] border-line pr-3 pl-4">
         <Crumbs path={path} onOpen={setPath} />
-        <Button size="sm" className="ml-auto" onClick={uploadHere}>
+        <Button size="sm" className="ml-auto" loading={upload.isPending} onClick={uploadHere}>
           <IconUpload />
           Upload
         </Button>
@@ -138,7 +114,7 @@ export function MachineFiles({ name }: { name: string }) {
       ) : (
         <ContextMenu
           entries={[
-            { label: "Upload…", onSelect: uploadHere },
+            { label: "Upload…", disabled: upload.isPending, onSelect: uploadHere },
             { label: "Refresh", onSelect: () => refetch() },
           ]}
         >

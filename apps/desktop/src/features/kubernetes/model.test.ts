@@ -30,6 +30,9 @@ describe("visible", () => {
     ).toEqual(["checkout-7d9f-x2"]);
     expect(visible(cluster.ingresses, "shop", "STOREFRONT")).toHaveLength(1);
     expect(visible(cluster.ingresses, "shop", "shop.test")).toHaveLength(0);
+    expect(visible(cluster.pods, null, "KUBE-SYS").map((pod) => pod.name)).toEqual([
+      "coredns-ccb9",
+    ]);
   });
 });
 

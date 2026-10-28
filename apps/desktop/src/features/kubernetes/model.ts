@@ -85,6 +85,11 @@ export function k3sVersion(version: string): string {
   return version.replace(/^v/, "").replace(/\+.*$/, "");
 }
 
+/** The container logs and terminals talk to: `null` for a pod with one, which `kubectl` picks. */
+export function podContainer(pod: PodSummary, picked: string | null): string | null {
+  return pod.containers.length > 1 ? (picked ?? pod.containers[0] ?? null) : null;
+}
+
 /** The `kubectl` line that opens the same terminal from the Mac's own shell. */
 export function execCommand(pod: PodSummary, container: string | null): string {
   const pick = container === null ? "" : ` -c ${container}`;

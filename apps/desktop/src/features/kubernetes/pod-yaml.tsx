@@ -1,7 +1,5 @@
 import { IconCopy, IconPencil } from "@tabler/icons-react";
-import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import { toast } from "sonner";
-
+import { copyText } from "@/lib/clipboard";
 import type { PodSummary } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
 import { CodeEditor } from "@/ui/code-editor";
@@ -17,14 +15,7 @@ export function PodYaml({ pod, onEdit }: { pod: PodSummary; onEdit: (manifest: s
   return (
     <div className="flex h-full flex-col gap-2 px-5 py-3">
       <div className="flex justify-end gap-2">
-        <Button
-          size="sm"
-          onClick={() =>
-            writeText(data)
-              .then(() => toast("Copied", { description: `${pod.name} as YAML` }))
-              .catch(() => undefined)
-          }
-        >
+        <Button size="sm" onClick={() => copyText(`${pod.name} as YAML`, data)}>
           <IconCopy />
           Copy
         </Button>

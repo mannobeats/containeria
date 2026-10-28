@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { plural } from "@/lib/format";
-import { commands } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
 import { Checkbox } from "@/ui/checkbox";
 import { CodeEditor } from "@/ui/code-editor";
 import { inputClass } from "@/ui/input-class";
 import { Sheet } from "@/ui/sheet";
 
-import { useKubeAction } from "./api";
+import { useApply } from "./api";
 
 const EXAMPLE = `apiVersion: apps/v1
 kind: Deployment
@@ -39,10 +38,7 @@ export function ApplySheet({ onClose, namespaces, manifest = EXAMPLE }: ApplyShe
   const [text, setText] = useState(manifest);
   const [namespace, setNamespace] = useState("default");
   const [dryRun, setDryRun] = useState(false);
-  const apply = useKubeAction(
-    () => commands.kubernetesApply(text, namespace, dryRun),
-    () => (dryRun ? "The manifest is valid" : "Applied"),
-  );
+  const apply = useApply();
   return (
     <Sheet
       open
@@ -61,13 +57,16 @@ export function ApplySheet({ onClose, namespaces, manifest = EXAMPLE }: ApplyShe
             variant="brand"
             loading={apply.isPending}
             onClick={() =>
-              apply.mutate(undefined, {
-                onSuccess: () => {
-                  if (!dryRun) {
-                    onClose();
-                  }
+              apply.mutate(
+                { manifest: text, namespace, dryRun },
+                {
+                  onSuccess: () => {
+                    if (!dryRun) {
+                      onClose();
+                    }
+                  },
                 },
-              })
+              )
             }
           >
             {dryRun ? "Check" : "Apply"}
