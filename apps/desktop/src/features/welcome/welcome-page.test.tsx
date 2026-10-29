@@ -16,12 +16,12 @@ const inventory: Inventory = {
   ],
 };
 
-function renderWelcome(sources: SourceStatus[]) {
+function renderWelcome(sources: SourceStatus[] | (() => SourceStatus[])) {
   const calls = mockCommands({
     engineStatus: () => engineFixture({ phase: "notCreated" }),
     preferencesGet: () => preferencesFixture({ onboarded: false }),
     hostInfo: () => ({ chip: "Apple M1 Max", cores: 10, memoryBytes: 32 * 1024 ** 3 }),
-    migrationSources: () => sources,
+    migrationSources: typeof sources === "function" ? sources : () => sources,
     migrationInventory: () => inventory,
   });
   const { router } = renderWithApp(<WelcomePage />);
@@ -37,7 +37,23 @@ async function throughEngine() {
 }
 
 describe("WelcomePage", () => {
-  it("sizes and creates the engine, copies what's picked and finishes", async () => {
+  it("sizes the engine as picked", async () => {
+    const { calls } = renderWelcome([]);
+    await userEvent.click(await screen.findByRole("button", { name: "Get started" }));
+    const [cpus] = await screen.findAllByRole("slider");
+    (cpus as HTMLElement).focus();
+    await userEvent.keyboard("{ArrowRight}");
+    await userEvent.click(screen.getByRole("switch", { name: "Rosetta" }));
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        command: "engineSaveConfig",
+        args: { config: { ...engineFixture().config, cpus: 5, rosetta: false } },
+      }),
+    );
+  });
+
+  it("creates the engine, copies what's picked and finishes", async () => {
     const { calls, router } = renderWelcome([
       { source: "dockerDesktop", installed: false, running: false },
       { source: "orbStack", installed: true, running: true },
@@ -85,9 +101,39 @@ describe("WelcomePage", () => {
     );
   });
 
-  it("can be skipped", async () => {
-    const { router } = renderWelcome([]);
+  it("says when it couldn't look for apps to copy from", async () => {
+    renderWelcome(() => {
+      throw { kind: "io", message: "Spotlight is off" };
+    });
+    await throughEngine();
+    expect(await screen.findByText(/couldn't look for Docker Desktop and OrbStack/)).toBeDefined();
+    expect(screen.getByText(/Spotlight is off/)).toBeDefined();
+    expect(screen.queryByText(/Neither Docker Desktop nor OrbStack/)).toBeNull();
+  });
+
+  it("says why Check again failed instead of keeping the old answer", async () => {
+    let looked = false;
+    renderWelcome(() => {
+      if (looked) {
+        throw { kind: "io", message: "Spotlight is off" };
+      }
+      looked = true;
+      return [{ source: "dockerDesktop", installed: true, running: false }];
+    });
+    await throughEngine();
+    expect(await screen.findByText(/Open Docker Desktop to copy/)).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: "Check again" }));
+    expect(await screen.findByText(/Spotlight is off/)).toBeDefined();
+    expect(screen.queryByText(/Open Docker Desktop to copy/)).toBeNull();
+  });
+
+  it("can be skipped, and doesn't open again", async () => {
+    const { calls, router } = renderWelcome([]);
     await userEvent.click(await screen.findByRole("button", { name: "Skip setup" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/containers"));
+    expect(calls).toContainEqual({
+      command: "preferencesSet",
+      args: { preferences: preferencesFixture({ onboarded: true }) },
+    });
   });
 });

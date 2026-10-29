@@ -3,16 +3,17 @@ import clsx from "clsx";
 
 import { copyText } from "@/lib/clipboard";
 import { formatAge } from "@/lib/format";
-import { commands, type DeploymentSummary } from "@/lib/ipc/bindings";
+import type { DeploymentSummary } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
 import { Chip } from "@/ui/chip";
+import { rowActions } from "@/ui/classes";
 import { type Column, ColumnTable } from "@/ui/column-table";
 import { IconAction } from "@/ui/icon-action";
 import { Menu, type MenuEntry } from "@/ui/menu";
 import { Meter } from "@/ui/progress";
 import { Tile } from "@/ui/tile";
 
-import { useKubeAction } from "./api";
+import { editYaml, useRestartDeployment } from "./api";
 import type { KubeSheet } from "./kube-sheet";
 
 type Open = (sheet: KubeSheet) => void;
@@ -39,7 +40,10 @@ function deploymentMenu(deployment: DeploymentSummary, { open, restart }: Handle
   return [
     { label: "Scale…", onSelect: () => open({ kind: "scale", deployment }) },
     { label: "Restart Rollout", onSelect: () => restart(deployment) },
-    { label: "Edit YAML…", onSelect: () => open({ kind: "editYaml", deployment }) },
+    {
+      label: "Edit YAML…",
+      onSelect: () => editYaml(deployment, (manifest) => open({ kind: "apply", manifest })),
+    },
     { kind: "separator" },
     { label: "Copy Name", onSelect: () => copyText("Name", deployment.name) },
     { kind: "separator" },
@@ -53,7 +57,7 @@ function deploymentMenu(deployment: DeploymentSummary, { open, restart }: Handle
 
 function Actions({ deployment, handlers }: { deployment: DeploymentSummary; handlers: Handlers }) {
   return (
-    <span className="inline-flex gap-0.5 opacity-0 transition-opacity duration-140 group-focus-within/row:opacity-100 group-hover/row:opacity-100">
+    <span className={rowActions}>
       <IconAction
         label="Scale"
         target={deployment.name}
@@ -90,11 +94,7 @@ export function DeploymentsTable({
   deployments: DeploymentSummary[];
   open: Open;
 }) {
-  const restart = useKubeAction(
-    (deployment: DeploymentSummary) =>
-      commands.kubernetesRestartDeployment(deployment.namespace, deployment.name),
-    (deployment) => `Restarting ${deployment.name}`,
-  );
+  const restart = useRestartDeployment();
   const handlers: Handlers = { open, restart: (deployment) => restart.mutate(deployment) };
   const columns: Column<DeploymentSummary>[] = [
     {

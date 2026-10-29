@@ -1,14 +1,14 @@
 import { plural } from "@/lib/format";
-import { type Cluster, commands, type DeploymentSummary } from "@/lib/ipc/bindings";
+import type { Cluster } from "@/lib/ipc/bindings";
 import { ConfirmSheet } from "@/ui/confirm-sheet";
 import { PromptSheet } from "@/ui/prompt-sheet";
 
 import {
   useCreateNamespace,
-  useKubeAction,
+  useDeleteDeployment,
+  useDeletePod,
   useResetCluster,
   useSetKubernetes,
-  useYaml,
 } from "./api";
 import { ApplySheet } from "./apply-sheet";
 import { ConfigSheet } from "./config-sheet";
@@ -28,13 +28,9 @@ function DeleteSheet({
   target: Target;
   onClose: () => void;
 }) {
-  const remove = useKubeAction(
-    () =>
-      what === "pod"
-        ? commands.kubernetesDeletePod(target.namespace, target.name)
-        : commands.kubernetesDeleteDeployment(target.namespace, target.name),
-    () => `Deleted ${target.name}`,
-  );
+  const deletePod = useDeletePod();
+  const deleteDeployment = useDeleteDeployment();
+  const remove = what === "pod" ? deletePod : deleteDeployment;
   return (
     <ConfirmSheet
       open
@@ -42,7 +38,7 @@ function DeleteSheet({
       title={`Delete ${target.name}?`}
       action={what === "pod" ? "Delete pod" : "Delete deployment"}
       pending={remove.isPending}
-      onConfirm={() => remove.mutate(undefined, { onSuccess: onClose })}
+      onConfirm={() => remove.mutate(target, { onSuccess: onClose })}
     >
       {what === "pod"
         ? "Its controller schedules a replacement right away."
@@ -111,23 +107,6 @@ function NamespaceSheet({ cluster, onClose }: { cluster: Cluster; onClose: () =>
   );
 }
 
-/** The apply sheet, prefilled with the deployment as it is now once its YAML arrives. */
-function EditYamlSheet({
-  deployment,
-  cluster,
-  onClose,
-}: {
-  deployment: DeploymentSummary;
-  cluster: Cluster;
-  onClose: () => void;
-}) {
-  const { data } = useYaml("deployment", deployment.namespace, deployment.name);
-  if (data === undefined) {
-    return null;
-  }
-  return <ApplySheet onClose={onClose} namespaces={cluster.namespaces} manifest={data} />;
-}
-
 export function KubeSheets({
   sheet,
   cluster,
@@ -146,8 +125,6 @@ export function KubeSheets({
           {...(sheet.manifest ? { manifest: sheet.manifest } : {})}
         />
       );
-    case "editYaml":
-      return <EditYamlSheet deployment={sheet.deployment} cluster={cluster} onClose={onClose} />;
     case "newNamespace":
       return <NamespaceSheet cluster={cluster} onClose={onClose} />;
     case "scale":

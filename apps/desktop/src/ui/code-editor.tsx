@@ -58,6 +58,7 @@ export function CodeEditor({
           if (mounted) {
             created = made;
             editor.current = made;
+            made.setValue(initial());
           } else {
             made.destroy();
           }

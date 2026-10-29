@@ -288,31 +288,39 @@ export function useImport(id: string) {
   });
 }
 
-export function useTruncateTable(id: string) {
+type TableChange = {
+  run: (table: TableRef) => ReturnType<typeof commands.dataTruncate>;
+  done: string;
+  failed: string;
+};
+
+/** A change to a whole table: the command answers with the new schema, so rows refetch after it. */
+function useTableChange(id: string, { run, done, failed }: TableChange) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (table: TableRef) => commands.dataTruncate(id, table),
+    mutationFn: run,
     onSuccess: (schema, table) => {
-      toast.success(`Emptied ${table.name}`);
+      toast.success(`${done} ${table.name}`);
       client.setQueryData(dataKeys.schema(id), schema);
       return client.invalidateQueries({ queryKey: ["data", "rows", id] });
     },
-    onError: (error) =>
-      toast.error("The table wasn't emptied", { description: errorMessage(error) }),
+    onError: (error) => toast.error(failed, { description: errorMessage(error) }),
+  });
+}
+
+export function useTruncateTable(id: string) {
+  return useTableChange(id, {
+    run: (table) => commands.dataTruncate(id, table),
+    done: "Emptied",
+    failed: "The table wasn't emptied",
   });
 }
 
 export function useDropTable(id: string) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (table: TableRef) => commands.dataDropTable(id, table),
-    onSuccess: (schema, table) => {
-      toast.success(`Dropped ${table.name}`);
-      client.setQueryData(dataKeys.schema(id), schema);
-      return client.invalidateQueries({ queryKey: ["data", "rows", id] });
-    },
-    onError: (error) =>
-      toast.error("The table wasn't dropped", { description: errorMessage(error) }),
+  return useTableChange(id, {
+    run: (table) => commands.dataDropTable(id, table),
+    done: "Dropped",
+    failed: "The table wasn't dropped",
   });
 }
 

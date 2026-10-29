@@ -1,6 +1,4 @@
 import { IconDots, IconFileUpload } from "@tabler/icons-react";
-import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import { toast } from "sonner";
 
 import { useContainers } from "@/features/containers/api";
 import { useMetrics } from "@/features/metrics/api";
@@ -17,13 +15,6 @@ import type { KubeSheet } from "./kube-sheet";
 import { k3sVersion, podMemory } from "./model";
 
 const CONTEXT = "colima-containeria";
-
-function copyContext() {
-  const command = `kubectl config use-context ${CONTEXT}`;
-  writeText(command)
-    .then(() => toast("Copied", { description: command }))
-    .catch(() => undefined);
-}
 
 export function ClusterHeader({
   cluster,
@@ -42,7 +33,10 @@ export function ClusterHeader({
   const menu: MenuEntry[] = [
     { label: "New Namespace…", onSelect: () => open({ kind: "newNamespace" }) },
     { kind: "separator" },
-    { label: "Copy kubectl Context Command", onSelect: copyContext },
+    {
+      label: "Copy kubectl Context Command",
+      onSelect: () => copyText("Command", `kubectl config use-context ${CONTEXT}`),
+    },
     {
       label: "Copy kubeconfig Path",
       disabled: kubeconfig === undefined,

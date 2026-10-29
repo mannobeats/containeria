@@ -10,21 +10,22 @@ export function Progress({
   label: string;
   className?: string;
 }) {
+  const fraction = value === undefined ? undefined : Math.min(1, Math.max(0, value || 0));
   return (
     <div
       role="progressbar"
       aria-label={label}
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-valuenow={value === undefined ? undefined : Math.round(value * 100)}
+      aria-valuenow={fraction === undefined ? undefined : Math.round(fraction * 100)}
       className={clsx("h-1 overflow-hidden rounded-xs bg-fill", className)}
     >
       <i
         className={clsx(
           "block h-full origin-left rounded-[inherit] bg-brand transition-transform duration-220 ease-out",
-          value === undefined && "w-2/5 animate-indeterminate",
+          fraction === undefined && "w-2/5 animate-indeterminate",
         )}
-        style={value === undefined ? undefined : { transform: `scaleX(${value})` }}
+        style={fraction === undefined ? undefined : { transform: `scaleX(${fraction})` }}
       />
     </div>
   );

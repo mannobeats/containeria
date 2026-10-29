@@ -32,6 +32,9 @@ export function FaceStack({
       <span className="truncate text-ink-2">
         {faces.length === 1 ? faces[0]?.name : `${faces.length} containers`}
       </span>
+      {faces.length > 1 ? (
+        <span className="sr-only">{faces.map((face) => face.name).join(", ")}</span>
+      ) : null}
     </span>
   );
 }

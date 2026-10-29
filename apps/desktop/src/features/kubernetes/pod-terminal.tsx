@@ -12,7 +12,7 @@ import { TerminalView } from "@/ui/terminal-view";
 import { Tile } from "@/ui/tile";
 
 import { podShell } from "./api";
-import { execCommand } from "./model";
+import { execCommand, podContainer } from "./model";
 
 type LiveTerminalProps = {
   pod: PodSummary;
@@ -76,7 +76,7 @@ export function PodTerminal({ pod }: { pod: PodSummary }) {
       </EmptyState>
     );
   }
-  const container = pod.containers.length > 1 ? (picked ?? pod.containers[0] ?? null) : null;
+  const container = podContainer(pod, picked);
   return (
     <LiveTerminal
       key={`${session}-${container ?? ""}`}

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import type { EnginePhase } from "@/lib/ipc/bindings";
 import { mockCommands, renderWithApp } from "@/test/harness";
+import { Toaster } from "@/ui/toaster";
 
 import { EngineOff } from "./engine-off";
 
@@ -27,6 +28,23 @@ describe("EngineOff", () => {
       await waitFor(() => expect(calls.map((call) => call.command)).toContain(command));
     },
   );
+
+  it("says when Engine settings didn't open", async () => {
+    mockCommands({
+      settingsOpen: () => {
+        throw { kind: "io", message: "The Settings window is gone" };
+      },
+    });
+    renderWithApp(
+      <>
+        <EngineOff phase="stopped" />
+        <Toaster />
+      </>,
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "Engine settings" }));
+    expect(await screen.findByText("Settings didn't open")).toBeDefined();
+    expect(screen.getByText("The Settings window is gone")).toBeDefined();
+  });
 
   it("shows progress while the engine starts", async () => {
     renderPhase("starting");

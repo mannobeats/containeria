@@ -1,20 +1,16 @@
 import { useState } from "react";
 
-import { commands, type DeploymentSummary } from "@/lib/ipc/bindings";
+import type { DeploymentSummary } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
 import { Sheet } from "@/ui/sheet";
 
-import { useKubeAction } from "./api";
+import { useScaleDeployment } from "./api";
 
 type ScaleSheetProps = { deployment: DeploymentSummary; onClose: () => void };
 
 export function ScaleSheet({ deployment, onClose }: ScaleSheetProps) {
   const [replicas, setReplicas] = useState(deployment.desired);
-  const scale = useKubeAction(
-    (count: number) =>
-      commands.kubernetesScaleDeployment(deployment.namespace, deployment.name, count),
-    (count) => `${deployment.name} scaled to ${count}`,
-  );
+  const scale = useScaleDeployment(deployment);
   return (
     <Sheet
       open
@@ -39,7 +35,7 @@ export function ScaleSheet({ deployment, onClose }: ScaleSheetProps) {
         <input
           type="range"
           min={0}
-          max={10}
+          max={Math.max(10, deployment.desired)}
           value={replicas}
           onChange={(event) => setReplicas(Number(event.target.value))}
           className="flex-1 accent-brand"

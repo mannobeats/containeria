@@ -27,8 +27,9 @@ pub(crate) async fn domains_set_enabled(state: State<'_, AppState>, enabled: boo
 pub(crate) async fn domains_add_route(
     state: State<'_, AppState>,
     route: CustomRoute,
+    replaces: Option<String>,
 ) -> Result<()> {
-    Ok(state.domains.add_route(route)?)
+    Ok(state.domains.add_route(route, replaces.as_deref())?)
 }
 
 #[tauri::command]

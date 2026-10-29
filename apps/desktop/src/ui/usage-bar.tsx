@@ -8,7 +8,7 @@ type UsageBarProps = { segments: UsageSegment[]; label: string; format: (value: 
 
 /** How a total splits. A segment without a colour is hatched: space nothing needs. */
 export function UsageBar({ segments, label, format }: UsageBarProps) {
-  const total = segments.reduce((sum, segment) => sum + segment.value, 0) || 1;
+  const total = segments.reduce((sum, segment) => sum + Math.max(segment.value, 0), 0) || 1;
   return (
     <div
       role="img"
@@ -21,7 +21,7 @@ export function UsageBar({ segments, label, format }: UsageBarProps) {
           <Tip key={segment.id} label={`${segment.label} · ${format(segment.value)}`}>
             <span
               className={clsx(
-                "h-full min-w-[3px] shrink-0 transition-opacity duration-140 hover:opacity-80",
+                "h-full min-w-[3px] shrink-0",
                 segment.color === undefined &&
                   "bg-[repeating-linear-gradient(-45deg,light-dark(oklch(0.6_0.02_255/0.4),oklch(0.8_0.02_255/0.3))_0_2px,transparent_2px_5px)]",
               )}

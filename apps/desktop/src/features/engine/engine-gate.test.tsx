@@ -1,3 +1,4 @@
+import { mockIPC } from "@tauri-apps/api/mocks";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -8,6 +9,18 @@ import { mockCommands, renderWithApp } from "@/test/harness";
 import { EngineGate } from "./engine-gate";
 
 describe("EngineGate", () => {
+  it("keeps the view closed until the engine has answered", async () => {
+    mockCommands({});
+    mockIPC((command) => (command === "engine_status" ? new Promise(() => undefined) : null));
+    renderWithApp(
+      <EngineGate title="Containers">
+        <p>Page content</p>
+      </EngineGate>,
+    );
+    expect(await screen.findByText("Containers")).toBeDefined();
+    expect(screen.queryByText("Page content")).toBeNull();
+  });
+
   it("offers a retry when the engine status can't be read", async () => {
     let attempts = 0;
     const calls = mockCommands({

@@ -17,19 +17,21 @@ type PromptSheetProps = {
   onSubmit: (value: string) => void;
 };
 
-/** Asks for one value, like a new name or an image tag. */
-export function PromptSheet({
-  open,
+type PromptFormProps = Pick<
+  PromptSheetProps,
+  "onOpenChange" | "label" | "initial" | "hint" | "validate" | "onSubmit"
+> & { id: string };
+
+/** Lives inside the sheet's content, so each opening starts again from `initial`. */
+function PromptForm({
+  id,
   onOpenChange,
-  title,
   label,
   initial,
-  action,
   hint,
   validate,
   onSubmit,
-}: PromptSheetProps) {
-  const id = useId();
+}: PromptFormProps) {
   const [value, setValue] = useState(initial);
   const [touched, setTouched] = useState(false);
   const error = touched ? validate?.(value.trim()) : undefined;
@@ -42,31 +44,39 @@ export function PromptSheet({
     }
   };
   return (
+    <form id={id} onSubmit={submit}>
+      <Field label={label} htmlFor={`${id}-value`} hint={hint} error={error}>
+        <Input
+          id={`${id}-value`}
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          aria-invalid={error ? true : undefined}
+          className="font-mono text-mono-13"
+          spellCheck={false}
+        />
+      </Field>
+    </form>
+  );
+}
+
+/** Asks for one value, like a new name or an image tag. */
+export function PromptSheet({ open, title, action, ...form }: PromptSheetProps) {
+  const id = useId();
+  return (
     <Sheet
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={form.onOpenChange}
       title={title}
       footer={
         <>
-          <Button onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={() => form.onOpenChange(false)}>Cancel</Button>
           <Button variant="brand" type="submit" form={id}>
             {action}
           </Button>
         </>
       }
     >
-      <form id={id} onSubmit={submit}>
-        <Field label={label} htmlFor={`${id}-value`} hint={hint} error={error}>
-          <Input
-            id={`${id}-value`}
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-            aria-invalid={error ? true : undefined}
-            className="font-mono text-mono-13"
-            spellCheck={false}
-          />
-        </Field>
-      </form>
+      <PromptForm id={id} {...form} />
     </Sheet>
   );
 }

@@ -1,42 +1,30 @@
 import { IconCopy, IconEye, IconEyeOff } from "@tabler/icons-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { useState } from "react";
-import { toast } from "sonner";
 
-import { queryKeys } from "@/app/query-keys";
-import { type ConfigSummary, commands } from "@/lib/ipc/bindings";
+import type { ConfigSummary } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
 import { IconAction } from "@/ui/icon-action";
 import { Kv } from "@/ui/kv";
 import { Sheet } from "@/ui/sheet";
 
-function valueQuery(config: ConfigSummary, key: string) {
-  return {
-    queryKey: [...queryKeys.kubernetes, "value", config.kind, config.namespace, config.name, key],
-    queryFn: () => commands.kubernetesConfigValue(config.kind, config.namespace, config.name, key),
-    staleTime: Number.POSITIVE_INFINITY,
-  };
+import { useConfigValue } from "./api";
+
+function Shown({ value }: { value: ReturnType<typeof useConfigValue>["value"] }) {
+  if (value.error) {
+    return <span className="text-bad-ink">{errorMessage(value.error)}</span>;
+  }
+  return value.data ?? "…";
 }
 
 /** One key's value, read only when shown or copied. Secrets start hidden; config maps don't. */
 function Value({ config, name }: { config: ConfigSummary; name: string }) {
-  const client = useQueryClient();
   const secret = config.kind === "secret";
   const [shown, setShown] = useState(!secret);
-  const value = useQuery({ ...valueQuery(config, name), enabled: shown });
-  const copy = () =>
-    client
-      .fetchQuery(valueQuery(config, name))
-      .then((text) => writeText(text))
-      .then(() => toast("Copied", { description: name }))
-      .catch((error: unknown) =>
-        toast.error("The value couldn't be read", { description: errorMessage(error) }),
-      );
+  const { value, copy } = useConfigValue(config, name, shown);
   return (
     <>
       <code className="min-w-0 flex-1 truncate font-mono text-mono-12">
-        {shown ? (value.data ?? "…") : "••••••••••••"}
+        {shown ? <Shown value={value} /> : "••••••••••••"}
       </code>
       {secret ? (
         <IconAction

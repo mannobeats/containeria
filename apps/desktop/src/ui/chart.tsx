@@ -102,7 +102,7 @@ function tipText(chart: uPlot, props: ChartProps): string | null {
   return readout(time, rows, props.format);
 }
 
-/** The canvas itself. Built once; a new shape or theme remounts it through `key`. */
+/** The canvas itself. Built once; a new shape, theme or clock remounts it through `key`. */
 function Canvas(props: ChartProps) {
   const host = useRef<HTMLDivElement>(null);
   const tip = useRef<HTMLDivElement>(null);
@@ -152,10 +152,12 @@ function Canvas(props: ChartProps) {
 /** A uPlot time series in the design's colours: light, fast, and redrawn when the theme flips. */
 export function Chart(props: ChartProps) {
   const dark = useIsDark();
+  const hour12 = useClock((state) => state.hour12);
+  const timeZone = useClock((state) => state.timeZone);
   const shape = props.series.map((entry) => `${entry.label}/${entry.color}/${entry.fill}`).join();
   return (
     <Canvas
-      key={`${dark}:${props.height}:${props.spark}:${props.max}:${props.floor}:${props.binary}:${shape}`}
+      key={`${dark}:${hour12}:${timeZone}:${props.height}:${props.spark}:${props.max}:${props.floor}:${props.binary}:${shape}`}
       {...props}
     />
   );

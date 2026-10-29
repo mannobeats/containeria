@@ -3,7 +3,7 @@ import { IconAdjustments } from "@tabler/icons-react";
 import { useContainers } from "@/features/containers/api";
 import { isServing, useEngineStatus } from "@/features/engine/api";
 import { useMetrics } from "@/features/metrics/api";
-import { commands } from "@/lib/ipc/bindings";
+import { openSettings } from "@/features/settings/api";
 import { Crumb, Page } from "@/shell/page";
 import { Button } from "@/ui/button";
 import { EmptyState } from "@/ui/empty-state";
@@ -22,7 +22,7 @@ const tools = (
       variant="ghost"
       iconOnly
       aria-label="Engine settings"
-      onClick={() => commands.settingsOpen("engine").catch(() => undefined)}
+      onClick={() => openSettings("engine")}
     >
       <IconAdjustments />
     </Button>

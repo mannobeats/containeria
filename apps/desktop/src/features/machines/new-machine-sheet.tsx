@@ -121,6 +121,7 @@ export function NewMachineSheet({ open, onOpenChange, supportsVms, taken }: NewM
     create.mutate(form.request, {
       onSuccess: () => {
         onOpenChange(false);
+        form.reset();
         navigate({
           to: "/machines/$name",
           params: { name: form.request.name },
@@ -145,7 +146,7 @@ export function NewMachineSheet({ open, onOpenChange, supportsVms, taken }: NewM
           <Button
             variant="brand"
             loading={create.isPending}
-            disabled={form.problem !== null}
+            disabled={form.problem !== null || form.request.release === ""}
             onClick={submit}
           >
             Create machine

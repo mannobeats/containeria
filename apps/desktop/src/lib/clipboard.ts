@@ -1,7 +1,9 @@
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { toast } from "sonner";
 
-/** Copies `value` and says what was copied. */
+import { errorMessage } from "./ipc/errors";
+
+/** Copies `value` and says what was copied, or why it wasn't. */
 export function copyText(label: string, value: string) {
   writeText(value)
     .then(() =>
@@ -9,5 +11,7 @@ export function copyText(label: string, value: string) {
         description: `${label}: ${value.length > 80 ? `${value.slice(0, 80)}…` : value}`,
       }),
     )
-    .catch(() => undefined);
+    .catch((error: unknown) =>
+      toast.error(`${label} wasn't copied`, { description: errorMessage(error) }),
+    );
 }

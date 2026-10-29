@@ -35,8 +35,12 @@ vi.mock("@xterm/addon-fit", () => ({
   },
 }));
 
+const dialog = vi.hoisted(() => ({
+  open: (): Promise<string | null> => Promise.resolve("/Users/ada/notes.txt"),
+}));
+
 vi.mock("@tauri-apps/plugin-dialog", () => ({
-  open: () => Promise.resolve("/Users/ada/notes.txt"),
+  open: () => dialog.open(),
   save: () => Promise.resolve("/Users/ada/Downloads/os-release"),
 }));
 
@@ -122,6 +126,19 @@ describe("MachineView", () => {
         args: { name: "ubuntu-dev", source: "/Users/ada/notes.txt", directory: "/root" },
       }),
     );
+  });
+
+  it("can't start a second upload while one is in progress", async () => {
+    const opened = vi.fn(() => new Promise<string | null>(() => undefined));
+    dialog.open = opened;
+    setup("files");
+    await screen.findByText("notes.txt");
+    const upload = screen.getByRole("button", { name: "Upload" });
+    await userEvent.click(upload);
+    await waitFor(() => expect(upload).toHaveProperty("disabled", true));
+    await userEvent.click(upload);
+    expect(opened).toHaveBeenCalledTimes(1);
+    dialog.open = () => Promise.resolve("/Users/ada/notes.txt");
   });
 
   it("offers to start a stopped machine instead of a terminal", async () => {

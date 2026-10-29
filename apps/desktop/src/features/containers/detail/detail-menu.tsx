@@ -74,7 +74,6 @@ export function DetailMenu({ details }: { details: ContainerDetails }) {
         </Button>
       </Menu>
       <PromptSheet
-        key={`rename-${dialog}`}
         open={dialog === "rename"}
         onOpenChange={close}
         title={`Rename ${details.name}`}
@@ -87,7 +86,6 @@ export function DetailMenu({ details }: { details: ContainerDetails }) {
         onSubmit={(name) => rename.mutate(name)}
       />
       <PromptSheet
-        key={`commit-${dialog}`}
         open={dialog === "commit"}
         onOpenChange={close}
         title="Commit to image"

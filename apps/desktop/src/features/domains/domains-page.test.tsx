@@ -103,9 +103,97 @@ describe("DomainsPage", () => {
     await waitFor(() =>
       expect(calls).toContainEqual({
         command: "domainsAddRoute",
-        args: { route: { host: "blog.test", container: "shop-web-1", port: 3000, https: true } },
+        args: {
+          route: { host: "blog.test", container: "shop-web-1", port: 3000, https: true },
+          replaces: null,
+        },
       }),
     );
+  });
+
+  it("renames a route without leaving the old name behind", async () => {
+    const calls = setup(status());
+    await userEvent.click(await screen.findByRole("button", { name: "More for shop.test" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Edit Route…" }));
+    const host = await screen.findByLabelText("Domain");
+    await userEvent.clear(host);
+    await userEvent.type(host, "store.test");
+    await userEvent.click(screen.getByRole("button", { name: "Save route" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        command: "domainsAddRoute",
+        args: {
+          route: { host: "store.test", container: "shop-api-1", port: 8080, https: true },
+          replaces: "shop.test",
+        },
+      }),
+    );
+    expect(calls.map((call) => call.command)).not.toContain("domainsRemoveRoute");
+  });
+
+  it("refuses to save a route onto a name another route uses", async () => {
+    const blog = {
+      host: "blog.test",
+      kind: "custom",
+      container: "shop-api-1",
+      port: 8080,
+      https: true,
+      down: null,
+    } as const;
+    const calls = setup(status({ routes: [...status().routes, blog] }));
+    await userEvent.click(await screen.findByRole("button", { name: "More for shop.test" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Edit Route…" }));
+    const host = await screen.findByLabelText("Domain");
+    await userEvent.clear(host);
+    await userEvent.type(host, "Blog.Test");
+    await userEvent.click(screen.getByRole("button", { name: "Save route" }));
+    expect(await screen.findByText("Another route already uses blog.test")).toBeDefined();
+    expect(calls.map((call) => call.command)).not.toContain("domainsAddRoute");
+  });
+
+  it("keeps a route's container when it's no longer listed", async () => {
+    const calls = mockCommands({
+      domainsStatus: () => status(),
+      engineStatus: () => engineFixture(),
+      containersList: () => [containerFixture({ name: "shop-web-1" })],
+    });
+    renderWithApp(<DomainsPage />);
+    await userEvent.click(await screen.findByRole("button", { name: "More for shop.test" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Edit Route…" }));
+    expect(await screen.findByRole("combobox", { name: "Points to" })).toHaveProperty(
+      "value",
+      "shop-api-1",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save route" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        command: "domainsAddRoute",
+        args: {
+          route: { host: "shop.test", container: "shop-api-1", port: 8080, https: true },
+          replaces: "shop.test",
+        },
+      }),
+    );
+  });
+
+  it("says why the domains can't be read and tries again", async () => {
+    let attempts = 0;
+    const calls = mockCommands({
+      domainsStatus: () => {
+        attempts += 1;
+        if (attempts === 1) {
+          throw { kind: "io", message: "settings.json is unreadable" };
+        }
+        return status();
+      },
+      engineStatus: () => engineFixture(),
+      containersList: () => [],
+    });
+    renderWithApp(<DomainsPage />);
+    expect(await screen.findByText("settings.json is unreadable")).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("2 of 3")).toBeDefined();
+    expect(calls.filter((call) => call.command === "domainsStatus").length).toBeGreaterThan(1);
   });
 
   it("removes a custom route after confirming", async () => {

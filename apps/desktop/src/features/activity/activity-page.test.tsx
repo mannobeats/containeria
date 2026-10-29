@@ -8,13 +8,24 @@ import { mockCommands, renderWithApp } from "@/test/harness";
 import { ActivityPage } from "./activity-page";
 
 vi.mock("@/ui/chart", () => ({
-  Chart: ({ label, series }: { label: string; series: { label: string }[] }) => (
-    <figure aria-label={label}>{series.map((line) => line.label).join(", ")}</figure>
+  Chart: ({
+    label,
+    series,
+    data,
+  }: {
+    label: string;
+    series: { label: string }[];
+    data: unknown[][];
+  }) => (
+    <figure aria-label={label}>
+      {series.map((line, index) => `${line.label}: ${data[index + 1]?.join(" ")}`).join(", ")}
+    </figure>
   ),
 }));
 
 const MIB = 1024 ** 2;
 const shop = { id: "project:shop", label: "shop", kind: "project" as const, bytes: 300 * MIB };
+const shopEarlier = { ...shop, bytes: 200 * MIB };
 
 function renderActivity(phase: EnginePhase) {
   mockCommands({
@@ -28,7 +39,8 @@ function renderActivity(phase: EnginePhase) {
         ledger: { totalBytes: 8 * 1024 ** 3, usedBytes: 300 * MIB, segments: [shop] },
       }),
     metricsHistory: () => [
-      { sampledAtMs: 1000, cpuPercent: 3.2, usedBytes: 300 * MIB, segments: [shop] },
+      { sampledAtMs: 1000, cpuPercent: 1.5, usedBytes: 250 * MIB, segments: [shopEarlier] },
+      { sampledAtMs: 3000, cpuPercent: 3.2, usedBytes: 300 * MIB, segments: [shop] },
     ],
   });
   renderWithApp(<ActivityPage />);
@@ -44,7 +56,10 @@ describe("ActivityPage", () => {
     ).toBeDefined();
     expect(
       screen.getByRole("figure", { name: "Engine memory over time by project" }).textContent,
-    ).toBe("Total, shop");
+    ).toBe(`Total: ${250 * MIB} ${300 * MIB}, shop: ${200 * MIB} ${300 * MIB}`);
+    expect(screen.getByRole("figure", { name: "Engine CPU over time" }).textContent).toBe(
+      "CPU: 1.5 3.2",
+    );
     expect(await screen.findByRole("link", { name: /shop-db-1/ })).toBeDefined();
   });
 

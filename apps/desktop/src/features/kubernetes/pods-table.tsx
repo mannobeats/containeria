@@ -8,6 +8,7 @@ import { formatAge, formatMemory } from "@/lib/format";
 import type { PodSummary } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
 import { Chip } from "@/ui/chip";
+import { rowActions } from "@/ui/classes";
 import { type Column, ColumnTable } from "@/ui/column-table";
 import { Dash } from "@/ui/dash";
 import { IconAction } from "@/ui/icon-action";
@@ -47,7 +48,7 @@ function PodStatus({ pod }: { pod: PodSummary }) {
 
 function PodActions({ pod, menu, logs }: { pod: PodSummary; menu: MenuEntry[]; logs: () => void }) {
   return (
-    <span className="inline-flex gap-0.5 opacity-0 transition-opacity duration-140 group-focus-within/row:opacity-100 group-hover/row:opacity-100">
+    <span className={rowActions}>
       <IconAction label="Logs" target={pod.name} onClick={logs}>
         <IconLogs />
       </IconAction>

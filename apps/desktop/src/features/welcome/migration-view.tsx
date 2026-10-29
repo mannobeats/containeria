@@ -10,11 +10,13 @@ import type {
   MigrationSource,
   SourceStatus,
 } from "@/lib/ipc/bindings";
+import { errorMessage } from "@/lib/ipc/errors";
 import { logoFor } from "@/lib/logos";
 import { Banner } from "@/ui/banner";
 import { Button } from "@/ui/button";
 import { Checkbox } from "@/ui/checkbox";
 import { Chip } from "@/ui/chip";
+import { Progress } from "@/ui/progress";
 import { Segmented } from "@/ui/segmented";
 import { Switch } from "@/ui/switch";
 import { Tile } from "@/ui/tile";
@@ -161,7 +163,7 @@ function Choices({ source, inventory, onDone, doneLabel }: ChoicesProps) {
         container there.
       </p>
       <div className="flex justify-end gap-2">
-        <Button size="lg" onClick={onDone}>
+        <Button size="lg" disabled={migration.isPending} onClick={onDone}>
           {migration.isSuccess ? doneLabel : "Skip"}
         </Button>
         {migration.isSuccess ? null : (
@@ -223,23 +225,54 @@ function NothingRunning({
   );
 }
 
+function SourcesFailed({
+  error,
+  onRetry,
+  onDone,
+  doneLabel,
+}: {
+  error: unknown;
+  onRetry: () => void;
+  onDone: () => void;
+  doneLabel: string;
+}) {
+  return (
+    <>
+      <Banner tone="bad">
+        Containeria couldn't look for Docker Desktop and OrbStack: {errorMessage(error)}
+      </Banner>
+      <div className="mt-8 flex justify-end gap-2">
+        <Button size="lg" onClick={onRetry}>
+          Check again
+        </Button>
+        <Button variant="brand" size="lg" onClick={onDone}>
+          {doneLabel}
+        </Button>
+      </div>
+    </>
+  );
+}
+
 type MigrationViewProps = { onDone: () => void; doneLabel?: string };
 
 /** Copies images, volumes and containers from Docker Desktop or OrbStack into Containeria. */
 export function MigrationView({ onDone, doneLabel = "Continue" }: MigrationViewProps) {
-  const { data: sources = [], refetch } = useMigrationSources();
-  const running = sources.filter((source) => source.running).map((source) => source.source);
+  const { data: sources, error, refetch } = useMigrationSources();
+  const running = (sources ?? []).filter((source) => source.running).map((source) => source.source);
   const [picked, setPicked] = useState<MigrationSource | null>(null);
   const source = picked && running.includes(picked) ? picked : (running[0] ?? null);
   const { data: inventory } = useInventory(source);
+  const retry = () => refetch().catch(() => undefined);
+  // Also after a failed Check again, which keeps the last sources; a running one stays on screen.
+  if (error && source === null) {
+    return <SourcesFailed error={error} onRetry={retry} onDone={onDone} doneLabel={doneLabel} />;
+  }
+  if (sources === undefined) {
+    return <Progress label="Looking for Docker Desktop and OrbStack" className="mx-auto w-60" />;
+  }
   if (source === null) {
     return (
-      <NothingRunning
-        sources={sources}
-        onRetry={() => refetch().catch(() => undefined)}
-        onDone={onDone}
-        doneLabel={doneLabel}
-      />
+      <NothingRunning sources={sources} onRetry={retry} onDone={onDone} doneLabel={doneLabel} />
     );
   }
   return (

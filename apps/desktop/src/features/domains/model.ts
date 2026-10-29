@@ -37,6 +37,13 @@ export function groupRoutes(routes: DomainRoute[]): RouteGroup[] {
   return groups.filter((group) => group.routes.length > 0);
 }
 
+/** The hosts of the user's routes other than `editing`, which a save must not take over. */
+export function otherCustomHosts(routes: DomainRoute[], editing: string | null): string[] {
+  return routes
+    .filter((route) => route.kind === "custom" && route.host !== editing)
+    .map((route) => route.host);
+}
+
 /** What the status column says. */
 export function routeState(route: DomainRoute): string {
   if (route.down === "stopped") {

@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { EnginePhase, Machine } from "@/lib/ipc/bindings";
+import type { Distro, EnginePhase, Machine } from "@/lib/ipc/bindings";
 import { mockCommands, renderWithApp } from "@/test/harness";
 
 import { distrosFixture, machineFixture, machinesStatusFixture } from "./fixtures";
@@ -20,11 +20,12 @@ function setup(
   phase: EnginePhase = "running",
   machines: Machine[] = [machineFixture()],
   supportsVms = false,
+  distros: Distro[] = distrosFixture,
 ) {
   const calls = mockCommands({
     machinesStatus: () => machinesStatusFixture({ phase, supportsVms }),
     machinesList: () => machines,
-    machineDistros: () => distrosFixture,
+    machineDistros: () => distros,
     machineShellCommand: () => "INCUS_CONF='/c' 'incus' exec containeria:ubuntu-dev -- su -l",
   });
   renderWithApp(<MachinesPage />);
@@ -88,7 +89,7 @@ describe("MachinesPage", () => {
     await waitFor(() => expect(calls.map((call) => call.command)).toContain("machinesStart"));
   });
 
-  it("says when Colima is missing or the VM is booting", async () => {
+  it("says how to install Colima when it's missing", async () => {
     setup("missing", []);
     expect(await screen.findByText("brew install colima")).toBeDefined();
   });
@@ -141,16 +142,29 @@ describe("machine menu", () => {
     );
   });
 
-  it("opens the machine in Terminal and copies the command", async () => {
+  it("opens the machine in Terminal", async () => {
     const calls = setup();
     await choose("Open in Terminal App");
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        command: "machineOpenTerminal",
+        args: { name: "ubuntu-dev" },
+      }),
+    );
+  });
+
+  it("copies the shell command", async () => {
+    const calls = setup();
     await choose("Copy Shell Command");
     await waitFor(() =>
-      expect(calls.map((call) => call.command)).toEqual(
-        expect.arrayContaining(["machineOpenTerminal", "machineShellCommand"]),
+      expect(calls).toContainEqual(
+        expect.objectContaining({
+          args: expect.objectContaining({
+            text: "INCUS_CONF='/c' 'incus' exec containeria:ubuntu-dev -- su -l",
+          }),
+        }),
       ),
     );
-    expect(calls).toContainEqual({ command: "machineOpenTerminal", args: { name: "ubuntu-dev" } });
   });
 
   it("imports an exported machine under a free name", async () => {
@@ -172,8 +186,9 @@ describe("NewMachineSheet", () => {
   async function openSheet(
     supportsVms: boolean,
     machines: Machine[] = [machineFixture({ name: "ubuntu" })],
+    distros: Distro[] = distrosFixture,
   ) {
-    const calls = setup("running", machines, supportsVms);
+    const calls = setup("running", machines, supportsVms, distros);
     const [newButton] = await screen.findAllByRole("button", { name: /New machine/ });
     await userEvent.click(newButton as HTMLElement);
     return { calls, sheet: await screen.findByRole("dialog", { name: "New Linux machine" }) };
@@ -197,6 +212,27 @@ describe("NewMachineSheet", () => {
         memoryGib: 8,
         mountHome: false,
       }),
+    );
+  });
+
+  it("starts from a fresh form after creating a machine", async () => {
+    const { calls, sheet } = await openSheet(false);
+    const name = within(sheet).getByLabelText("Name");
+    await userEvent.clear(name);
+    await userEvent.type(name, "dev");
+    await userEvent.click(within(sheet).getByRole("button", { name: "Create machine" }));
+    await waitFor(() => expect(calls.map((call) => call.command)).toContain("machineCreate"));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    useNewMachineSheet.setState({ open: true });
+    const again = await screen.findByRole("dialog", { name: "New Linux machine" });
+    expect(within(again).getByLabelText("Name")).toHaveProperty("value", "ubuntu-2");
+  });
+
+  it("can't create without a distribution to pick", async () => {
+    const { sheet } = await openSheet(false, undefined, []);
+    expect(within(sheet).getByRole("button", { name: "Create machine" })).toHaveProperty(
+      "disabled",
+      true,
     );
   });
 

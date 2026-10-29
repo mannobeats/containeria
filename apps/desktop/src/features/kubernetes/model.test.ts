@@ -9,6 +9,7 @@ import {
   execCommand,
   k3sVersion,
   namespaceProblem,
+  podContainer,
   podMemory,
   sortPods,
   tabCounts,
@@ -30,6 +31,9 @@ describe("visible", () => {
     ).toEqual(["checkout-7d9f-x2"]);
     expect(visible(cluster.ingresses, "shop", "STOREFRONT")).toHaveLength(1);
     expect(visible(cluster.ingresses, "shop", "shop.test")).toHaveLength(0);
+    expect(visible(cluster.pods, null, "KUBE-SYS").map((pod) => pod.name)).toEqual([
+      "coredns-ccb9",
+    ]);
   });
 });
 
@@ -95,6 +99,19 @@ describe("execCommand", () => {
     expect(execCommand(pod, "sidecar")).toBe(
       "kubectl exec -it -n shop storefront-6f9c-abcde -c sidecar -- sh",
     );
+  });
+});
+
+describe("podContainer", () => {
+  it("leaves the pick to kubectl when the pod has one container or none", () => {
+    expect(podContainer(podFixture(), "web")).toBeNull();
+    expect(podContainer(podFixture({ containers: [] }), null)).toBeNull();
+  });
+
+  it("starts on the first of several containers and follows the pick", () => {
+    const pod = podFixture({ containers: ["web", "sidecar"] });
+    expect(podContainer(pod, null)).toBe("web");
+    expect(podContainer(pod, "sidecar")).toBe("sidecar");
   });
 });
 

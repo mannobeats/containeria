@@ -126,7 +126,7 @@ export const commands = {
 	domainsStatus: () => __TAURI_INVOKE<DomainsStatus>("domains_status"),
 	/**  Turns domains on or off. On starts the DNS server and the proxy at once. */
 	domainsSetEnabled: (enabled: boolean) => __TAURI_INVOKE<null>("domains_set_enabled", { enabled }),
-	domainsAddRoute: (route: CustomRoute) => __TAURI_INVOKE<null>("domains_add_route", { route }),
+	domainsAddRoute: (route: CustomRoute, replaces: string | null) => __TAURI_INVOKE<null>("domains_add_route", { route, replaces }),
 	domainsRemoveRoute: (host: string) => __TAURI_INVOKE<null>("domains_remove_route", { host }),
 	/**  Asks macOS for an administrator password, then writes `/etc/resolver/<tld>`. */
 	domainsInstallResolver: () => __TAURI_INVOKE<null>("domains_install_resolver"),

@@ -4,7 +4,6 @@ import type { ConfigSummary, DeploymentSummary, PodSummary } from "@/lib/ipc/bin
 
 export type KubeSheet =
   | { kind: "apply"; manifest?: string }
-  | { kind: "editYaml"; deployment: DeploymentSummary }
   | { kind: "newNamespace" }
   | { kind: "scale"; deployment: DeploymentSummary }
   | { kind: "forward"; pod: PodSummary }

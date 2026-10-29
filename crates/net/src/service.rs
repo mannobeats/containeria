@@ -243,18 +243,21 @@ impl Domains {
         }
     }
 
-    /// Adds a route, or replaces the one with the same host.
+    /// Adds a route, or replaces the one with the same host. `replaces` is the host an edited route
+    /// had before; it goes in the same save, so a rename never keeps both names or loses both.
     ///
     /// # Errors
     /// Fails for an invalid host name or port, or when it can't be saved.
-    pub fn add_route(&self, route: CustomRoute) -> Result<()> {
+    pub fn add_route(&self, route: CustomRoute, replaces: Option<&str>) -> Result<()> {
         let host = normalize(&route.host).ok_or_else(|| Error::InvalidHost(route.host.clone()))?;
         if route.port == 0 || route.container.trim().is_empty() {
             return Err(Error::InvalidHost(route.host));
         }
         let route = CustomRoute { host, ..route };
         self.update(|settings| {
-            settings.routes.retain(|existing| existing.host != route.host);
+            settings.routes.retain(|existing| {
+                existing.host != route.host && Some(existing.host.as_str()) != replaces
+            });
             settings.routes.push(route);
             Ok(())
         })
@@ -310,18 +313,42 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let domains = Domains::open(dir.path()).unwrap();
         domains
-            .add_route(CustomRoute {
-                host: "Shop.Test".into(),
-                container: "web".into(),
-                port: 3000,
-                https: true,
-            })
+            .add_route(
+                CustomRoute {
+                    host: "Shop.Test".into(),
+                    container: "web".into(),
+                    port: 3000,
+                    https: true,
+                },
+                None,
+            )
             .unwrap();
         let reopened = Domains::open(dir.path()).unwrap();
         let routes = reopened.table.read().unwrap().routes().to_vec();
         assert_eq!(routes[0].host, "shop.test");
         reopened.remove_route("shop.test").unwrap();
         assert!(matches!(reopened.remove_route("shop.test"), Err(Error::UnknownRoute(_))));
+    }
+
+    #[test]
+    fn renames_a_route_in_one_save() {
+        let dir = tempfile::tempdir().unwrap();
+        let domains = Domains::open(dir.path()).unwrap();
+        let route = |host: &str| CustomRoute {
+            host: host.into(),
+            container: "web".into(),
+            port: 3000,
+            https: true,
+        };
+        domains.add_route(route("shop.test"), None).unwrap();
+        domains.add_route(route("blog.test"), None).unwrap();
+        domains.add_route(route("Store.Test"), Some("shop.test")).unwrap();
+        // A rename that only changes case keeps the route instead of removing the name just saved.
+        domains.add_route(route("BLOG.test"), Some("blog.test")).unwrap();
+        let reopened = Domains::open(dir.path()).unwrap();
+        let hosts: Vec<String> =
+            lock(&reopened.settings).routes.iter().map(|route| route.host.clone()).collect();
+        assert_eq!(hosts, ["store.test", "blog.test"]);
     }
 
     #[test]
@@ -334,6 +361,6 @@ mod tests {
             port: 80,
             https: false,
         };
-        assert!(matches!(domains.add_route(route), Err(Error::InvalidHost(_))));
+        assert!(matches!(domains.add_route(route, None), Err(Error::InvalidHost(_))));
     }
 }

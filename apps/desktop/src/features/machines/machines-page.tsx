@@ -116,7 +116,6 @@ function ImportButton({ taken }: { taken: string[] }) {
         Import…
       </Button>
       <PromptSheet
-        key={source ?? "none"}
         open={source !== null}
         onOpenChange={(open) => (open ? undefined : setSource(null))}
         title="Import a machine"

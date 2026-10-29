@@ -31,10 +31,23 @@ export function KubernetesOff() {
   );
 }
 
-export function KubernetesStarting() {
+/** `canTurnOff` offers a way out when k3s never comes up: the cluster header isn't shown yet. */
+export function KubernetesStarting({ canTurnOff = false }: { canTurnOff?: boolean }) {
   const line = useBootLog((state) => state.lines.at(-1));
+  const turnOff = useSetKubernetes();
   return (
-    <EmptyState art={<Tile icon="kube" size="xl" />} title="Starting Kubernetes" className="pt-24">
+    <EmptyState
+      art={<Tile icon="kube" size="xl" />}
+      title="Starting Kubernetes"
+      className="pt-24"
+      actions={
+        canTurnOff ? (
+          <Button loading={turnOff.isPending} onClick={() => turnOff.mutate(false)}>
+            Turn off Kubernetes
+          </Button>
+        ) : null
+      }
+    >
       <p className="m-0">
         k3s is starting inside the engine. The first start downloads its images.
       </p>

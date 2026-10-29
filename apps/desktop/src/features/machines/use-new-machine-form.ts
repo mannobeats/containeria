@@ -16,6 +16,16 @@ export function useNewMachineForm(distros: Distro[], taken: string[]) {
   const [cpus, setCpus] = useState("2");
   const [memoryGib, setMemoryGib] = useState("4");
   const [mountHome, setMountHome] = useState(true);
+  /** Back to a fresh form, so the next machine doesn't start with this one's name. */
+  const reset = () => {
+    setDistroId(distros[0]?.id ?? "ubuntu");
+    setRelease(null);
+    setName(null);
+    setKind("container");
+    setCpus("2");
+    setMemoryGib("4");
+    setMountHome(true);
+  };
   const distro = distros.find((candidate) => candidate.id === distroId) ?? distros[0];
   const request: CreateMachine = {
     name: name ?? suggestName(distroId, taken),
@@ -42,5 +52,6 @@ export function useNewMachineForm(distros: Distro[], taken: string[]) {
     memoryGib,
     setMemoryGib,
     setMountHome,
+    reset,
   };
 }

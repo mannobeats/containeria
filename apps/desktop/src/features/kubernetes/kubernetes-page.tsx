@@ -39,7 +39,7 @@ function Body() {
       </Banner>
     );
   }
-  return <KubernetesStarting />;
+  return <KubernetesStarting canTurnOff />;
 }
 
 export function KubernetesPage() {
