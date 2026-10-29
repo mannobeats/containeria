@@ -44,8 +44,8 @@ const MENU_BAR = [
 
 const ENGINE = [
   {
-    label: "Start the engine with Containeria",
-    hint: "When Containeria opens, at login too. Containers set to restart come back after your Mac restarts.",
+    label: "Run the engine with Containeria",
+    hint: "Starts when Containeria opens, at login too, and stops cleanly when it quits, so shutting down your Mac never cuts containers off.",
     read: (preferences: Preferences) => preferences.startEngine === "withApp",
     write: (preferences: Preferences, on: boolean): Preferences => ({
       ...preferences,

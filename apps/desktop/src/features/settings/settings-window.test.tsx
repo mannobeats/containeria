@@ -90,7 +90,7 @@ describe("SettingsWindow", () => {
   it("leaves the engine stopped when the app opens, if asked", async () => {
     const calls = renderSection("general");
     await userEvent.click(
-      await screen.findByRole("switch", { name: "Start the engine with Containeria" }),
+      await screen.findByRole("switch", { name: "Run the engine with Containeria" }),
     );
     await waitFor(() =>
       expect(calls).toContainEqual({
