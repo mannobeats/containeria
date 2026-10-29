@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
@@ -20,6 +20,7 @@ function setup() {
         project: null,
         subnet: "172.17.0.0/16",
       }),
+      networkFixture({ id: "n3", name: "metrics_net", project: null, subnet: "172.23.0.0/16" }),
     ],
   });
   renderWithApp(<NetworksPage />);
@@ -30,7 +31,7 @@ describe("NetworksPage", () => {
   it("lists project and built-in networks with their containers", async () => {
     setup();
     expect(await screen.findByText("shop_default")).toBeDefined();
-    expect(screen.getByText(/1 project network and 1 built in/)).toBeDefined();
+    expect(screen.getByText(/2 project networks and 1 built in/)).toBeDefined();
     expect(screen.getByText("Built in")).toBeDefined();
     expect(screen.getByText("shop-db-1")).toBeDefined();
   });
@@ -39,6 +40,7 @@ describe("NetworksPage", () => {
     setup();
     await screen.findByText("shop_default");
     await userEvent.type(screen.getByPlaceholderText("Filter networks"), "172.17");
+    expect(screen.getByRole("link", { name: /^bridge/ })).toBeDefined();
     expect(screen.queryByText("shop_default")).toBeNull();
   });
 
@@ -66,20 +68,49 @@ describe("NetworksPage", () => {
     );
   });
 
-  it("deletes a project network but not a built-in one", async () => {
+  it("deletes an unused network from its menu", async () => {
     const calls = setup();
+    await userEvent.click(await screen.findByRole("button", { name: "More for metrics_net" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Delete Network…" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Delete network" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({ command: "networkRemove", args: { id: "n3" } }),
+    );
+  });
+
+  it("won't offer to delete a built-in network", async () => {
+    setup();
     await userEvent.click(await screen.findByRole("button", { name: "More for bridge" }));
     expect(
       (await screen.findByRole("menuitem", { name: /can't be deleted/i })).getAttribute(
         "aria-disabled",
       ),
     ).toBe("true");
-    await userEvent.keyboard("{Escape}");
-    await userEvent.click(screen.getByRole("button", { name: "More for shop_default" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Delete Network…" }));
+  });
+
+  it("won't offer to delete a network containers are on", async () => {
+    setup();
+    await userEvent.click(await screen.findByRole("button", { name: "More for shop_default" }));
+    expect(
+      (await screen.findByRole("menuitem", { name: "Delete (in use)" })).getAttribute(
+        "aria-disabled",
+      ),
+    ).toBe("true");
+  });
+
+  it("deletes the selected networks", async () => {
+    const calls = setup();
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Select metrics_net" }));
+    await userEvent.click(
+      within(screen.getByRole("toolbar", { name: "Selected networks" })).getByRole("button", {
+        name: "Delete",
+      }),
+    );
     await userEvent.click(await screen.findByRole("button", { name: "Delete network" }));
     await waitFor(() =>
-      expect(calls).toContainEqual({ command: "networkRemove", args: { id: "n1" } }),
+      expect(calls.filter((call) => call.command === "networkRemove")).toEqual([
+        { command: "networkRemove", args: { id: "n3" } },
+      ]),
     );
   });
 

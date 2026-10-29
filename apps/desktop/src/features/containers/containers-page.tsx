@@ -150,6 +150,7 @@ export function ContainersPage() {
         ) : (
           <ContainerTable
             groups={groups}
+            members={new Map(groupByProject(all).map((group) => [group.id, group.containers]))}
             usage={usageById(metrics)}
             selected={new Set(selection.chosen)}
             onSelect={selection.set}

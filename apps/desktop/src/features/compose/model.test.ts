@@ -21,6 +21,9 @@ describe("compose model", () => {
 
   it("names a project after its folder, as Compose does", () => {
     expect(projectNameFor("/Users/ada/My Shop/compose.yaml")).toBe("myshop");
+  });
+
+  it("takes only lowercase project names", () => {
     expect(isProjectName("myshop")).toBe(true);
     expect(isProjectName("My Shop")).toBe(false);
   });

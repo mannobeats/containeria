@@ -45,6 +45,20 @@ export function formatPreciseClock(ms: number): string {
   }).format(ms);
 }
 
+/** `2026-10-17`, the day in the clock's zone, for file names. */
+export function formatFileDate(ms: number): string {
+  const parts = formatter({
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    calendar: "gregory",
+    numberingSystem: "latn",
+  }).formatToParts(ms);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((candidate) => candidate.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
 /** `Oct 17, 2026, 10:54 PM`. */
 export function formatDateTime(ms: number): string {
   return formatter({ dateStyle: "medium", timeStyle: "short" }).format(ms);

@@ -71,7 +71,13 @@ export function suggestedName(image: string): string {
 
 const NAME = /^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/;
 
-export type FormErrors = { image?: string; name?: string; ports?: string };
+export type FormErrors = {
+  image?: string;
+  name?: string;
+  ports?: string;
+  env?: string;
+  storage?: string;
+};
 
 /** Host ports already published by other containers. */
 export function usedPorts(containers: ContainerSummary[]): Map<number, string> {
@@ -94,6 +100,12 @@ export function freePort(wanted: number, used: Map<number, string>): number {
   return port;
 }
 
+/** The Mac port for a new row: free, and past the ports already typed that are real ports. */
+export function nextHostPort(rows: PortRow[], used: Map<number, string>): number {
+  const typed = rows.filter((row) => isPort(row.host)).map((row) => Number(row.host) + 1);
+  return freePort(Math.max(8080, ...typed), used);
+}
+
 export function validate(form: RunForm, used: Map<number, string>): FormErrors {
   const errors: FormErrors = {};
   if (!form.image.trim()) {
@@ -107,6 +119,12 @@ export function validate(form: RunForm, used: Map<number, string>): FormErrors {
     errors.ports = `Port ${taken.host} is in use by ${used.get(Number(taken.host))}.`;
   } else if (form.ports.some((port) => !(isPort(port.host) && isPort(port.container)))) {
     errors.ports = "Ports are numbers from 1 to 65535.";
+  }
+  if (form.env.some((row) => !row.key.trim() && row.value)) {
+    errors.env = "Give each variable a name.";
+  }
+  if (form.storage.some((row) => !row.source.trim() !== !row.target.trim())) {
+    errors.storage = "Give each mount a volume or folder and a path in the container.";
   }
   return errors;
 }

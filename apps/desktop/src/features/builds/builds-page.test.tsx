@@ -52,7 +52,9 @@ describe("BuildsPage", () => {
       "shop (api)",
       "worker",
     ]);
-    expect(within(rows[0] as HTMLElement).getByRole("progressbar", { name: "web progress" }));
+    expect(
+      within(rows[0] as HTMLElement).getByRole("progressbar", { name: "web progress" }),
+    ).toBeDefined();
     expect(within(rows[0] as HTMLElement).getByText("Building")).toBeDefined();
     expect(within(rows[1] as HTMLElement).getByText("4 of 10 cached")).toBeDefined();
     expect(within(rows[1] as HTMLElement).getByText("5.2s")).toBeDefined();

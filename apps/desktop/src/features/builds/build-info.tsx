@@ -19,10 +19,13 @@ function Pairs({ pairs }: { pairs: EnvVar[] }) {
   );
 }
 
-/** The image the build made, linked while it is still on the engine. */
+/** The image the build made, linked while it is still on the engine, its ID until that is known. */
 function Image({ id }: { id: string }) {
   const { data: images } = useImages();
-  const image = images?.find((candidate) => candidate.id === id);
+  if (!images) {
+    return mono(id.slice(7, 19));
+  }
+  const image = images.find((candidate) => candidate.id === id);
   if (!image) {
     return <span className="text-ink-3">No longer on this engine</span>;
   }

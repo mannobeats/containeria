@@ -43,10 +43,10 @@ export function EnvSection({ env }: { env: EnvVar[] }) {
             <ContextMenu
               key={variable.key}
               entries={[
-                { label: "Copy name", onSelect: () => copyText("Name", variable.key) },
-                { label: "Copy value", onSelect: () => copyText(variable.key, variable.value) },
+                { label: "Copy Name", onSelect: () => copyText("Name", variable.key) },
+                { label: "Copy Value", onSelect: () => copyText(variable.key, variable.value) },
                 {
-                  label: "Copy name=value",
+                  label: "Copy Name=Value",
                   onSelect: () => copyText(variable.key, `${variable.key}=${variable.value}`),
                 },
               ]}

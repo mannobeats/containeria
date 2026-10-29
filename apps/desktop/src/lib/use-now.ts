@@ -7,7 +7,9 @@ export function useNow(active: boolean, everyMs = 1000): number {
     if (!active) {
       return;
     }
-    const timer = setInterval(() => setNow(Date.now()), everyMs);
+    const tick = () => setNow(Date.now());
+    tick();
+    const timer = setInterval(tick, everyMs);
     return () => clearInterval(timer);
   }, [active, everyMs]);
   return now;

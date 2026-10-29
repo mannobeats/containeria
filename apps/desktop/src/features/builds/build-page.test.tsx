@@ -28,11 +28,7 @@ function detailFixture(overrides: Partial<BuildDetail> = {}): BuildDetail {
   };
 }
 
-function setup(
-  record = buildFixture({ id: "b1" }),
-  detail = detailFixture(),
-  tab = "",
-): ReturnType<typeof mockCommands> {
+function setup(record = buildFixture({ id: "b1" }), detail = detailFixture(), tab = "") {
   const calls = mockCommands({
     engineStatus: () => engineFixture(),
     buildsList: () => [record],
@@ -46,8 +42,8 @@ function setup(
       return 3;
     },
   });
-  renderWithApp(<BuildPage />, { route: route(tab) });
-  return calls;
+  const { router } = renderWithApp(<BuildPage />, { route: route(tab) });
+  return { calls, router };
 }
 
 describe("BuildPage", () => {
@@ -58,7 +54,7 @@ describe("BuildPage", () => {
       completedAtMs: null,
       totalSteps: 0,
     });
-    const calls = setup(running);
+    const { calls } = setup(running);
     const log = await screen.findByRole("log", { name: "Output of shop (api)" });
     await waitFor(() => expect(log.textContent).toContain("added 210 packages"));
     expect(screen.getByRole("progressbar", { name: "shop (api) progress" })).toBeDefined();
@@ -92,13 +88,25 @@ describe("BuildPage", () => {
     );
   });
 
-  it("removes the build from the history", async () => {
-    const calls = setup();
+  it("shows the image's ID, not that it's gone, before the images have loaded", async () => {
+    mockCommands({
+      engineStatus: () => engineFixture({ phase: "stopped" }),
+      buildDetail: () => detailFixture({ imageId: "sha256:0123456789abcdef" }),
+    });
+    renderWithApp(<BuildPage />, { route: route("?tab=info") });
+    expect(await screen.findByText("docker/api.Dockerfile")).toBeDefined();
+    expect(screen.getByText("0123456789ab")).toBeDefined();
+    expect(screen.queryByText("No longer on this engine")).toBeNull();
+  });
+
+  it("removes the build from the history and goes back to the list", async () => {
+    const { calls, router } = setup();
     await userEvent.click(await screen.findByRole("button", { name: "More for shop (api)" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Remove from History" }));
     await waitFor(() =>
       expect(calls).toContainEqual({ command: "buildRemove", args: { id: "b1" } }),
     );
+    await waitFor(() => expect(router.state.location.pathname).toBe("/builds"));
   });
 
   it("says when the build is no longer in the history", async () => {

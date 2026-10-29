@@ -11,6 +11,7 @@ import { IconAction } from "@/ui/icon-action";
 import { Kv } from "@/ui/kv";
 import { ContextMenu } from "@/ui/menu";
 
+import { isErrorExit } from "../model";
 import { miniTable } from "./mini-table";
 
 const when = (timestamp: string | null) =>
@@ -37,7 +38,7 @@ export function Section({
 }
 
 export function CrashBanner({ details }: { details: ContainerDetails }) {
-  if (details.state !== "exited" || details.exitCode === 0) {
+  if (details.state !== "exited" || !isErrorExit(details.exitCode)) {
     return null;
   }
   return (
@@ -127,7 +128,7 @@ export function PortsSection({ details }: { details: ContainerDetails }) {
                 <ContextMenu
                   key={`${port.host}-${port.container}-${port.protocol}`}
                   entries={[
-                    { label: "Open in browser", onSelect: open },
+                    { label: "Open in Browser", onSelect: open },
                     { kind: "separator" },
                     { label: "Copy URL", onSelect: () => copyText("URL", url) },
                   ]}

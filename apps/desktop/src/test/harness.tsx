@@ -20,9 +20,14 @@ import { TooltipProvider } from "@/ui/tooltip";
 type Commands = typeof commands;
 type CommandName = keyof Commands;
 
-/** One answer per command, typed by what the Rust command really returns. */
+/**
+ * One answer per command, typed by what the Rust command really returns. A promise holds the call
+ * pending until the test settles it.
+ */
 type Handlers = {
-  [Name in CommandName]?: (args: Record<string, unknown>) => Awaited<ReturnType<Commands[Name]>>;
+  [Name in CommandName]?: (
+    args: Record<string, unknown>,
+  ) => Awaited<ReturnType<Commands[Name]>> | Promise<Awaited<ReturnType<Commands[Name]>>>;
 };
 
 /** A recorded IPC call: the command as named in `bindings.ts`, and its arguments. */

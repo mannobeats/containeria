@@ -55,9 +55,9 @@ type Terminal = {
 export const terminals: Terminal[] = [];
 
 export function FakeTerminal() {
-  let typing: Listener<string> = () => undefined;
-  let resizing: Listener<{ cols: number; rows: number }> = () => undefined;
-  const subscription = { dispose: () => undefined };
+  const ignore = () => undefined;
+  let typing: Listener<string> = ignore;
+  let resizing: Listener<{ cols: number; rows: number }> = ignore;
   const terminal = {
     cols: 80,
     rows: 24,
@@ -71,14 +71,19 @@ export function FakeTerminal() {
     },
     onData: (listener: Listener<string>) => {
       typing = listener;
-      return subscription;
+      return { dispose: () => (typing = ignore) };
     },
     onResize: (listener: Listener<{ cols: number; rows: number }>) => {
       resizing = listener;
-      return subscription;
+      return { dispose: () => (resizing = ignore) };
     },
     type: (text: string) => typing(text),
-    resize: (cols: number, rows: number) => resizing({ cols, rows }),
+    /** Resizes as fitting to the pane would, then tells the listener. */
+    resize: (cols: number, rows: number) => {
+      terminal.cols = cols;
+      terminal.rows = rows;
+      resizing({ cols, rows });
+    },
   };
   terminals.push(terminal);
   return terminal;

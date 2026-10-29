@@ -1,9 +1,9 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { containerFixture, engineFixture, imageFixture } from "@/test/fixtures";
-import { mockCommands, renderWithApp } from "@/test/harness";
+import { mockCommands, renderWithApp, sendToChannel } from "@/test/harness";
 
 import { ImagesPage } from "./images-page";
 import { useImageSheet } from "./sheet-store";
@@ -56,15 +56,55 @@ describe("ImagesPage", () => {
     expect(screen.getByText(/across 3 images/).textContent).toContain("550 MB");
     expect(screen.getByText(/isn't used by any container/).textContent).toContain("150 MB");
     expect(screen.getByText("Dangling build layer")).toBeDefined();
-    expect(screen.getByText("shop-db-1")).toBeDefined();
+    expect(await screen.findByText("shop-db-1")).toBeDefined();
   });
 
-  it("filters by kind and search", async () => {
+  it("offers to try again when the images can't be read", async () => {
+    let failures = 1;
+    mockCommands({
+      engineStatus: () => engineFixture(),
+      imagesList: () => {
+        if (failures-- > 0) {
+          throw { kind: "internal", message: "Docker didn't answer" };
+        }
+        return [redis];
+      },
+    });
+    renderWithApp(<ImagesPage />);
+    expect(await screen.findByText("Docker didn't answer")).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: "Try Again" }));
+    expect(await screen.findByText("redis")).toBeDefined();
+    expect(screen.queryByText("Images couldn't be read")).toBeNull();
+  });
+
+  it("says nothing about disk use before the images have loaded", async () => {
+    const calls = mockCommands({ engineStatus: () => engineFixture({ phase: "stopped" }) });
+    renderWithApp(<ImagesPage />);
+    await waitFor(() => expect(calls.map((call) => call.command)).toContain("engineStatus"));
+    expect(screen.queryByText("No images match this filter")).toBeNull();
+    expect(screen.queryByText(/across 0 images/)).toBeNull();
+  });
+
+  it("filters by kind", async () => {
     setup();
     await screen.findByText("redis");
     await userEvent.click(screen.getByRole("radio", { name: /Unused/ }));
+    expect(screen.getByText("redis")).toBeDefined();
     expect(screen.queryByText("postgres")).toBeNull();
-    await userEvent.click(screen.getByRole("radio", { name: /All/ }));
+  });
+
+  it("filters by search", async () => {
+    setup();
+    await screen.findByText("redis");
+    await userEvent.type(screen.getByPlaceholderText("Filter images"), "redis");
+    expect(screen.getByText("redis")).toBeDefined();
+    expect(screen.queryByText("postgres")).toBeNull();
+    expect(screen.queryByText("Dangling build layer")).toBeNull();
+  });
+
+  it("says when nothing matches the filter", async () => {
+    setup();
+    await screen.findByText("redis");
     await userEvent.type(screen.getByPlaceholderText("Filter images"), "nothing-like-this");
     expect(await screen.findByText("No images match this filter")).toBeDefined();
   });
@@ -99,6 +139,41 @@ describe("ImagesPage", () => {
     await waitFor(() =>
       expect(calls).toContainEqual({ command: "imagesPrune", args: { all: true } }),
     );
+  });
+
+  it("cleans up only dangling layers when asked", async () => {
+    const calls = setup();
+    await userEvent.click(await screen.findByRole("button", { name: /Clean up 150 MB/ }));
+    await userEvent.click(await screen.findByRole("radio", { name: /Dangling layers only/ }));
+    await userEvent.click(await screen.findByRole("button", { name: "Delete 1 image" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({ command: "imagesPrune", args: { all: false } }),
+    );
+  });
+
+  it("stops listening to a pull once it's cancelled", async () => {
+    let channel: unknown;
+    const calls = mockCommands({
+      engineStatus: () => engineFixture(),
+      imagesList: () => [redis],
+      imagePull: (args) => {
+        channel = args.channel;
+        return 7;
+      },
+    });
+    renderWithApp(<ImagesPage />);
+    await userEvent.click(await screen.findByRole("button", { name: "Pull image" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "Image to pull" }), "ghcr.io/a/b:1");
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Pull" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Cancel pull" }));
+    await waitFor(() => expect(calls).toContainEqual({ command: "streamCancel", args: { id: 7 } }));
+    act(() =>
+      sendToChannel(channel, {
+        kind: "progress",
+        progress: { layer: "l1", status: "Downloading", current: 1, total: 2 },
+      }),
+    );
+    expect(screen.queryByRole("heading", { name: "Pulling ghcr.io/a/b:1" })).toBeNull();
   });
 
   it("pulls an image picked from Docker Hub", async () => {

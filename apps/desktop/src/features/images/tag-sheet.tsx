@@ -17,14 +17,18 @@ export function TagSheet({ image, onClose }: TagSheetProps) {
   const [reference, setReference] = useState("");
   const tag = useTagImage();
   const invalid = reference !== "" && !REFERENCE.test(reference);
+  const close = () => {
+    setReference("");
+    onClose();
+  };
   return (
     <Sheet
       open={image !== null}
-      onOpenChange={(open) => (open ? undefined : onClose())}
+      onOpenChange={(open) => (open ? undefined : close())}
       title={`Tag ${image?.name ?? "image"}`}
       footer={
         <>
-          <Button onClick={onClose}>Cancel</Button>
+          <Button onClick={close}>Cancel</Button>
           <Button
             variant="brand"
             type="submit"
@@ -42,7 +46,7 @@ export function TagSheet({ image, onClose }: TagSheetProps) {
         onSubmit={(event) => {
           event.preventDefault();
           if (image) {
-            tag.mutate({ id: image.id, reference }, { onSuccess: onClose });
+            tag.mutate({ id: image.id, reference }, { onSuccess: close });
           }
         }}
       >

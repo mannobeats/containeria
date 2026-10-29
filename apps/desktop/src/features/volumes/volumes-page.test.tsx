@@ -36,7 +36,7 @@ describe("VolumesPage", () => {
     setup();
     expect(await screen.findByText("old_cache")).toBeDefined();
     expect(screen.getByText(/in 2 volumes/).textContent).toContain("400 MB");
-    expect(screen.getByText(/aren't attached/).textContent).toContain("100 MB");
+    expect(screen.getByText(/1 isn't attached/).textContent).toContain("100 MB");
     expect(screen.getByText("/var/lib/postgresql/data")).toBeDefined();
   });
 
@@ -44,7 +44,13 @@ describe("VolumesPage", () => {
     setup();
     await screen.findByText("old_cache");
     await userEvent.click(screen.getByRole("radio", { name: /Unattached/ }));
+    expect(screen.getByText("old_cache")).toBeDefined();
     expect(screen.queryByText("shop_pgdata")).toBeNull();
+  });
+
+  it("counts a single volume in the singular", async () => {
+    setup([cache]);
+    expect(await screen.findByText(/in 1 volume\./)).toBeDefined();
   });
 
   it("creates a volume with a valid name", async () => {
@@ -61,7 +67,7 @@ describe("VolumesPage", () => {
     );
   });
 
-  it("clones and deletes from the row menu", async () => {
+  it("clones from the row menu", async () => {
     const calls = setup();
     await userEvent.click(await screen.findByRole("button", { name: "More for old_cache" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Clone…" }));
@@ -72,13 +78,25 @@ describe("VolumesPage", () => {
         args: { source: "old_cache", target: "old_cache_copy" },
       }),
     );
+  });
 
-    await userEvent.click(screen.getByRole("button", { name: "More for old_cache" }));
+  it("deletes from the row menu", async () => {
+    const calls = setup();
+    await userEvent.click(await screen.findByRole("button", { name: "More for old_cache" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Delete Volume…" }));
     await userEvent.click(await screen.findByRole("button", { name: "Delete volume" }));
     await waitFor(() =>
       expect(calls).toContainEqual({ command: "volumeRemove", args: { name: "old_cache" } }),
     );
+  });
+
+  it("says to delete the container before a volume it mounts", async () => {
+    setup();
+    await userEvent.click(await screen.findByRole("button", { name: "More for shop_pgdata" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Delete Volume…" }));
+    expect(
+      await screen.findByText(/shop-db-1 still mounts it; delete that container first/),
+    ).toBeDefined();
   });
 
   it("cleans up unattached volumes", async () => {

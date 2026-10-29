@@ -14,6 +14,18 @@ describe("logoFor", () => {
     expect(logoFor("golang:1.25")).toBe("go");
   });
 
+  it("keeps a registry's port and drops a digest", () => {
+    expect(logoFor("localhost:5000/postgres:16")).toBe("postgresql");
+    expect(logoFor("go@sha256:abc")).toBe("go");
+  });
+
+  it("matches a keyword only where a word starts", () => {
+    expect(logoFor("opensearchproject/opensearch")).toBeUndefined();
+    expect(logoFor("getmeili/meilisearch")).toBeUndefined();
+    expect(logoFor("opensuse")).toBe("opensuse");
+    expect(logoFor("bitnami/postgresql")).toBe("postgresql");
+  });
+
   it("falls through hints until one matches", () => {
     expect(logoFor(undefined, "my-company/api:latest", "mysql")).toBe("mysql");
   });

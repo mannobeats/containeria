@@ -168,20 +168,73 @@ describe("ContainerPage actions", () => {
     await userEvent.type(reference, "Not Valid");
     await userEvent.click(screen.getByRole("button", { name: "Commit" }));
     expect(await screen.findByText("Use a lowercase name like my-app:snapshot.")).toBeDefined();
+    expect(commandsOf(calls)).not.toContain("containerCommit");
     await userEvent.clear(reference);
     await userEvent.type(reference, "shop-db:backup");
     await userEvent.click(screen.getByRole("button", { name: "Commit" }));
-    await waitFor(() => expect(commandsOf(calls)).toContain("containerCommit"));
+    await waitFor(() =>
+      expect(calls.filter((call) => call.command === "containerCommit")).toEqual([
+        {
+          command: "containerCommit",
+          args: { id: "db0123456789abcdef", reference: "shop-db:backup" },
+        },
+      ]),
+    );
   });
 
   it("steps to the next container with the header arrows", async () => {
-    renderPage();
+    const calls = renderPage();
     await screen.findByRole("heading", { name: "shop-db-1" });
+    const next = screen.getByRole("button", { name: "Next container" });
+    await waitFor(() => expect(next.hasAttribute("disabled")).toBe(false));
+    await userEvent.click(next);
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Next container" }).hasAttribute("disabled")).toBe(
-        false,
-      ),
+      expect(calls).toContainEqual({ command: "containerDetails", args: { id: "cache" } }),
     );
+  });
+
+  it("resumes a paused container from the header", async () => {
+    const calls = renderPage(undefined, { state: "paused" });
+    await userEvent.click(await screen.findByRole("button", { name: "Resume" }));
+    expect(screen.queryByText(/^Exited/)).toBeNull();
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        command: "containerAct",
+        args: { id: "db0123456789abcdef", action: "resume" },
+      }),
+    );
+  });
+
+  it("opens the new container after recreating", async () => {
+    const details = detailsFixture();
+    let recreated = false;
+    const calls = mockCommands({
+      engineStatus: () => engineFixture(),
+      containersList: () => [containerFixture({ id: details.id, name: details.name })],
+      containerDetails: (args) => {
+        if (recreated && args.id === details.id) {
+          throw { kind: "notFound", message: "No such container" };
+        }
+        return { ...details, id: String(args.id) };
+      },
+      containerRecreate: () => {
+        recreated = true;
+        return "new0123456789abcdef";
+      },
+    });
+    renderWithApp(<ContainerPage />, {
+      route: { path: "containers/$id", url: `/containers/${details.id}` },
+    });
+    await userEvent.click(await screen.findByRole("button", { name: "More for shop-db-1" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Recreate" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({
+        command: "containerDetails",
+        args: { id: "new0123456789abcdef" },
+      }),
+    );
+    expect(await screen.findByRole("heading", { name: "shop-db-1" })).toBeDefined();
+    expect(screen.queryByRole("heading", { name: "This container was deleted" })).toBeNull();
   });
 });
 
@@ -292,10 +345,21 @@ describe("ContainerPage tabs", () => {
 
   it("shows inspect JSON with its keys tinted", async () => {
     renderPage("inspect");
-    const json = await screen.findByText('"RestartCount"');
-    expect(
-      within(json.parentElement as HTMLElement).getByText('"db0123456789abcdef"'),
-    ).toBeDefined();
+    const key = await screen.findByText('"RestartCount"');
+    const value = within(key.parentElement as HTMLElement).getByText('"db0123456789abcdef"');
+    expect(key.className).not.toBe("");
+    expect(value.className).not.toBe("");
+    expect(key.className).not.toBe(value.className);
+  });
+
+  it("copies the raw inspect JSON", async () => {
+    const calls = renderPage("inspect");
+    await screen.findByText('"RestartCount"');
     await userEvent.click(screen.getByRole("button", { name: "Copy JSON" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual(
+        expect.objectContaining({ args: expect.objectContaining({ text: detailsFixture().raw }) }),
+      ),
+    );
   });
 });

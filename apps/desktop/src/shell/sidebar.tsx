@@ -9,7 +9,7 @@ import { runningCount } from "@/features/builds/model";
 import { useContainers } from "@/features/containers/api";
 import { isCrashed } from "@/features/containers/model";
 import { SidebarConnections } from "@/features/data/sidebar-connections";
-import { isServing, useEngineControl, useEngineStatus } from "@/features/engine/api";
+import { canControl, isServing, useEngineControl, useEngineStatus } from "@/features/engine/api";
 import { useImages } from "@/features/images/api";
 import { useFailingPods } from "@/features/kubernetes/api";
 import { useMetrics } from "@/features/metrics/api";
@@ -99,6 +99,7 @@ function EngineCard() {
   const control = useEngineControl();
   const phase = status?.phase;
   const serving = isServing(phase);
+  const socket = status?.dockerSocket;
   const entries: MenuEntry[] = [
     {
       kind: "label",
@@ -108,17 +109,17 @@ function EngineCard() {
       ? {
           label: "Stop Engine",
           onSelect: () => control.mutate("stop"),
-          disabled: phase === "external",
+          disabled: !canControl("stop", phase),
         }
       : {
           label: "Start Engine",
           onSelect: () => control.mutate("start"),
-          disabled: phase === "missing",
+          disabled: !canControl("start", phase),
         },
     {
       label: "Restart Engine",
       onSelect: () => control.mutate("restart"),
-      disabled: phase !== "running",
+      disabled: !canControl("restart", phase),
     },
     { kind: "separator" },
     {
@@ -129,11 +130,13 @@ function EngineCard() {
     {
       label: "Copy Docker Socket Path",
       onSelect: () => {
-        const socket = status?.dockerSocket ?? "";
-        writeText(socket)
-          .then(() => toast("Copied", { description: socket }))
-          .catch(() => undefined);
+        if (socket) {
+          writeText(socket)
+            .then(() => toast("Copied", { description: socket }))
+            .catch(() => undefined);
+        }
       },
+      disabled: !socket,
     },
   ];
   return (

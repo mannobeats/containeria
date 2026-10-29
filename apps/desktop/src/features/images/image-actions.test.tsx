@@ -65,14 +65,32 @@ beforeEach(() => {
 });
 
 describe("image actions", () => {
-  it("scans an image and lists what it finds, worst first", async () => {
+  it("scans an image and lists what it finds", async () => {
     setup();
     await rightClick("Scan for Vulnerabilities");
     expect(await screen.findByText("CVE-2026-1")).toBeDefined();
     expect(screen.getByText(/2 vulnerabilities/)).toBeDefined();
     expect(screen.getByText("3.5.0 → 3.5.1")).toBeDefined();
+  });
+
+  it("filters what a scan found by severity", async () => {
+    setup();
+    await rightClick("Scan for Vulnerabilities");
+    await screen.findByText("CVE-2026-1");
     await userEvent.click(screen.getByRole("radio", { name: /Low/ }));
+    expect(screen.getByText("CVE-2026-2")).toBeDefined();
     expect(screen.queryByText("CVE-2026-1")).toBeNull();
+  });
+
+  it("starts the tag sheet empty each time it opens", async () => {
+    setup();
+    await rightClick("Tag…");
+    await userEvent.type(await screen.findByRole("textbox", { name: "New reference" }), "x:1");
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await rightClick("Tag…");
+    expect(
+      (await screen.findByRole("textbox", { name: "New reference" })).getAttribute("value"),
+    ).toBe("");
   });
 
   it("asks before pushing, then streams the push", async () => {

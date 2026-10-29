@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { toast } from "sonner";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { useRemoveMany } from "./use-remove-many";
 
@@ -19,6 +19,8 @@ function render(remove: (name: string) => Promise<unknown>) {
   ).result;
 }
 
+afterEach(() => vi.clearAllMocks());
+
 describe("useRemoveMany", () => {
   it("deletes each one and says how many went", async () => {
     const remove = vi.fn(() => Promise.resolve());
@@ -29,10 +31,13 @@ describe("useRemoveMany", () => {
   });
 
   it("keeps going past a failure and says why it failed", async () => {
-    const result = render((name) =>
+    const remove = vi.fn((name: string) =>
       name === "busy" ? Promise.reject(new Error("in use")) : Promise.resolve(),
     );
+    const result = render(remove);
     await act(() => result.current.mutateAsync(["busy", "free"]));
+    expect(remove.mock.calls).toEqual([["busy"], ["free"]]);
+    expect(toast.success).not.toHaveBeenCalled();
     expect(toast.error).toHaveBeenCalledWith("1 image wasn't deleted", {
       description: "busy: in use",
     });

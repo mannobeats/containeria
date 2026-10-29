@@ -1,10 +1,9 @@
 import { IconDownload, IconHammer, IconTrash } from "@tabler/icons-react";
 import { type ReactNode, useState } from "react";
-import { queryKeys } from "@/app/query-keys";
-import { useRemoveMany } from "@/app/use-remove-many";
 import { useContainers } from "@/features/containers/api";
 import { formatBytes } from "@/lib/format";
-import { type ContainerSummary, commands, type ImageSummary } from "@/lib/ipc/bindings";
+import type { ContainerSummary, ImageSummary } from "@/lib/ipc/bindings";
+import { errorMessage } from "@/lib/ipc/errors";
 import { type Selection, useSelection, useSelectionKeys } from "@/lib/use-selection";
 import { Crumb, Page } from "@/shell/page";
 import { Button } from "@/ui/button";
@@ -19,7 +18,7 @@ import { Tile } from "@/ui/tile";
 import { Tip } from "@/ui/tooltip";
 import { UsageBar, UsageLegend } from "@/ui/usage-bar";
 
-import { useImages } from "./api";
+import { useImages, useRemoveImages } from "./api";
 import type { ImageDialog } from "./image-actions";
 import { ImageDialogs } from "./image-dialogs";
 import { type ImageHandlers, ImageRow } from "./image-row";
@@ -138,12 +137,7 @@ function ImageList({ images, stats, onDialog, pull }: ImageListProps) {
     visible.filter((image) => image.containers === 0).map((image) => image.id),
   );
   const [deleting, setDeleting] = useState<ImageSummary[]>([]);
-  const removeMany = useRemoveMany({
-    remove: (image: ImageSummary) => commands.imageRemove(image.id, image.references.length > 1),
-    name: imageLabel,
-    noun: "image",
-    invalidates: queryKeys.images,
-  });
+  const removeMany = useRemoveImages();
   const chosen = visible.filter((image) => selection.has(image.id));
   useSelectionKeys(selection, () => setDeleting(chosen));
   return (
@@ -199,7 +193,7 @@ function ImageList({ images, stats, onDialog, pull }: ImageListProps) {
 }
 
 export function ImagesPage() {
-  const { data: images } = useImages();
+  const { data: images, error, refetch } = useImages();
   const setSheet = useImageSheet((state) => state.setSheet);
   const openBuild = useImageSheet((state) => state.openBuild);
   const [dialog, setDialog] = useState<ImageDialog | null>(null);
@@ -220,6 +214,16 @@ export function ImagesPage() {
   );
   return (
     <Page crumbs={<Crumb>Images</Crumb>}>
+      {error && !images ? (
+        <EmptyState
+          art={<Tile icon="image" size="xl" />}
+          title="Images couldn't be read"
+          className="h-full"
+          actions={<Button onClick={() => refetch().catch(() => undefined)}>Try Again</Button>}
+        >
+          {errorMessage(error)}
+        </EmptyState>
+      ) : null}
       {images?.length === 0 ? (
         <EmptyState
           art={<Tile icon="image" size="xl" />}
@@ -229,9 +233,10 @@ export function ImagesPage() {
         >
           Images you pull or build show up here. Drop a Dockerfile on the window to build one.
         </EmptyState>
-      ) : (
-        <ImageList images={images ?? []} stats={stats} onDialog={setDialog} pull={pull} />
-      )}
+      ) : null}
+      {images?.length ? (
+        <ImageList images={images} stats={stats} onDialog={setDialog} pull={pull} />
+      ) : null}
       <ImageDialogs dialog={dialog} stats={stats} onClose={() => setDialog(null)} />
     </Page>
   );

@@ -1,4 +1,5 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import { containerFixture, engineFixture, imageFixture } from "@/test/fixtures";
@@ -36,7 +37,10 @@ describe("ImagePage", () => {
       }),
     });
     renderWithApp(<ImagePage />, { route });
-    expect(await screen.findByText("ADD rootfs.tar.xz /")).toBeDefined();
+    const layers = (await screen.findByText("ADD rootfs.tar.xz /")).closest("ol")?.textContent;
+    expect(layers?.indexOf("ADD rootfs.tar.xz /")).toBeLessThan(
+      layers?.indexOf('CMD ["postgres"]') ?? -1,
+    );
     expect(screen.getByText("linux/arm64")).toBeDefined();
     expect(screen.getByText("5432/tcp")).toBeDefined();
     expect(await screen.findByText("shop-db-1")).toBeDefined();
@@ -51,5 +55,32 @@ describe("ImagePage", () => {
     });
     renderWithApp(<ImagePage />, { route });
     expect(await screen.findByText(/isn't on this engine/)).toBeDefined();
+  });
+
+  it("names the image, not a dangling layer, while it loads", async () => {
+    const calls = mockCommands({
+      engineStatus: () => engineFixture(),
+      imageDetail: () => new Promise(() => undefined),
+    });
+    renderWithApp(<ImagePage />, { route });
+    await waitFor(() => expect(calls.map((call) => call.command)).toContain("imageDetail"));
+    expect(await screen.findByRole("heading", { name: "pg" })).toBeDefined();
+    expect(screen.queryByText("Dangling build layer")).toBeNull();
+  });
+
+  it("offers to try again when the image can't be read", async () => {
+    const calls = mockCommands({
+      engineStatus: () => engineFixture(),
+      imageDetail: () => {
+        throw { kind: "internal", message: "Docker didn't answer" };
+      },
+    });
+    renderWithApp(<ImagePage />, { route });
+    expect(await screen.findByText("Docker didn't answer")).toBeDefined();
+    expect(screen.queryByText(/isn't on this engine/)).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Try Again" }));
+    await waitFor(() =>
+      expect(calls.filter((call) => call.command === "imageDetail")).toHaveLength(2),
+    );
   });
 });

@@ -20,11 +20,15 @@ import { IconAction } from "@/ui/icon-action";
 import { Tile } from "@/ui/tile";
 
 import { useContainerAction } from "../api";
+import { isErrorExit } from "../model";
 import { DetailMenu } from "./detail-menu";
 import { isDatabase } from "./detail-model";
 
+const crashed = (details: ContainerDetails) =>
+  details.state === "exited" && isErrorExit(details.exitCode);
+
 function tileState(details: ContainerDetails): "on" | "off" | "bad" {
-  if (details.state === "exited" && details.exitCode !== 0) {
+  if (crashed(details)) {
     return "bad";
   }
   return details.state === "running" ? "on" : "off";
@@ -42,7 +46,7 @@ function StateChip({ details }: { details: ContainerDetails }) {
       </Chip>
     );
   }
-  if (details.state === "exited" && details.exitCode !== 0) {
+  if (crashed(details)) {
     return (
       <Chip tone="bad">
         <IconAlertCircle aria-hidden />
@@ -54,7 +58,7 @@ function StateChip({ details }: { details: ContainerDetails }) {
 }
 
 function Subtitle({ details }: { details: ContainerDetails }) {
-  const running = details.state === "running";
+  const started = details.state === "running" || details.state === "paused";
   return (
     <div className="mt-[3px] flex flex-wrap items-center gap-x-3.5 gap-y-1 text-12 text-ink-3">
       <span className="font-mono text-mono-12">{details.image}</span>
@@ -62,7 +66,7 @@ function Subtitle({ details }: { details: ContainerDetails }) {
         {details.project ? `${details.project} · ${details.service ?? details.name}` : "Standalone"}
       </span>
       <span>
-        {running ? `Started ${since(details.startedAt)}` : `Exited ${since(details.finishedAt)}`}
+        {started ? `Started ${since(details.startedAt)}` : `Exited ${since(details.finishedAt)}`}
       </span>
     </div>
   );
@@ -72,6 +76,7 @@ function Subtitle({ details }: { details: ContainerDetails }) {
 export function DetailHeader({ details }: { details: ContainerDetails }) {
   const action = useContainerAction();
   const running = details.state === "running";
+  const paused = details.state === "paused";
   const target = [{ id: details.id, name: details.name }];
   const port = details.ports.find((candidate) => candidate.host !== null);
   return (
@@ -114,10 +119,12 @@ export function DetailHeader({ details }: { details: ContainerDetails }) {
         ) : (
           <Button
             variant="brand"
-            onClick={() => action.mutate({ containers: target, action: "start" })}
+            onClick={() =>
+              action.mutate({ containers: target, action: paused ? "resume" : "start" })
+            }
           >
             <IconPlayerPlay />
-            Start
+            {paused ? "Resume" : "Start"}
           </Button>
         )}
         <DetailMenu details={details} />

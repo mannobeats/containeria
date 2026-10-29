@@ -91,8 +91,23 @@ describe("RunSheet", () => {
     await userEvent.type(await screen.findByRole("textbox", { name: "Image" }), "nope");
     await userEvent.click(screen.getByRole("button", { name: /^Run/ }));
     expect(await screen.findByText("pull access denied for nope")).toBeDefined();
-    await userEvent.click(screen.getByRole("button", { name: "Copy as docker run" }));
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(useRunSheet.getState().open).toBe(false);
+  });
+
+  it("copies the form as a docker run command", async () => {
+    const calls = setup();
+    await userEvent.type(await screen.findByRole("textbox", { name: "Image" }), "nginx:1.29");
+    await userEvent.click(screen.getByRole("button", { name: "Copy as docker run" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual(
+        expect.objectContaining({
+          command: "plugin:clipboard-manager|writeText",
+          args: expect.objectContaining({
+            text: "docker run -d --name nginx-1 --restart unless-stopped nginx:1.29",
+          }),
+        }),
+      ),
+    );
   });
 });

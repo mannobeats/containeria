@@ -1,5 +1,6 @@
 import {
   IconAppWindow,
+  IconDots,
   IconPlayerPlay,
   IconPlayerStop,
   IconPower,
@@ -10,7 +11,7 @@ import { type ReactNode, useEffect } from "react";
 import { useEngineEvents } from "@/app/use-engine-events";
 import { useContainerAction, useContainers } from "@/features/containers/api";
 import { isRunning } from "@/features/containers/model";
-import { isServing, useEngineControl, useEngineStatus } from "@/features/engine/api";
+import { canControl, isServing, useEngineControl, useEngineStatus } from "@/features/engine/api";
 import { usageById, useMetrics } from "@/features/metrics/api";
 import { MemoryLedger } from "@/features/metrics/memory-ledger";
 import { fitWindow } from "@/lib/fit-window";
@@ -20,7 +21,7 @@ import { logoFor } from "@/lib/logos";
 import { AppMark } from "@/ui/app-mark";
 import { Button } from "@/ui/button";
 import { IconAction } from "@/ui/icon-action";
-import { ContextMenu, type MenuEntry } from "@/ui/menu";
+import { ContextMenu, Menu, type MenuEntry } from "@/ui/menu";
 import { Tile } from "@/ui/tile";
 
 const rowClass =
@@ -75,7 +76,7 @@ function Running() {
             <li className={rowClass}>
               <Tile logo={logoFor(container.image)} size="sm" />
               <span className="min-w-0 flex-1 truncate">{container.name}</span>
-              <span className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+              <span className="flex opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 has-[[data-state=open]]:opacity-100">
                 <IconAction
                   label="Stop"
                   target={container.name}
@@ -83,6 +84,17 @@ function Running() {
                 >
                   <IconPlayerStop />
                 </IconAction>
+                <Menu entries={menu} align="end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    iconOnly
+                    aria-label={`More for ${container.name}`}
+                    className="text-ink-3 hover:text-ink"
+                  >
+                    <IconDots />
+                  </Button>
+                </Menu>
               </span>
               <span className="w-14 shrink-0 text-right text-12 text-ink-3 tabular">
                 {formatMemory(usage.get(container.id)?.memoryBytes ?? 0)}
@@ -115,6 +127,7 @@ function Header() {
         <Button
           size="sm"
           loading={control.isPending}
+          disabled={!canControl(serving ? "stop" : "start", status?.phase)}
           onClick={() => control.mutate(serving ? "stop" : "start")}
         >
           {serving ? <IconPlayerStop /> : <IconPlayerPlay />}

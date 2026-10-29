@@ -7,24 +7,49 @@ export function matchesNetwork(network: NetworkSummary, query: string): boolean 
   return needle === "" || fields.some((field) => field.toLowerCase().includes(needle));
 }
 
-const CIDR = /^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/;
-const IP = /^(\d{1,3}\.){3}\d{1,3}$/;
+function isIp(value: string): boolean {
+  const octets = value.split(".");
+  return octets.length === 4 && octets.every((octet) => /^\d{1,3}$/.test(octet) && +octet <= 255);
+}
+
+function isCidr(value: string): boolean {
+  const [address = "", prefix = "", ...rest] = value.split("/");
+  return rest.length === 0 && isIp(address) && /^\d{1,2}$/.test(prefix) && +prefix <= 32;
+}
+
+/** What's wrong with a new network, and the field to show it under. */
+type SpecProblem = { field: "name" | "subnet" | "gateway"; message: string };
 
 /** The first thing wrong with a new network, or `null`. */
-export function specProblem(spec: NetworkSpec, taken: string[]): string | null {
+export function specProblem(spec: NetworkSpec, taken: string[]): SpecProblem | null {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(spec.name)) {
-    return "Use letters, numbers, dots, dashes and underscores, starting with a letter or number.";
+    return {
+      field: "name",
+      message:
+        "Use letters, numbers, dots, dashes and underscores, starting with a letter or number.",
+    };
   }
   if (taken.includes(spec.name)) {
-    return "A network with this name exists.";
+    return { field: "name", message: "A network with this name exists." };
   }
-  if (spec.subnet && !CIDR.test(spec.subnet)) {
-    return "Write the subnet as an address and prefix, like 172.23.0.0/16.";
+  if (spec.subnet && !isCidr(spec.subnet)) {
+    return {
+      field: "subnet",
+      message: "Write the subnet as an address and prefix, like 172.23.0.0/16.",
+    };
   }
-  if (spec.gateway && !(spec.subnet && IP.test(spec.gateway))) {
-    return "A gateway needs a subnet and an address like 172.23.0.1.";
+  if (spec.gateway && !(spec.subnet && isIp(spec.gateway))) {
+    return {
+      field: "gateway",
+      message: "A gateway needs a subnet and an address like 172.23.0.1.",
+    };
   }
   return null;
+}
+
+/** `172.18.0.2/16` → `172.18.0.2`: Docker reports an endpoint's address with its prefix. */
+export function hostAddress(address: string): string {
+  return address.split("/")[0] ?? address;
 }
 
 /** Why Docker would refuse to delete the network, or `undefined` when it can go. */

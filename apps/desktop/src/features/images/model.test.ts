@@ -43,7 +43,9 @@ describe("images", () => {
     expect([used, unused, dangling].map(imageKind)).toEqual(["used", "unused", "dangling"]);
     const stats = imageStats([used, unused, dangling]);
     expect(stats.totalBytes).toBe(550);
+    expect(stats.used).toEqual({ count: 1, bytes: 400 });
     expect(stats.unused).toEqual({ count: 1, bytes: 100 });
+    expect(stats.dangling).toEqual({ count: 1, bytes: 50 });
   });
 
   it("names dangling layers and shortens ids", () => {

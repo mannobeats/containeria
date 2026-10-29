@@ -1,11 +1,9 @@
 import { IconPlus, IconTrash } from "@tabler/icons-react";
 import { useState } from "react";
 
-import { queryKeys } from "@/app/query-keys";
-import { useRemoveMany } from "@/app/use-remove-many";
 import { segmentColor } from "@/features/metrics/segment-color";
-import { formatBytes } from "@/lib/format";
-import { commands, type VolumeSummary } from "@/lib/ipc/bindings";
+import { formatBytes, plural } from "@/lib/format";
+import type { VolumeSummary } from "@/lib/ipc/bindings";
 import { type Selection, useSelection, useSelectionKeys } from "@/lib/use-selection";
 import { Crumb, Page } from "@/shell/page";
 import { Button } from "@/ui/button";
@@ -19,7 +17,7 @@ import { HeadRow, SelectAll, Table } from "@/ui/table";
 import { Tile } from "@/ui/tile";
 import { UsageBar } from "@/ui/usage-bar";
 
-import { pickBackup, useBackupVolume, useVolumes } from "./api";
+import { pickBackup, useBackupVolume, useRemoveVolumes, useVolumes } from "./api";
 import { matchesVolume, type VolumeFilter, volumeName, volumeStats } from "./model";
 import { type VolumeDialog, VolumeDialogs } from "./volume-dialogs";
 import { type VolumeHandlers, VolumeRow } from "./volume-row";
@@ -42,9 +40,10 @@ function Sizes({ volumes, onClean }: { volumes: VolumeSummary[]; onClean: () => 
     <>
       <div className="flex items-center gap-3">
         <Lede>
-          <b className="tabular">{formatBytes(stats.totalBytes)}</b> in {stats.count} volumes.{" "}
+          <b className="tabular">{formatBytes(stats.totalBytes)}</b> in{" "}
+          {plural(stats.count, "volume")}.{" "}
           {stats.unattached > 0
-            ? `${stats.unattached} aren't attached to any container (${formatBytes(stats.unattachedBytes)}).`
+            ? `${stats.unattached} ${stats.unattached === 1 ? "isn't" : "aren't"} attached to any container (${formatBytes(stats.unattachedBytes)}).`
             : "All are attached."}
         </Lede>
         <Button
@@ -112,12 +111,7 @@ export function VolumesPage() {
   );
   const chosen = visible.filter((volume) => selection.has(volume.name));
   const [deleting, setDeleting] = useState<VolumeSummary[]>([]);
-  const removeMany = useRemoveMany({
-    remove: (volume: VolumeSummary) => commands.volumeRemove(volume.name),
-    name: volumeName,
-    noun: "volume",
-    invalidates: queryKeys.volumes,
-  });
+  const removeMany = useRemoveVolumes();
   useSelectionKeys(selection, () => setDeleting(chosen));
   const restoreInto = (volume: string | null) =>
     pickBackup()

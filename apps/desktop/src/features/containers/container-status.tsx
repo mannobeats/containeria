@@ -2,11 +2,10 @@ import { IconAlertCircle, IconAlertTriangle } from "@tabler/icons-react";
 
 import type { ContainerSummary } from "@/lib/ipc/bindings";
 
-import { exitCode } from "./model";
+import { isCrashed } from "./model";
 
 /** Docker's status line, with the parts that need attention marked. */
 export function ContainerStatus({ container }: { container: ContainerSummary }) {
-  const code = exitCode(container);
   if (container.status.includes("(unhealthy)")) {
     return (
       <span className="inline-flex items-center gap-1 text-warn-ink">
@@ -15,7 +14,7 @@ export function ContainerStatus({ container }: { container: ContainerSummary }) 
       </span>
     );
   }
-  if (code !== null || container.state === "dead") {
+  if (isCrashed(container)) {
     return (
       <span className="inline-flex min-w-0 items-center gap-1 text-bad-ink">
         <IconAlertCircle className="size-3.5" aria-hidden />

@@ -19,7 +19,7 @@ import { EnvEditor, PortsEditor, StorageEditor } from "./row-editors";
 import {
   dockerRun,
   emptyForm,
-  freePort,
+  nextHostPort,
   type RunForm,
   suggestedName,
   toSpec,
@@ -47,8 +47,6 @@ function Form({
 }) {
   const { data: containers } = useContainers();
   const used = usedPorts(containers ?? []);
-  const nextPort = () =>
-    freePort(Math.max(8080, ...form.ports.map((port) => Number(port.host) + 1)), used);
   return (
     <div className="flex flex-col gap-4">
       <ImageField
@@ -76,10 +74,14 @@ function Form({
         rows={form.ports}
         onChange={(ports) => setForm({ ...form, ports })}
         error={errors.ports}
-        nextPort={nextPort}
+        nextPort={() => nextHostPort(form.ports, used)}
       />
-      <EnvEditor rows={form.env} onChange={(env) => setForm({ ...form, env })} />
-      <StorageEditor rows={form.storage} onChange={(storage) => setForm({ ...form, storage })} />
+      <EnvEditor rows={form.env} onChange={(env) => setForm({ ...form, env })} error={errors.env} />
+      <StorageEditor
+        rows={form.storage}
+        onChange={(storage) => setForm({ ...form, storage })}
+        error={errors.storage}
+      />
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col items-start gap-1.5">
           <span aria-hidden className="text-13 font-medium text-ink-2">
@@ -158,6 +160,9 @@ function RunSheetBody() {
   };
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    if (run.isPending) {
+      return;
+    }
     setSubmitted(true);
     if (Object.keys(validate(form, usedPorts(containers ?? []))).length > 0) {
       return;

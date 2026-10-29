@@ -8,7 +8,7 @@ const variants = {
   strong: "bg-strong text-on-strong hover:opacity-90",
   brand: "bg-brand-solid text-white hover:bg-brand-solid-hover",
   danger: "bg-bad text-white hover:brightness-95",
-  dangerGhost: "text-bad-ink hover:bg-bad-soft",
+  dangerGhost: "text-bad-ink not-aria-disabled:hover:bg-bad-soft",
 } as const;
 
 const sizes = {
@@ -38,7 +38,7 @@ export function buttonClass({
   iconOnly: isIconOnly = false,
 }: ButtonLook = {}) {
   return clsx(
-    "inline-flex shrink-0 items-center justify-center whitespace-nowrap font-medium no-underline transition-[background-color,color,transform,box-shadow] duration-140 ease-out focus-visible:shadow-focus active:scale-[0.97] disabled:pointer-events-none disabled:opacity-45 [&_.tabler-icon]:opacity-85",
+    "inline-flex shrink-0 items-center justify-center whitespace-nowrap font-medium no-underline transition-[background-color,color,transform,box-shadow] duration-140 ease-out focus-visible:shadow-focus active:scale-[0.97] disabled:pointer-events-none disabled:opacity-45 aria-disabled:opacity-45 aria-disabled:active:scale-100 [&_.tabler-icon]:opacity-85",
     variants[variant],
     isIconOnly ? iconOnly[size] : sizes[size],
   );
