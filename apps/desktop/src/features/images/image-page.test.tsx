@@ -58,9 +58,13 @@ describe("ImagePage", () => {
   });
 
   it("names the image, not a dangling layer, while it loads", async () => {
-    const calls = mockCommands({ engineStatus: () => engineFixture() });
+    const calls = mockCommands({
+      engineStatus: () => engineFixture(),
+      imageDetail: () => new Promise(() => undefined),
+    });
     renderWithApp(<ImagePage />, { route });
     await waitFor(() => expect(calls.map((call) => call.command)).toContain("imageDetail"));
+    expect(await screen.findByRole("heading", { name: "pg" })).toBeDefined();
     expect(screen.queryByText("Dangling build layer")).toBeNull();
   });
 

@@ -207,8 +207,8 @@ export function NetworkPage() {
                   variant="dangerGhost"
                   iconOnly
                   aria-label={blocked ?? "Delete network"}
-                  disabled={blocked !== undefined}
-                  onClick={() => setDialog("delete")}
+                  aria-disabled={blocked !== undefined}
+                  onClick={() => (blocked ? undefined : setDialog("delete"))}
                 >
                   <IconTrash />
                 </Button>

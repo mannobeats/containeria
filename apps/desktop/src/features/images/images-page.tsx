@@ -3,6 +3,7 @@ import { type ReactNode, useState } from "react";
 import { useContainers } from "@/features/containers/api";
 import { formatBytes } from "@/lib/format";
 import type { ContainerSummary, ImageSummary } from "@/lib/ipc/bindings";
+import { errorMessage } from "@/lib/ipc/errors";
 import { type Selection, useSelection, useSelectionKeys } from "@/lib/use-selection";
 import { Crumb, Page } from "@/shell/page";
 import { Button } from "@/ui/button";
@@ -192,7 +193,7 @@ function ImageList({ images, stats, onDialog, pull }: ImageListProps) {
 }
 
 export function ImagesPage() {
-  const { data: images } = useImages();
+  const { data: images, error, refetch } = useImages();
   const setSheet = useImageSheet((state) => state.setSheet);
   const openBuild = useImageSheet((state) => state.openBuild);
   const [dialog, setDialog] = useState<ImageDialog | null>(null);
@@ -213,6 +214,16 @@ export function ImagesPage() {
   );
   return (
     <Page crumbs={<Crumb>Images</Crumb>}>
+      {error && !images ? (
+        <EmptyState
+          art={<Tile icon="image" size="xl" />}
+          title="Images couldn't be read"
+          className="h-full"
+          actions={<Button onClick={() => refetch().catch(() => undefined)}>Try Again</Button>}
+        >
+          {errorMessage(error)}
+        </EmptyState>
+      ) : null}
       {images?.length === 0 ? (
         <EmptyState
           art={<Tile icon="image" size="xl" />}

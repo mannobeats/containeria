@@ -51,6 +51,7 @@ export function formatFileDate(ms: number): string {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
+    calendar: "gregory",
     numberingSystem: "latn",
   }).formatToParts(ms);
   const part = (type: Intl.DateTimeFormatPartTypes) =>

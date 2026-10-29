@@ -88,13 +88,14 @@ describe("BuildPage", () => {
     );
   });
 
-  it("doesn't call the image gone before the images have loaded", async () => {
+  it("shows the image's ID, not that it's gone, before the images have loaded", async () => {
     mockCommands({
       engineStatus: () => engineFixture({ phase: "stopped" }),
-      buildDetail: () => detailFixture(),
+      buildDetail: () => detailFixture({ imageId: "sha256:0123456789abcdef" }),
     });
     renderWithApp(<BuildPage />, { route: route("?tab=info") });
     expect(await screen.findByText("docker/api.Dockerfile")).toBeDefined();
+    expect(screen.getByText("0123456789ab")).toBeDefined();
     expect(screen.queryByText("No longer on this engine")).toBeNull();
   });
 

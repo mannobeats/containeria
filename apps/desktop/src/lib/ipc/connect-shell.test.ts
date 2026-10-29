@@ -42,13 +42,38 @@ describe("connectShell", () => {
     stop();
   });
 
+  it("sends one size at a time, in order", async () => {
+    let finish: (value: null) => void = () => undefined;
+    const calls = mockCommands({
+      shellResize: () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    });
+    const { terminal, opened, stop } = connecting();
+    terminal.resize(120, 40);
+    await opened();
+    terminal.resize(100, 30);
+    const sizes = () =>
+      calls.filter((call) => call.command === "shellResize").map((call) => call.args.cols);
+    await waitFor(() => expect(sizes()).toEqual([120]));
+    finish(null);
+    await waitFor(() => expect(sizes()).toEqual([120, 100]));
+    stop();
+  });
+
   it("stops sending keystrokes once it ends", async () => {
     const calls = mockCommands({});
     const { terminal, opened, stop } = connecting();
     await opened();
-    stop();
+    const typed = () => calls.filter((call) => call.command === "shellInput");
     terminal.type("ls");
+    await waitFor(() =>
+      expect(typed()).toEqual([{ command: "shellInput", args: { stream: 7, text: "ls" } }]),
+    );
+    stop();
+    terminal.type("pwd");
     await waitFor(() => expect(calls).toContainEqual({ command: "streamCancel", args: { id: 7 } }));
-    expect(calls.some((call) => call.command === "shellInput")).toBe(false);
+    expect(typed()).toHaveLength(1);
   });
 });

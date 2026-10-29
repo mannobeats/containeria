@@ -59,6 +59,24 @@ describe("ImagesPage", () => {
     expect(await screen.findByText("shop-db-1")).toBeDefined();
   });
 
+  it("offers to try again when the images can't be read", async () => {
+    let failures = 1;
+    mockCommands({
+      engineStatus: () => engineFixture(),
+      imagesList: () => {
+        if (failures-- > 0) {
+          throw { kind: "internal", message: "Docker didn't answer" };
+        }
+        return [redis];
+      },
+    });
+    renderWithApp(<ImagesPage />);
+    expect(await screen.findByText("Docker didn't answer")).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: "Try Again" }));
+    expect(await screen.findByText("redis")).toBeDefined();
+    expect(screen.queryByText("Images couldn't be read")).toBeNull();
+  });
+
   it("says nothing about disk use before the images have loaded", async () => {
     const calls = mockCommands({ engineStatus: () => engineFixture({ phase: "stopped" }) });
     renderWithApp(<ImagesPage />);

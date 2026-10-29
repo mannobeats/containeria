@@ -45,12 +45,8 @@ export function matches(container: ContainerSummary, filter: Filter, query: stri
 export function groupByProject(containers: ContainerSummary[]): ContainerGroup[] {
   const groups = new Map<string, ContainerGroup>();
   for (const container of containers) {
-    const id = container.project ?? "";
-    const group = groups.get(id) ?? {
-      id: id || "standalone",
-      project: container.project,
-      containers: [],
-    };
+    const id = container.project === null ? "standalone" : `project:${container.project}`;
+    const group = groups.get(id) ?? { id, project: container.project, containers: [] };
     group.containers.push(container);
     groups.set(id, group);
   }

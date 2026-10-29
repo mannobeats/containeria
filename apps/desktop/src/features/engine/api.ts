@@ -48,10 +48,13 @@ type Control = "start" | "stop" | "restart";
 
 /**
  * Whether `control` makes sense in `phase`, wherever the engine is offered: Colima can't start when
- * it's missing, and only Containeria's own running engine can stop or restart.
+ * it's missing or while a start or stop runs, and only Containeria's own running engine can stop or
+ * restart.
  */
 export function canControl(control: Control, phase: EnginePhase | undefined): boolean {
-  return control === "start" ? !isServing(phase) && phase !== "missing" : phase === "running";
+  return control === "start"
+    ? phase === "stopped" || phase === "notCreated" || phase === "broken"
+    : phase === "running";
 }
 
 const run: Record<Control, (progress: Channel<LogLine>) => Promise<null>> = {

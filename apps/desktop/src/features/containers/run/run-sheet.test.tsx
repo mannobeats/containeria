@@ -102,6 +102,7 @@ describe("RunSheet", () => {
     await waitFor(() =>
       expect(calls).toContainEqual(
         expect.objectContaining({
+          command: "plugin:clipboard-manager|writeText",
           args: expect.objectContaining({
             text: "docker run -d --name nginx-1 --restart unless-stopped nginx:1.29",
           }),

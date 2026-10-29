@@ -28,6 +28,16 @@ export function connectShell(
 ): () => void {
   let stream: number | undefined;
   let connected = true;
+  // Rust handles each resize on its own task, so one sent before the last finishes can land after it.
+  let resized = Promise.resolve();
+  const resize = (id: number, cols: number, rows: number) => {
+    resized = resized
+      .then(() => commands.shellResize(id, cols, rows))
+      .then(
+        () => undefined,
+        () => undefined,
+      );
+  };
   const channel = new Channel<ShellEvent>((event) => {
     if (event.kind === "output") {
       terminal.write(event.text);
@@ -45,7 +55,7 @@ export function connectShell(
       }
       onStatus({ state: "open" });
       if (terminal.cols !== cols || terminal.rows !== rows) {
-        commands.shellResize(opened, terminal.cols, terminal.rows).catch(() => undefined);
+        resize(opened, terminal.cols, terminal.rows);
       }
       terminal.focus();
     })
@@ -57,7 +67,7 @@ export function connectShell(
   });
   const resizing = terminal.onResize(({ cols, rows }) => {
     if (stream !== undefined) {
-      commands.shellResize(stream, cols, rows).catch(() => undefined);
+      resize(stream, cols, rows);
     }
   });
   return () => {

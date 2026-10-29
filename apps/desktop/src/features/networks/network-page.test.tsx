@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -86,7 +86,14 @@ describe("NetworkPage", () => {
   it("won't delete a network containers are on", async () => {
     setup();
     const remove = await screen.findByRole("button", { name: /1 container is connected/ });
-    expect((remove as HTMLButtonElement).disabled).toBe(true);
+    expect(remove.getAttribute("aria-disabled")).toBe("true");
+    act(() => remove.focus());
+    expect(document.activeElement).toBe(remove);
+    expect((await screen.findByRole("tooltip")).textContent).toContain(
+      "Disconnect or stop it first",
+    );
+    await userEvent.click(remove);
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("connects a container that isn't on it yet", async () => {

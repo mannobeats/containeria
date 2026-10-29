@@ -59,10 +59,19 @@ describe("groupByProject", () => {
       container({ name: "b2", project: "blog" }),
     ]);
     expect(groups.map((group) => [group.id, group.containers.map((c) => c.name)])).toEqual([
-      ["blog", ["b1", "b2"]],
-      ["shop", ["s1"]],
+      ["project:blog", ["b1", "b2"]],
+      ["project:shop", ["s1"]],
       ["standalone", ["loose"]],
     ]);
+  });
+
+  it("keeps a project named standalone apart from containers in no project", () => {
+    const groups = groupByProject([
+      container({ name: "loose" }),
+      container({ name: "p1", project: "standalone" }),
+    ]);
+    expect(new Set(groups.map((group) => group.id)).size).toBe(2);
+    expect(groups.map((group) => group.containers.map((c) => c.name))).toEqual([["p1"], ["loose"]]);
   });
 });
 

@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { formatClock, formatDateTime, formatFileDate, formatPreciseClock, useClock } from "./clock";
 
@@ -26,6 +26,20 @@ describe("clock", () => {
     expect(formatFileDate(evening)).toBe(
       `${local.getFullYear()}-${pad(local.getMonth() + 1)}-${pad(local.getDate())}`,
     );
+  });
+
+  it("dates a file on the Gregorian calendar in a region that uses another", async () => {
+    const Real = Intl.DateTimeFormat;
+    onTestFinished(() => {
+      vi.restoreAllMocks();
+    });
+    vi.spyOn(Intl, "DateTimeFormat").mockImplementation(function thai(_locales, options) {
+      return new Real("th-TH", options);
+    });
+    vi.resetModules();
+    const clock = await import("./clock");
+    clock.useClock.setState({ timeZone: "UTC" });
+    expect(clock.formatFileDate(evening)).toBe("2026-10-18");
   });
 
   it("shows the zone it is set to", () => {

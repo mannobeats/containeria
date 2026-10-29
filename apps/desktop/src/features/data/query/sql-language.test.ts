@@ -1,5 +1,5 @@
 import { CompletionContext, type CompletionSource } from "@codemirror/autocomplete";
-import { ensureSyntaxTree } from "@codemirror/language";
+import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
 import { describe, expect, it } from "vitest";
 
@@ -34,9 +34,12 @@ const namespaces: Namespace[] = [
 
 /** What the editor offers at the end of `doc`, as a user pressing Ctrl-Space would see it. */
 async function completions(doc: string) {
-  const state = EditorState.create({ doc, extensions: sqlLanguage("postgres", namespaces) });
-  // The parser stops after a time budget; on a busy machine `orders.` may not be parsed yet.
-  ensureSyntaxTree(state, doc.length, 5000);
+  const created = EditorState.create({ doc, extensions: sqlLanguage("postgres", namespaces) });
+  // The parser stops after a time budget, so on a busy machine `orders.` may not be parsed yet.
+  // `syntaxTree` keeps reading the first parse until a later state takes the finished one.
+  ensureSyntaxTree(created, doc.length, 5000);
+  const state = created.update({}).state;
+  expect(syntaxTree(state).length).toBe(doc.length);
   const sources = state.languageDataAt<CompletionSource>("autocomplete", doc.length);
   const context = new CompletionContext(state, doc.length, true);
   const results = await Promise.all(sources.map((source) => source(context)));
