@@ -5,7 +5,8 @@ use std::time::{Duration, Instant};
 
 use containeria_docker::{Compose, Docker, DockerCli};
 use containeria_engine::{
-    Colima, EngineConfig, Home, Instance, InstanceStatus, KubernetesAction, LogLine, Profile,
+    Colima, DockerConfig, EngineConfig, ForeignContext, Home, Instance, InstanceStatus,
+    KubernetesAction, LogLine, Profile,
 };
 use futures::StreamExt;
 use serde::Serialize;
@@ -43,6 +44,8 @@ pub(crate) struct EngineStatus {
     pub(crate) config: EngineConfig,
     pub(crate) returns_memory: bool,
     pub(crate) docker_socket: String,
+    /// Set while "Set Docker context" is on and the Docker CLI points at another engine.
+    pub(crate) docker_context: Option<ForeignContext>,
 }
 
 /// A profile's phase: a start or stop in progress wins over what Colima last reported.
@@ -127,7 +130,35 @@ impl Engine {
         let returns_memory = config.vm_type.returns_memory();
         let (phase, instance) = self.phase().await?;
         let docker_socket = self.socket().to_string_lossy().into_owned();
-        Ok(EngineStatus { phase, instance, config, returns_memory, docker_socket })
+        let docker_context =
+            if config.set_docker_context { self.foreign_docker_context().await } else { None };
+        Ok(EngineStatus { phase, instance, config, returns_memory, docker_socket, docker_context })
+    }
+
+    /// Read on every status refresh, so a context another engine took shows within one. An
+    /// unreadable `config.json` is logged rather than failing the engine's status.
+    async fn foreign_docker_context(&self) -> Option<ForeignContext> {
+        if self.is_external() {
+            return None;
+        }
+        let ours = Profile::Containers.docker_context();
+        let found = match DockerConfig::from_env() {
+            Ok(config) => config.foreign_context(&ours).await,
+            Err(error) => Err(error),
+        };
+        found.unwrap_or_else(|error| {
+            tracing::warn!("the Docker context couldn't be checked: {error}");
+            None
+        })
+    }
+
+    /// Points the Docker CLI back at Containeria's engine. See ADR 4.
+    ///
+    /// # Errors
+    /// Fails when Containeria's context doesn't exist yet or `config.json` can't be written.
+    pub(crate) fn use_docker_context() -> Result<()> {
+        DockerConfig::from_env()?.use_context(&Profile::Containers.docker_context())?;
+        Ok(())
     }
 
     async fn phase(&self) -> Result<(EnginePhase, Option<Instance>)> {
@@ -172,7 +203,15 @@ impl Engine {
             EnginePhase::Starting,
             colima.start(Profile::Containers, on_line),
         )
-        .await
+        .await?;
+        // Colima's `autoActivate` does this too, but only when it finds a `docker` to run.
+        if self.config()?.set_docker_context
+            && let Err(error) = Self::use_docker_context()
+        {
+            tracing::warn!("the Docker context wasn't switched to Containeria: {}", error.message);
+        }
+        EngineChanged.emit(app)?;
+        Ok(())
     }
 
     pub(crate) async fn stop(&self, app: &AppHandle, on_line: impl FnMut(LogLine)) -> Result<()> {

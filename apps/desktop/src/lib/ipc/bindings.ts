@@ -14,6 +14,8 @@ export const commands = {
 	engineStop: (progress: Channel<LogLine>) => __TAURI_INVOKE<null>("engine_stop", { progress }),
 	engineRestart: (progress: Channel<LogLine>) => __TAURI_INVOKE<null>("engine_restart", { progress }),
 	engineSaveConfig: (config: EngineConfig) => __TAURI_INVOKE<null>("engine_save_config", { config }),
+	/**  Points the Docker CLI's current context back at Containeria, as `docker context use` does. */
+	engineUseDockerContext: () => __TAURI_INVOKE<null>("engine_use_docker_context"),
 	/**  Deletes the engine's VM, and with `machines` the Linux machines VM too. Settings stay. */
 	engineReset: (machines: boolean) => __TAURI_INVOKE<null>("engine_reset", { machines }),
 	/**  The last sample, so a view can draw before the next `MetricsUpdated` event. */
@@ -771,6 +773,8 @@ export type EngineStatus = {
 	config: EngineConfig,
 	returnsMemory: boolean,
 	dockerSocket: string,
+	/**  Set while "Set Docker context" is on and the Docker CLI points at another engine. */
+	dockerContext: ForeignContext | null,
 };
 
 export type Enum = {
@@ -824,6 +828,15 @@ export type Filter = {
 };
 
 export type FilterOp = "equals" | "notEquals" | "greater" | "less" | "greaterOrEqual" | "lessOrEqual" | "contains" | "startsWith" | "isNull" | "isNotNull";
+
+/**  The Docker CLI's current context while it isn't Containeria's. */
+export type ForeignContext = {
+	name: string,
+	/**  Absent when no context has that name, so every `docker` command fails. */
+	endpoint: string | null,
+	/**  Whether something listens at the endpoint; absent when that can't be checked, as for `ssh://`. */
+	answers: boolean | null,
+};
 
 export type ForeignKey = {
 	schema: string | null,

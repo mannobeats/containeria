@@ -43,6 +43,7 @@ fn commands() -> Commands<Wry> {
         engine::engine_stop,
         engine::engine_restart,
         engine::engine_save_config,
+        engine::engine_use_docker_context,
         engine::engine_reset,
         metrics::metrics_latest,
         metrics::metrics_history,

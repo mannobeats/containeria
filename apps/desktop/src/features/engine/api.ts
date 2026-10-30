@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { create } from "zustand";
 
 import { queryKeys } from "@/app/query-keys";
+import { useToastedMutation } from "@/app/use-toasted-mutation";
 import { commands, type EngineConfig, type EnginePhase, type LogLine } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
 
@@ -86,6 +87,16 @@ export function useEngineControl() {
     onError: (error) =>
       toast.error("The engine didn't respond", { description: errorMessage(error) }),
     onSettled: () => client.invalidateQueries({ queryKey: queryKeys.engine }),
+  });
+}
+
+/** Points the Docker CLI back at Containeria after another engine took the context. */
+export function useUseContaineriaContext() {
+  return useToastedMutation({
+    run: () => commands.engineUseDockerContext(),
+    done: () => "Docker commands go to Containeria again",
+    failed: "The Docker context didn't change",
+    invalidates: queryKeys.engine,
   });
 }
 

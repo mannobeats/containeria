@@ -108,6 +108,21 @@ describe("TrayView", () => {
     await waitFor(() => expect(names(calls)).toContain("windowHide"));
   });
 
+  it("offers to take the Docker context back from another engine", async () => {
+    const calls = mockCommands({
+      engineStatus: () =>
+        engineFixture({
+          dockerContext: { name: "colima", endpoint: "unix:///tmp/colima.sock", answers: false },
+        }),
+    });
+    renderWithApp(<TrayView />);
+    expect(await screen.findByText("colima")).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: "Use Containeria" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({ command: "engineUseDockerContext", args: {} }),
+    );
+  });
+
   it("opens the main window", async () => {
     const calls = renderTray("running");
     await userEvent.click(await screen.findByRole("button", { name: "Open Containeria" }));

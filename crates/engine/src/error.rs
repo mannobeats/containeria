@@ -19,6 +19,12 @@ pub enum Error {
     #[error("the engine settings could not be written: {0}")]
     Config(#[from] yaml_serde::Error),
 
+    #[error("there's no Docker context named {0}; starting the engine creates Containeria's")]
+    NoDockerContext(String),
+
+    #[error("{path} isn't valid JSON, so Containeria left it alone: {source}")]
+    DockerConfig { path: String, source: serde_json::Error },
+
     /// The data can't move there; the message says why, for the user.
     #[error("{0}")]
     Storage(String),
