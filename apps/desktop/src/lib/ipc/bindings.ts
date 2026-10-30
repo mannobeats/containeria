@@ -68,10 +68,20 @@ export const commands = {
 	storageMove: (folder: string | null, channel: Channel<MoveEvent>) => __TAURI_INVOKE<number>("storage_move", { folder, channel }),
 	/**  Where the engine's disk space goes. */
 	storageUsage: () => __TAURI_INVOKE<DiskUsage>("storage_usage"),
+	/**  What the containers VM's disk really takes on the Mac, or `None` on another Docker engine. */
+	storageEngineDisk: () => __TAURI_INVOKE<{
+	/**  Allocated size, so space Docker freed but the guest hasn't trimmed yet still counts. */
+	sizeBytes: number,
+} | null>("storage_engine_disk"),
+	/**
+	 *  Trims every running VM, without cleaning anything up, so space already freed inside goes back
+	 *  to the Mac.
+	 */
+	storageReturnFreeSpace: () => __TAURI_INVOKE<ReturnedSpace>("storage_return_free_space"),
 	/**  Deletes every stopped container. */
-	containersPrune: () => __TAURI_INVOKE<PruneReport>("containers_prune"),
+	containersPrune: () => __TAURI_INVOKE<CleanUpReport>("containers_prune"),
 	/**  Deletes the build cache no build is using. */
-	buildCachePrune: () => __TAURI_INVOKE<PruneReport>("build_cache_prune"),
+	buildCachePrune: () => __TAURI_INVOKE<CleanUpReport>("build_cache_prune"),
 	/**
 	 *  Every engine on the Mac that can be copied from, and whether each is installed and running:
 	 *  Docker Desktop, `OrbStack`, Rancher Desktop, Colima profiles, Lima instances, Podman machines.
@@ -186,7 +196,7 @@ export const commands = {
 	imageRemove: (id: string, force: boolean) => __TAURI_INVOKE<null>("image_remove", { id, force }),
 	imageTag: (id: string, reference: string) => __TAURI_INVOKE<null>("image_tag", { id, reference }),
 	/**  Deletes images no container uses; with `all` off, only dangling build layers. */
-	imagesPrune: (all: boolean) => __TAURI_INVOKE<PruneReport>("images_prune", { all }),
+	imagesPrune: (all: boolean) => __TAURI_INVOKE<CleanUpReport>("images_prune", { all }),
 	hubSearch: (term: string) => __TAURI_INVOKE<HubImage[]>("hub_search", { term }),
 	/**  Builds an image from a folder and Dockerfile, streaming `BuildKit`'s progress. */
 	imageBuild: (spec: BuildSpec, channel: Channel<OutputEvent>) => __TAURI_INVOKE<number>("image_build", { spec, channel }),
@@ -210,7 +220,7 @@ export const commands = {
 	volumeCreate: (name: string) => __TAURI_INVOKE<null>("volume_create", { name }),
 	volumeRemove: (name: string) => __TAURI_INVOKE<null>("volume_remove", { name }),
 	/**  Deletes every volume no container uses. */
-	volumesPrune: () => __TAURI_INVOKE<PruneReport>("volumes_prune"),
+	volumesPrune: () => __TAURI_INVOKE<CleanUpReport>("volumes_prune"),
 	/**  One folder of a volume, read through a short-lived helper container. */
 	volumeFiles: (name: string, path: string) => __TAURI_INVOKE<VolumeFile[]>("volume_files", { name, path }),
 	/**
@@ -417,6 +427,17 @@ export type ChangeSet = {
 	inserts: Cell[][],
 	/**  Primary keys of rows to delete. */
 	deletes: Cell[][],
+};
+
+/**  What a clean-up removed inside the engine, and what of that the Mac got back. */
+export type CleanUpReport = {
+	removed: number,
+	/**  What Docker says it freed inside the VM. */
+	reclaimedBytes: number,
+	/**  How much the VM disk files shrank on the Mac after the trim. */
+	returnedBytes: number,
+	/**  Why the trim failed; the clean-up itself still happened. */
+	trimError: string | null,
 };
 
 export type CliTool = {
@@ -751,6 +772,12 @@ export type EngineConfig = {
 	registryMirrors: string[],
 	/**  Registries Docker may reach over plain HTTP, such as a local `registry:2`. */
 	insecureRegistries: string[],
+};
+
+/**  The containers VM's disk files on the Mac. */
+export type EngineDisk = {
+	/**  Allocated size, so space Docker freed but the guest hasn't trimmed yet still counts. */
+	sizeBytes: number,
 };
 
 /**  What the engine says about itself. */
@@ -1347,12 +1374,6 @@ export type PreferencesChanged = null;
 /**  A hosted service on top of an engine, for its logo and its defaults. */
 export type Provider = "neon" | "supabase" | "timescale" | "planetscale";
 
-/**  What a clean-up removed. */
-export type PruneReport = {
-	removed: number,
-	reclaimedBytes: number,
-};
-
 /**  What a pull reports, ending with `done` or `failed`. */
 export type PullEvent = { kind: "progress"; progress: PullProgress } | { kind: "done" } | { kind: "failed"; message: string };
 
@@ -1414,6 +1435,11 @@ export type ResultColumn = {
 	name: string,
 	typeName: string,
 	kind: ValueKind,
+};
+
+/**  How much the VM disk files shrank on the Mac. */
+export type ReturnedSpace = {
+	returnedBytes: number,
 };
 
 /**  Why a route can't be reached right now. */

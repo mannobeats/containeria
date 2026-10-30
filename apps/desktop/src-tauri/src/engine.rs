@@ -318,6 +318,11 @@ impl Engine {
         &self.home
     }
 
+    /// Colima, unless the app uses another Docker engine, whose disks it doesn't manage.
+    pub(crate) fn own_colima(&self) -> Option<&Colima> {
+        self.colima.as_ref().filter(|_| !self.is_external())
+    }
+
     /// The Colima release, when Colima is there and answers.
     pub(crate) async fn colima_version(&self) -> Option<String> {
         self.colima.as_ref()?.version().await.ok()

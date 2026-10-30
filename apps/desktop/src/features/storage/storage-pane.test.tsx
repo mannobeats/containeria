@@ -28,19 +28,26 @@ const usage: DiskUsage = {
 let channel: unknown;
 let location: DataLocation;
 
-function setup(at: DataLocation = atHome) {
+function setup(at: DataLocation = atHome, diskBytes = 6 * GB) {
   channel = undefined;
   location = at;
   return mockCommands({
     storageLocation: () => location,
     storageUsage: () => usage,
+    storageEngineDisk: () => ({ sizeBytes: diskBytes }),
+    storageReturnFreeSpace: () => ({ returnedBytes: 41 * GB }),
     storageCheck: (args) =>
       args.folder ? `${String(args.folder)}/Containeria` : "/Users/ada/.containeria/colima/_lima",
     storageMove: (args) => {
       channel = args.channel;
       return 3;
     },
-    buildCachePrune: () => ({ removed: 9, reclaimedBytes: 3 * GB }),
+    buildCachePrune: () => ({
+      removed: 9,
+      reclaimedBytes: 3 * GB,
+      returnedBytes: 2.8 * GB,
+      trimError: null,
+    }),
   });
 }
 
@@ -52,6 +59,27 @@ describe("StoragePane", () => {
     expect(screen.getByText(/8.4 GB of disk images/)).toBeDefined();
     expect(await screen.findByText(/14 images/)).toBeDefined();
     expect(screen.queryByRole("button", { name: "Move Back" })).toBeNull();
+  });
+
+  it("shows the engine's disk on the Mac next to Docker's data, with no trim when they're close", async () => {
+    setup();
+    renderWithApp(<StoragePane />);
+    expect(
+      await screen.findByText(
+        /The engine's disk takes 6.0 GB, of which Docker's data is 4.9 GB\.$/,
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Return Free Space to the Mac" })).toBeNull();
+  });
+
+  it("returns free space to the Mac when the disk holds far more than Docker's data", async () => {
+    const calls = setup(atHome, 48 * GB);
+    renderWithApp(<StoragePane />);
+    expect(await screen.findByText(/free space the Mac can have back/)).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: "Return Free Space to the Mac" }));
+    await waitFor(() =>
+      expect(calls).toContainEqual({ command: "storageReturnFreeSpace", args: {} }),
+    );
   });
 
   it("moves the data to a picked folder, showing each step", async () => {

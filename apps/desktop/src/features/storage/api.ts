@@ -5,12 +5,13 @@ import { create } from "zustand";
 
 import { queryKeys } from "@/app/query-keys";
 import { formatBytes } from "@/lib/format";
-import { commands, type MoveEvent, type PruneReport } from "@/lib/ipc/bindings";
+import { type CleanUpReport, commands, type MoveEvent } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
 
 const keys = {
   location: [...queryKeys.storage, "location"],
   usage: [...queryKeys.storage, "usage"],
+  disk: [...queryKeys.storage, "disk"],
 } as const;
 
 export function useDataLocation() {
@@ -30,13 +31,58 @@ export function useDiskUsage() {
   });
 }
 
+/** What the containers VM's disk files really take on the Mac; `null` on another Docker engine. */
+export function useEngineDisk() {
+  return useQuery({
+    queryKey: keys.disk,
+    queryFn: commands.storageEngineDisk,
+    refetchInterval: 15_000,
+  });
+}
+
+/** Trims the running VMs so space already freed inside them goes back to the Mac. */
+export function useReturnFreeSpace() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: commands.storageReturnFreeSpace,
+    onSuccess: (returned) =>
+      toast.success(
+        returned.returnedBytes > 0
+          ? `Returned ${formatBytes(returned.returnedBytes)} to the Mac`
+          : "The engine's disk had no free space to return",
+      ),
+    onError: (error) =>
+      toast.error("The free space didn't go back to the Mac", {
+        description: errorMessage(error),
+      }),
+    onSettled: () => client.invalidateQueries({ queryKey: keys.disk }),
+  });
+}
+
+/**
+ * Toasts what a clean-up freed inside the engine and how much of it went back to the Mac, and
+ * warns when the engine's disk didn't shrink.
+ */
+export function announceCleanUp(report: CleanUpReport, removed: string) {
+  const returned =
+    report.returnedBytes > 0 ? `, ${formatBytes(report.returnedBytes)} back to the Mac` : "";
+  toast.success(`Freed ${formatBytes(report.reclaimedBytes)}`, {
+    description: `${removed}${returned}`,
+  });
+  if (report.trimError) {
+    toast.warning("The engine's disk didn't shrink on the Mac", {
+      description: report.trimError,
+    });
+  }
+}
+
 export type CleanUp = "images" | "containers" | "volumes" | "buildCache";
 
-const CLEAN_UPS: Record<CleanUp, { run: () => Promise<PruneReport>; what: string }> = {
-  images: { run: () => commands.imagesPrune(true), what: "unused images" },
-  containers: { run: commands.containersPrune, what: "stopped containers" },
-  volumes: { run: commands.volumesPrune, what: "unused volumes" },
-  buildCache: { run: commands.buildCachePrune, what: "build cache" },
+const CLEAN_UPS: Record<CleanUp, { run: () => Promise<CleanUpReport>; done: string }> = {
+  images: { run: () => commands.imagesPrune(true), done: "Unused images removed" },
+  containers: { run: commands.containersPrune, done: "Stopped containers removed" },
+  volumes: { run: commands.volumesPrune, done: "Unused volumes removed" },
+  buildCache: { run: commands.buildCachePrune, done: "Build cache cleared" },
 };
 
 /** Runs one clean-up and says what it freed. */
@@ -44,13 +90,11 @@ export function useCleanUp() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (kind: CleanUp) => CLEAN_UPS[kind].run(),
-    onSuccess: (report, kind) =>
-      toast.success(
-        `Removed ${CLEAN_UPS[kind].what}, freeing ${formatBytes(report.reclaimedBytes)}`,
-      ),
+    onSuccess: (report, kind) => announceCleanUp(report, CLEAN_UPS[kind].done),
     onError: (error) => toast.error("Clean-up failed", { description: errorMessage(error) }),
     onSettled: () => {
       client.invalidateQueries({ queryKey: keys.usage }).catch(() => undefined);
+      client.invalidateQueries({ queryKey: keys.disk }).catch(() => undefined);
       client.invalidateQueries({ queryKey: queryKeys.images }).catch(() => undefined);
       client.invalidateQueries({ queryKey: queryKeys.volumes }).catch(() => undefined);
       client.invalidateQueries({ queryKey: queryKeys.containers }).catch(() => undefined);

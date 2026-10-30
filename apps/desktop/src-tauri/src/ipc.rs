@@ -66,6 +66,8 @@ fn commands() -> Commands<Wry> {
         storage::storage_check,
         storage::storage_move,
         storage::storage_usage,
+        storage::storage_engine_disk,
+        storage::storage_return_free_space,
         storage::containers_prune,
         storage::build_cache_prune,
         welcome::migration_sources,

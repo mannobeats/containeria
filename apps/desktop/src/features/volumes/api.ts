@@ -8,8 +8,9 @@ import { queryKeys } from "@/app/query-keys";
 import { useRemoveMany } from "@/app/use-remove-many";
 import { useToastedMutation } from "@/app/use-toasted-mutation";
 import { isServing, useEngineStatus } from "@/features/engine/api";
+import { announceCleanUp } from "@/features/storage/api";
 import { formatFileDate } from "@/lib/clock";
-import { formatBytes, plural } from "@/lib/format";
+import { plural } from "@/lib/format";
 import { commands, type VolumeSummary } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
 
@@ -91,10 +92,7 @@ export function usePruneVolumes() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: commands.volumesPrune,
-    onSuccess: (report) =>
-      toast.success(`Freed ${formatBytes(report.reclaimedBytes)}`, {
-        description: `${plural(report.removed, "volume")} deleted`,
-      }),
+    onSuccess: (report) => announceCleanUp(report, `${plural(report.removed, "volume")} deleted`),
     onError: (error) => toast.error("Clean-up failed", { description: errorMessage(error) }),
     onSettled: () => client.invalidateQueries({ queryKey: queryKeys.volumes }),
   });

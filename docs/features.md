@@ -41,6 +41,7 @@ the user installed:
 | Engine status and uptime | `colima status --json` | Colima | |
 | CPU and memory limits | `cpu`, `memory` in colima.yaml | Colima | Applied on restart. The prototype's restart banner matches this. |
 | Disk size | `disk` | Limited | Can grow, never shrink. Prototype already says so. |
+| Give freed disk space back to the Mac | `colima ssh -p <profile> -- sudo fstrim -a` | Built | The VM disks are sparse files that only shrink once the guest trims them; its weekly `fstrim.timer` comes far too late after a big clean-up. Every prune (images, containers, volumes, build cache) trims each running profile, machines included, and reports the space returned, measured as the allocated size of `_lima/colima-<profile>` and `_lima/_disks/colima-<profile>` before and after. A failed trim is reported next to the clean-up's result and never fails it. Settings → Storage shows the containers disk's real size on the Mac next to Docker's data and offers "Return Free Space to the Mac" (trim only) when the gap passes 5 GB. Not done for another Docker engine (`CONTAINERIA_DOCKER_SOCKET`). Not yet verified on a running VM: that `fstrim -a` exits 0 on every Colima guest (it exits 64 when only some filesystems trim, which would read as a failure). |
 | Data location | `LIMA_HOME` moved, a link left in its place | Built | Settings → Storage moves every VM disk to another folder or drive (APFS or Mac OS Extended) and back. Copies only the data in sparse disks, swaps the link in one rename, and starts again what was running. Lima follows the link, so the new path must leave room for its 104-byte socket paths. |
 | VM type | `vmType: vz` or `krunkit` | Limited | Fixed when the engine is created. Changing it means re-creating the engine (data kept by export and import). `scripts/fetch-tools.sh` bundles krunkit 1.3.2 with its libraries and EFI firmware. Colima 0.10.3 hands Lima `mountType: 9p` for krunkit, which Lima rejects (abiosoft/colima#1607, fix in #1641, unreleased), so Containeria writes `mountType: virtiofs` to `$LIMA_HOME/_config/override.yaml` before every start. |
 | Rosetta for amd64 images | `rosetta: true` | Colima | VZ only, Apple Silicon. |
@@ -92,7 +93,7 @@ the user installed:
 | Feature | Source | Status | Notes |
 |---|---|---|---|
 | List, pull with layer progress, push, tag, delete, export | images API, `docker push` | Built | Push goes through the Docker CLI so `docker login` credentials and helpers work; export writes a `docker save` archive. |
-| Disk usage and clean-up | `/system/df`, prune APIs | Docker API | Settings → Storage: images, stopped containers, volumes and the build cache, each with its own clean-up. |
+| Disk usage and clean-up | `/system/df`, prune APIs | Docker API | Settings → Storage: images, stopped containers, volumes and the build cache, each with its own clean-up. Each clean-up then trims the VM so the space leaves its disk file too (see "Give freed disk space back to the Mac"). |
 | Layers and history | `/images/{id}/history` | Docker API | |
 | Docker Hub search | Docker Hub API | We build | |
 | Vulnerability scan | Trivy (Apache-2.0) run as a container | Built | `aquasec/trivy` pinned, docker socket mounted, database cached in the `containeria-trivy-cache` volume. |
