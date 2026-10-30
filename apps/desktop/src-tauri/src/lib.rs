@@ -12,6 +12,7 @@ mod kubernetes;
 mod machines;
 mod menu;
 mod metrics;
+mod migration;
 mod notifications;
 mod preferences;
 mod settings_window;
@@ -28,9 +29,11 @@ use containeria_net::Domains;
 use tauri::{ActivationPolicy, AppHandle, Manager, RunEvent, Window, WindowEvent};
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_window_state::StateFlags;
+use tauri_specta::Event;
 
 use crate::data::DataState;
 use crate::engine::Engine;
+use crate::events::EngineChanged;
 use crate::kubernetes::Kubernetes;
 use crate::machines::MachinesEngine;
 use crate::metrics::Sampler;
@@ -172,6 +175,10 @@ fn on_window_event(window: &Window, event: &WindowEvent) {
         }
         WindowEvent::Destroyed if window.label() == settings_window::LABEL => {
             dock::hide_unless_open(window.app_handle(), Some(settings_window::LABEL));
+        }
+        // Coming back to the app is when another engine has most likely taken the Docker context.
+        WindowEvent::Focused(true) => {
+            let _ = EngineChanged.emit(window.app_handle());
         }
         _ => {}
     }

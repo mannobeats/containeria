@@ -14,6 +14,8 @@ export const commands = {
 	engineStop: (progress: Channel<LogLine>) => __TAURI_INVOKE<null>("engine_stop", { progress }),
 	engineRestart: (progress: Channel<LogLine>) => __TAURI_INVOKE<null>("engine_restart", { progress }),
 	engineSaveConfig: (config: EngineConfig) => __TAURI_INVOKE<null>("engine_save_config", { config }),
+	/**  Points the Docker CLI's current context back at Containeria, as `docker context use` does. */
+	engineUseDockerContext: () => __TAURI_INVOKE<null>("engine_use_docker_context"),
 	/**  Deletes the engine's VM, and with `machines` the Linux machines VM too. Settings stay. */
 	engineReset: (machines: boolean) => __TAURI_INVOKE<null>("engine_reset", { machines }),
 	/**  The last sample, so a view can draw before the next `MetricsUpdated` event. */
@@ -66,11 +68,24 @@ export const commands = {
 	storageMove: (folder: string | null, channel: Channel<MoveEvent>) => __TAURI_INVOKE<number>("storage_move", { folder, channel }),
 	/**  Where the engine's disk space goes. */
 	storageUsage: () => __TAURI_INVOKE<DiskUsage>("storage_usage"),
+	/**  What the containers VM's disk really takes on the Mac, or `None` on another Docker engine. */
+	storageEngineDisk: () => __TAURI_INVOKE<{
+	/**  Allocated size, so space Docker freed but the guest hasn't trimmed yet still counts. */
+	sizeBytes: number,
+} | null>("storage_engine_disk"),
+	/**
+	 *  Trims every running VM, without cleaning anything up, so space already freed inside goes back
+	 *  to the Mac.
+	 */
+	storageReturnFreeSpace: () => __TAURI_INVOKE<ReturnedSpace>("storage_return_free_space"),
 	/**  Deletes every stopped container. */
-	containersPrune: () => __TAURI_INVOKE<PruneReport>("containers_prune"),
+	containersPrune: () => __TAURI_INVOKE<CleanUpReport>("containers_prune"),
 	/**  Deletes the build cache no build is using. */
-	buildCachePrune: () => __TAURI_INVOKE<PruneReport>("build_cache_prune"),
-	/**  Whether Docker Desktop and `OrbStack` are installed and running. */
+	buildCachePrune: () => __TAURI_INVOKE<CleanUpReport>("build_cache_prune"),
+	/**
+	 *  Every engine on the Mac that can be copied from, and whether each is installed and running:
+	 *  Docker Desktop, `OrbStack`, Rancher Desktop, Colima profiles, Lima instances, Podman machines.
+	 */
 	migrationSources: () => __TAURI_INVOKE<SourceStatus[]>("migration_sources"),
 	/**  What the source has to bring over. Reading changes nothing there. */
 	migrationInventory: (source: MigrationSource) => __TAURI_INVOKE<Inventory>("migration_inventory", { source }),
@@ -181,7 +196,7 @@ export const commands = {
 	imageRemove: (id: string, force: boolean) => __TAURI_INVOKE<null>("image_remove", { id, force }),
 	imageTag: (id: string, reference: string) => __TAURI_INVOKE<null>("image_tag", { id, reference }),
 	/**  Deletes images no container uses; with `all` off, only dangling build layers. */
-	imagesPrune: (all: boolean) => __TAURI_INVOKE<PruneReport>("images_prune", { all }),
+	imagesPrune: (all: boolean) => __TAURI_INVOKE<CleanUpReport>("images_prune", { all }),
 	hubSearch: (term: string) => __TAURI_INVOKE<HubImage[]>("hub_search", { term }),
 	/**  Builds an image from a folder and Dockerfile, streaming `BuildKit`'s progress. */
 	imageBuild: (spec: BuildSpec, channel: Channel<OutputEvent>) => __TAURI_INVOKE<number>("image_build", { spec, channel }),
@@ -205,7 +220,7 @@ export const commands = {
 	volumeCreate: (name: string) => __TAURI_INVOKE<null>("volume_create", { name }),
 	volumeRemove: (name: string) => __TAURI_INVOKE<null>("volume_remove", { name }),
 	/**  Deletes every volume no container uses. */
-	volumesPrune: () => __TAURI_INVOKE<PruneReport>("volumes_prune"),
+	volumesPrune: () => __TAURI_INVOKE<CleanUpReport>("volumes_prune"),
 	/**  One folder of a volume, read through a short-lived helper container. */
 	volumeFiles: (name: string, path: string) => __TAURI_INVOKE<VolumeFile[]>("volume_files", { name, path }),
 	/**
@@ -412,6 +427,17 @@ export type ChangeSet = {
 	inserts: Cell[][],
 	/**  Primary keys of rows to delete. */
 	deletes: Cell[][],
+};
+
+/**  What a clean-up removed inside the engine, and what of that the Mac got back. */
+export type CleanUpReport = {
+	removed: number,
+	/**  What Docker says it freed inside the VM. */
+	reclaimedBytes: number,
+	/**  How much the VM disk files shrank on the Mac after the trim. */
+	returnedBytes: number,
+	/**  Why the trim failed; the clean-up itself still happened. */
+	trimError: string | null,
 };
 
 export type CliTool = {
@@ -748,6 +774,12 @@ export type EngineConfig = {
 	insecureRegistries: string[],
 };
 
+/**  The containers VM's disk files on the Mac. */
+export type EngineDisk = {
+	/**  Allocated size, so space Docker freed but the guest hasn't trimmed yet still counts. */
+	sizeBytes: number,
+};
+
 /**  What the engine says about itself. */
 export type EngineInfo = {
 	serverVersion: string,
@@ -771,6 +803,8 @@ export type EngineStatus = {
 	config: EngineConfig,
 	returnsMemory: boolean,
 	dockerSocket: string,
+	/**  Set while "Set Docker context" is on and the Docker CLI points at another engine. */
+	dockerContext: ForeignContext | null,
 };
 
 export type Enum = {
@@ -824,6 +858,15 @@ export type Filter = {
 };
 
 export type FilterOp = "equals" | "notEquals" | "greater" | "less" | "greaterOrEqual" | "lessOrEqual" | "contains" | "startsWith" | "isNull" | "isNotNull";
+
+/**  The Docker CLI's current context while it isn't Containeria's. */
+export type ForeignContext = {
+	name: string,
+	/**  Absent when no context has that name, so every `docker` command fails. */
+	endpoint: string | null,
+	/**  Whether something listens at the endpoint; absent when that can't be checked, as for `ssh://`. */
+	answers: boolean | null,
+};
 
 export type ForeignKey = {
 	schema: string | null,
@@ -1009,7 +1052,7 @@ export type InstanceStatus = "running" | "stopped" | "broken" | "unknown";
 export type Inventory = {
 	images: string[],
 	/**  Named volumes; anonymous ones travel with the container that uses them. */
-	volumes: string[],
+	volumes: MovableVolume[],
 	containers: MovableContainer[],
 };
 
@@ -1154,8 +1197,12 @@ export type MigrationPlan = {
 	start: boolean,
 };
 
-/**  Another container app on the Mac whose images, volumes and containers can be brought over. */
-export type MigrationSource = "dockerDesktop" | "orbStack";
+/**  One engine to copy from: an app, or one Colima profile, Lima instance or Podman machine. */
+export type MigrationSource = {
+	kind: SourceKind,
+	/**  The profile, instance or machine name; empty for the apps, which run one engine each. */
+	instance: string | null,
+};
 
 export type Mount = {
 	kind: MountKind,
@@ -1174,6 +1221,13 @@ export type MovableContainer = {
 	image: string,
 	project: string | null,
 	running: boolean,
+};
+
+/**  A named volume another engine has. */
+export type MovableVolume = {
+	name: string,
+	/**  Running containers that mount it. Copying it now may catch a database mid-write. */
+	inUseBy: string[],
 };
 
 /**  What a move reports, ending with `done` or `failed`. */
@@ -1320,12 +1374,6 @@ export type PreferencesChanged = null;
 /**  A hosted service on top of an engine, for its logo and its defaults. */
 export type Provider = "neon" | "supabase" | "timescale" | "planetscale";
 
-/**  What a clean-up removed. */
-export type PruneReport = {
-	removed: number,
-	reclaimedBytes: number,
-};
-
 /**  What a pull reports, ending with `done` or `failed`. */
 export type PullEvent = { kind: "progress"; progress: PullProgress } | { kind: "done" } | { kind: "failed"; message: string };
 
@@ -1387,6 +1435,11 @@ export type ResultColumn = {
 	name: string,
 	typeName: string,
 	kind: ValueKind,
+};
+
+/**  How much the VM disk files shrank on the Mac. */
+export type ReturnedSpace = {
+	returnedBytes: number,
 };
 
 /**  Why a route can't be reached right now. */
@@ -1506,10 +1559,15 @@ export type Sort = {
 	descending: boolean,
 };
 
+/**  Which kind of engine a source is. */
+export type SourceKind = "dockerDesktop" | "orbStack" | "rancherDesktop" | "colima" | "lima" | "podman";
+
 export type SourceStatus = {
 	source: MigrationSource,
+	/**  "Colima (default)", "Docker Desktop": what to call it. */
+	label: string,
 	installed: boolean,
-	/**  Its engine answers, so there's something to read. */
+	/**  Its engine answers, so there's something to read, and it's running next to Containeria. */
 	running: boolean,
 };
 

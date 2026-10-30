@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::pin::pin;
 
 use bollard::body_try_stream;
+use bollard::models::VolumeCreateRequest;
 use bollard::query_parameters::{
     CreateContainerOptionsBuilder, DownloadFromContainerOptionsBuilder, ImportImageOptionsBuilder,
     InspectContainerOptions, ListContainersOptionsBuilder, ListImagesOptionsBuilder,
@@ -35,19 +36,47 @@ pub struct MovableContainer {
     pub running: bool,
 }
 
+/// A named volume another engine has.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct MovableVolume {
+    pub name: String,
+    /// Running containers that mount it. Copying it now may catch a database mid-write.
+    pub in_use_by: Vec<String>,
+}
+
 /// What another engine has.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct Inventory {
     pub images: Vec<String>,
     /// Named volumes; anonymous ones travel with the container that uses them.
-    pub volumes: Vec<String>,
+    pub volumes: Vec<MovableVolume>,
     pub containers: Vec<MovableContainer>,
 }
 
 /// Docker names anonymous volumes with 64 hex characters.
 fn is_anonymous(volume: &str) -> bool {
     volume.len() == 64 && volume.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+/// The request that creates `volume` again on another engine with its driver and labels (so
+/// Compose adopts it as its own), and whether its files need copying. A volume whose options
+/// mount something else (`type=nfs`, `cifs`, `tmpfs`), or that a plugin keeps, is created with
+/// the same options and its files stay where they live. A bind to a folder inside the old
+/// engine's VM can't point anywhere here, so it becomes a plain volume holding a copy.
+fn recreation(volume: &bollard::models::Volume) -> (VolumeCreateRequest, bool) {
+    let options = &volume.options;
+    let bind = options.get("o").is_some_and(|o| o.split(',').any(|part| part == "bind"));
+    let mounts = options.get("type").is_some_and(|kind| !kind.is_empty() && kind != "none");
+    let request = VolumeCreateRequest {
+        name: Some(volume.name.clone()),
+        driver: Some(volume.driver.clone()),
+        driver_opts: Some(if bind { HashMap::new() } else { options.clone() }),
+        labels: Some(volume.labels.clone()),
+        ..Default::default()
+    };
+    (request, volume.driver == "local" && !mounts)
 }
 
 impl Docker {
@@ -74,22 +103,38 @@ impl Docker {
     /// Fails when the engine can't be reached.
     pub async fn inventory(&self) -> Result<Inventory> {
         let images = self.image_references().await?;
-        let mut volumes: Vec<String> = self
+        let options = ListContainersOptionsBuilder::new().all(true).build();
+        let raw = self.api.list_containers(Some(options)).await?;
+        let mut in_use: HashMap<String, Vec<String>> = HashMap::new();
+        for container in &raw {
+            if container.state != Some(bollard::models::ContainerSummaryStateEnum::RUNNING) {
+                continue;
+            }
+            let name = container.names.iter().flatten().next().map_or("", |name| name.as_str());
+            for mount in container.mounts.iter().flatten() {
+                if let (Some("volume"), Some(volume)) = (mount.typ.as_deref(), &mount.name) {
+                    in_use
+                        .entry(volume.clone())
+                        .or_default()
+                        .push(name.trim_start_matches('/').to_owned());
+                }
+            }
+        }
+        let mut volumes: Vec<MovableVolume> = self
             .api
             .list_volumes(None::<ListVolumesOptions>)
             .await?
             .volumes
             .unwrap_or_default()
             .into_iter()
-            .map(|volume| volume.name)
-            .filter(|name| !is_anonymous(name))
+            .filter(|volume| !is_anonymous(&volume.name))
+            .map(|volume| MovableVolume {
+                in_use_by: in_use.remove(&volume.name).unwrap_or_default(),
+                name: volume.name,
+            })
             .collect();
-        volumes.sort();
-        let options = ListContainersOptionsBuilder::new().all(true).build();
-        let containers = self
-            .api
-            .list_containers(Some(options))
-            .await?
+        volumes.sort_by(|a, b| a.name.cmp(&b.name));
+        let containers = raw
             .into_iter()
             .filter_map(|raw| {
                 let labels = raw.labels.unwrap_or_default();
@@ -126,13 +171,27 @@ impl Docker {
     }
 
     /// Copies every file of volume `name` into a volume of the same name in `target`, which is
-    /// created when missing. Reads through a read-only helper here and writes through one there.
+    /// created when missing with the source's driver, labels and options (see [`recreation`]).
+    /// Reads through a read-only helper here and writes through one there. Running containers
+    /// that use the volume keep running, so a database may be copied mid-write; callers warn.
+    ///
+    /// Ownership stays numeric. The helpers are only created, never started, so nothing inside
+    /// them (busybox's `tar`, its `/etc/passwd`) touches the files: both ends are the daemons'
+    /// own archive code. Download writes each file's numeric uid and gid with no user names
+    /// (`FileInfoHeaderNoLookups` in moby's go-archive), the stream is passed on byte for byte,
+    /// and upload without `copyUIDGID` lchowns each file to the uid and gid in its header. So a
+    /// Postgres volume owned by 999 stays 999 whatever image the helper is; only an engine with
+    /// user-namespace remapping shifts ids, and it shifts them back on the other side.
     ///
     /// # Errors
     /// Fails when either engine refuses or the copy is cut off.
     pub async fn copy_volume_to(&self, target: &Docker, name: &str) -> Result<()> {
+        let (request, copy_files) = recreation(&self.api.inspect_volume(name).await?);
         if target.api.inspect_volume(name).await.is_err() {
-            target.create_volume(name).await?;
+            target.api.create_volume(request).await?;
+        }
+        if !copy_files {
+            return Ok(());
         }
         let reader = Helper::create(self, vec![format!("{name}:{MOUNT}:ro")], &["true"]).await?;
         let writer = Helper::create(target, vec![format!("{name}:{MOUNT}")], &["true"]).await?;
@@ -237,7 +296,190 @@ impl Docker {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+    use std::sync::{Arc, Mutex};
+
+    use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+    use tokio::net::UnixListener;
+
     use super::*;
+
+    #[derive(Debug)]
+    struct Request {
+        method: String,
+        path: String,
+        body: Vec<u8>,
+    }
+
+    type Respond = fn(&str, &str) -> (u16, Vec<u8>);
+
+    /// A Docker engine on a Unix socket in `dir`: `respond(method, path)` answers each request,
+    /// one per connection, and every request is recorded with its body.
+    fn fake_engine(dir: &Path, respond: Respond) -> (Docker, Arc<Mutex<Vec<Request>>>) {
+        let socket = dir.join("docker.sock");
+        let listener = UnixListener::bind(&socket).unwrap();
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let record = seen.clone();
+        tokio::spawn(async move {
+            while let Ok((stream, _)) = listener.accept().await {
+                let record = record.clone();
+                tokio::spawn(async move {
+                    let mut stream = BufReader::new(stream);
+                    let request = read_request(&mut stream).await;
+                    let (status, reply) = respond(&request.method, &request.path);
+                    record.lock().unwrap().push(request);
+                    let head = format!(
+                        "HTTP/1.1 {status} X\r\nContent-Type: application/json\r\n\
+                         Content-Length: {}\r\nConnection: close\r\n\r\n",
+                        reply.len()
+                    );
+                    let stream = stream.get_mut();
+                    stream.write_all(head.as_bytes()).await.unwrap();
+                    stream.write_all(&reply).await.unwrap();
+                    stream.shutdown().await.unwrap();
+                });
+            }
+        });
+        (Docker::connect(&socket).unwrap(), seen)
+    }
+
+    async fn read_request(stream: &mut BufReader<tokio::net::UnixStream>) -> Request {
+        let mut line = String::new();
+        stream.read_line(&mut line).await.unwrap();
+        let mut parts = line.split_whitespace();
+        let method = parts.next().unwrap().to_owned();
+        let path = parts.next().unwrap().to_owned();
+        let (mut length, mut chunked) = (0, false);
+        loop {
+            let mut header = String::new();
+            stream.read_line(&mut header).await.unwrap();
+            let Some((name, value)) = header.trim_end().split_once(':') else { break };
+            match name.to_ascii_lowercase().as_str() {
+                "content-length" => length = value.trim().parse().unwrap(),
+                "transfer-encoding" => chunked = value.contains("chunked"),
+                _ => {}
+            }
+        }
+        let mut body = vec![0; length];
+        stream.read_exact(&mut body).await.unwrap();
+        while chunked {
+            let mut size = String::new();
+            stream.read_line(&mut size).await.unwrap();
+            let size = usize::from_str_radix(size.trim(), 16).unwrap();
+            let mut chunk = vec![0; size + 2];
+            stream.read_exact(&mut chunk).await.unwrap();
+            body.extend_from_slice(&chunk[..size]);
+            chunked = size > 0;
+        }
+        Request { method, path, body }
+    }
+
+    /// What the archive API hands out for a Postgres data volume: numeric ids, no user names.
+    fn postgres_archive() -> Vec<u8> {
+        let mut archive = tar::Builder::new(Vec::new());
+        for (path, data) in [("v/", &b""[..]), ("v/PG_VERSION", &b"18\n"[..])] {
+            let mut header = tar::Header::new_ustar();
+            header.set_entry_type(if data.is_empty() {
+                tar::EntryType::Directory
+            } else {
+                tar::EntryType::Regular
+            });
+            header.set_mode(0o700);
+            header.set_uid(999);
+            header.set_gid(999);
+            header.set_size(data.len() as u64);
+            archive.append_data(&mut header, path, data).unwrap();
+        }
+        archive.into_inner().unwrap()
+    }
+
+    fn postgres_volume() -> serde_json::Value {
+        serde_json::json!({
+            "Name": "shop_pgdata", "Driver": "local", "Mountpoint": "/var/lib/docker/volumes/x",
+            "Scope": "local", "Options": {},
+            "Labels": {
+                "com.docker.compose.project": "shop",
+                "com.docker.compose.volume": "pgdata",
+                "com.docker.compose.version": "2.40.3",
+            },
+        })
+    }
+
+    fn source(method: &str, path: &str) -> (u16, Vec<u8>) {
+        match (method, path.split('?').next().unwrap()) {
+            ("GET", "/volumes/shop_pgdata") => (200, postgres_volume().to_string().into()),
+            ("POST", "/containers/create") => (201, br#"{"Id":"reader","Warnings":[]}"#.into()),
+            ("GET", "/containers/reader/archive") => (200, postgres_archive()),
+            ("DELETE", _) => (204, Vec::new()),
+            _ => (200, b"{}".into()),
+        }
+    }
+
+    fn target(method: &str, path: &str) -> (u16, Vec<u8>) {
+        match (method, path.split('?').next().unwrap()) {
+            ("GET", "/volumes/shop_pgdata") => (404, br#"{"message":"no such volume"}"#.into()),
+            ("POST", "/volumes/create") => (201, postgres_volume().to_string().into()),
+            ("POST", "/containers/create") => (201, br#"{"Id":"writer","Warnings":[]}"#.into()),
+            ("DELETE", _) => (204, Vec::new()),
+            _ => (200, b"{}".into()),
+        }
+    }
+
+    #[tokio::test]
+    async fn copies_a_volume_with_its_compose_labels_and_numeric_owners() {
+        let (here, there) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        let (from, _) = fake_engine(here.path(), source);
+        let (to, seen) = fake_engine(there.path(), target);
+        from.copy_volume_to(&to, "shop_pgdata").await.unwrap();
+        let seen = seen.lock().unwrap();
+        let created = seen.iter().find(|request| request.path == "/volumes/create").unwrap();
+        let created: serde_json::Value = serde_json::from_slice(&created.body).unwrap();
+        assert_eq!(created["Labels"], postgres_volume()["Labels"]);
+        assert_eq!(created["Driver"], "local");
+        let upload = seen.iter().find(|request| request.method == "PUT").unwrap();
+        assert!(upload.path.starts_with("/containers/writer/archive"));
+        assert!(!upload.path.contains("copyUIDGID"), "would chown to the helper's user");
+        assert_eq!(upload.body, postgres_archive(), "the archive passes through untouched");
+        let mut archive = tar::Archive::new(upload.body.as_slice());
+        for entry in archive.entries().unwrap() {
+            let header = entry.unwrap().header().clone();
+            assert_eq!((header.uid().unwrap(), header.gid().unwrap()), (999, 999));
+        }
+    }
+
+    fn volume(options: &[(&str, &str)]) -> bollard::models::Volume {
+        bollard::models::Volume {
+            name: "media".to_owned(),
+            driver: "local".to_owned(),
+            labels: HashMap::from([(COMPOSE_PROJECT.to_owned(), "shop".to_owned())]),
+            options: options.iter().map(|(k, v)| ((*k).to_owned(), (*v).to_owned())).collect(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn creates_a_plain_volume_again_with_its_labels_and_copies_its_files() {
+        let (request, copy) = recreation(&volume(&[]));
+        assert_eq!(request.labels.unwrap()[COMPOSE_PROJECT], "shop");
+        assert_eq!(request.driver.as_deref(), Some("local"));
+        assert!(copy);
+    }
+
+    #[test]
+    fn keeps_a_network_share_pointing_at_the_share_without_copying_into_it() {
+        let options = [("type", "nfs"), ("o", "addr=10.0.0.2,rw"), ("device", ":/media")];
+        let (request, copy) = recreation(&volume(&options));
+        assert_eq!(request.driver_opts.unwrap()["device"], ":/media");
+        assert!(!copy);
+    }
+
+    #[test]
+    fn turns_a_bind_into_the_old_vm_into_a_copy_of_its_files() {
+        let options = [("type", "none"), ("o", "bind"), ("device", "/home/ada/media")];
+        let (request, copy) = recreation(&volume(&options));
+        assert_eq!(request.driver_opts, Some(HashMap::new()));
+        assert!(copy);
+    }
 
     #[test]
     fn leaves_anonymous_volumes_to_their_containers() {

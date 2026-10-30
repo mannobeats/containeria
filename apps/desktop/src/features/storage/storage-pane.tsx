@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { SettingsRow, SettingsSection } from "@/features/settings/settings-section";
 import { formatBytes } from "@/lib/format";
-import type { DataLocation, UsageGroup } from "@/lib/ipc/bindings";
+import type { DataLocation, DiskUsage, UsageGroup } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
 import { Banner } from "@/ui/banner";
 import { Button } from "@/ui/button";
@@ -21,8 +21,11 @@ import {
   useCleanUp,
   useDataLocation,
   useDiskUsage,
+  useEngineDisk,
   useMoveData,
+  useReturnFreeSpace,
 } from "./api";
+import { dockerBytes, offersTrim } from "./model";
 
 /** A move waiting for the user to confirm: the folder picked and where the data would go. */
 type Pending = { folder: string | null; target: string };
@@ -179,6 +182,33 @@ const CONFIRM: Record<CleanUp, { title: string; body: string }> = {
   },
 };
 
+/** The disk files' real size on the Mac against Docker's data, and a trim when they're far apart. */
+function OnTheMacRow({ usage }: { usage: DiskUsage }) {
+  const { data: disk } = useEngineDisk();
+  const returnFreeSpace = useReturnFreeSpace();
+  if (!disk) {
+    return null;
+  }
+  const docker = dockerBytes(usage);
+  const offered = offersTrim(disk.sizeBytes, docker);
+  return (
+    <SettingsRow
+      label="On the Mac"
+      hint={`The engine's disk takes ${formatBytes(disk.sizeBytes)}, of which Docker's data is ${formatBytes(docker)}.${offered ? " Most of the rest is free space the Mac can have back." : ""}`}
+    >
+      {offered ? (
+        <Button
+          size="sm"
+          loading={returnFreeSpace.isPending}
+          onClick={() => returnFreeSpace.mutate()}
+        >
+          Return Free Space to the Mac
+        </Button>
+      ) : null}
+    </SettingsRow>
+  );
+}
+
 function DiskUsageSection() {
   const { data: usage } = useDiskUsage();
   const cleanUp = useCleanUp();
@@ -189,8 +219,9 @@ function DiskUsageSection() {
   return (
     <SettingsSection
       title="Inside the engine"
-      note="Cleaning up frees space inside the engine's disk."
+      note="Cleaning up frees space inside the engine's disk, then gives it back to the Mac."
     >
+      <OnTheMacRow usage={usage} />
       {GROUPS.map((group) => {
         const numbers = usage[group.kind];
         return (

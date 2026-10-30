@@ -7,7 +7,9 @@ import type {
   ImportProgress,
   Inventory,
   ItemKind,
+  MigrationPlan,
   MigrationSource,
+  MovableVolume,
   SourceStatus,
 } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
@@ -16,17 +18,14 @@ import { Banner } from "@/ui/banner";
 import { Button } from "@/ui/button";
 import { Checkbox } from "@/ui/checkbox";
 import { Chip } from "@/ui/chip";
+import { ConfirmSheet } from "@/ui/confirm-sheet";
 import { Progress } from "@/ui/progress";
 import { Segmented } from "@/ui/segmented";
 import { Switch } from "@/ui/switch";
 import { Tile } from "@/ui/tile";
 
 import { progressKey, useInventory, useMigration, useMigrationSources } from "./api";
-
-const LABELS: Record<MigrationSource, string> = {
-  dockerDesktop: "Docker Desktop",
-  orbStack: "OrbStack",
-};
+import { listed, sourceKey, volumesInUse } from "./model";
 
 function Status({ progress }: { progress: ImportProgress | undefined }) {
   if (!progress) {
@@ -90,23 +89,84 @@ function Picker({ title, kind, items, chosen, onChosen, progress }: PickerProps)
   );
 }
 
+function InUseWarning({ volumes, name }: { volumes: MovableVolume[]; name: string }) {
+  if (volumes.length === 0) {
+    return null;
+  }
+  const users = [...new Set(volumes.flatMap((volume) => volume.inUseBy))];
+  return (
+    <Banner tone="warn">
+      {listed(volumes.map((volume) => volume.name))} {volumes.length === 1 ? "is" : "are"} in use by{" "}
+      {listed(users)}, still running in {name}. A database copied while it writes may not start from
+      the copy: stop {users.length === 1 ? "it" : "them"} there first, or copy anyway.
+    </Banner>
+  );
+}
+
+type CopyButtonProps = {
+  count: number;
+  inUse: MovableVolume[];
+  pending: boolean;
+  onCopy: () => void;
+};
+
+/** Copies at once, or asks first when a running container is using a volume being copied. */
+function CopyButton({ count, inUse, pending, onCopy }: CopyButtonProps) {
+  const [asking, setAsking] = useState(false);
+  return (
+    <>
+      <Button
+        variant="brand"
+        size="lg"
+        loading={pending}
+        disabled={count === 0}
+        onClick={() => (inUse.length > 0 ? setAsking(true) : onCopy())}
+      >
+        Copy {plural(count, "item")}
+      </Button>
+      <ConfirmSheet
+        open={asking}
+        onOpenChange={setAsking}
+        title="Copy volumes in use?"
+        action="Copy anyway"
+        onConfirm={() => {
+          setAsking(false);
+          onCopy();
+        }}
+      >
+        {listed(inUse.map((volume) => volume.name))} may be copied mid-write. The copy can miss the
+        latest changes, or a database in it may need recovery when it starts.
+      </ConfirmSheet>
+    </>
+  );
+}
+
 type ChoicesProps = {
   source: MigrationSource;
+  name: string;
   inventory: Inventory;
   onDone: () => void;
   doneLabel: string;
 };
 
-function Choices({ source, inventory, onDone, doneLabel }: ChoicesProps) {
+function Choices({ source, name, inventory, onDone, doneLabel }: ChoicesProps) {
   const [images, setImages] = useState(() => new Set(inventory.images));
-  const [volumes, setVolumes] = useState(() => new Set(inventory.volumes));
+  const [volumes, setVolumes] = useState(
+    () => new Set(inventory.volumes.map((volume) => volume.name)),
+  );
   const [containers, setContainers] = useState(
     () => new Set(inventory.containers.map((container) => container.id)),
   );
   const [start, setStart] = useState(false);
   const migration = useMigration();
   const count = images.size + volumes.size + containers.size;
-  const name = LABELS[source];
+  const inUse = volumesInUse(inventory, volumes, containers);
+  const plan: MigrationPlan = {
+    images: [...images],
+    volumes: [...volumes],
+    containers: [...containers],
+    start,
+  };
   return (
     <div className="flex flex-col gap-6">
       <Picker
@@ -124,7 +184,11 @@ function Choices({ source, inventory, onDone, doneLabel }: ChoicesProps) {
       <Picker
         title="Volumes"
         kind="volume"
-        items={inventory.volumes.map((volume) => ({ id: volume, label: volume }))}
+        items={inventory.volumes.map((volume) => ({
+          id: volume.name,
+          label: volume.name,
+          detail: volume.inUseBy.length > 0 ? "In use" : null,
+        }))}
         chosen={volumes}
         onChosen={setVolumes}
         progress={migration.progress}
@@ -158,6 +222,7 @@ function Choices({ source, inventory, onDone, doneLabel }: ChoicesProps) {
           </SettingsRow>
         </SettingsSection>
       ) : null}
+      <InUseWarning volumes={inUse} name={name} />
       <p className="m-0 text-12 text-ink-3">
         Nothing in {name} is changed or removed. Volumes are read through a short-lived helper
         container there.
@@ -167,25 +232,12 @@ function Choices({ source, inventory, onDone, doneLabel }: ChoicesProps) {
           {migration.isSuccess ? doneLabel : "Skip"}
         </Button>
         {migration.isSuccess ? null : (
-          <Button
-            variant="brand"
-            size="lg"
-            loading={migration.isPending}
-            disabled={count === 0}
-            onClick={() =>
-              migration.mutate({
-                source,
-                plan: {
-                  images: [...images],
-                  volumes: [...volumes],
-                  containers: [...containers],
-                  start,
-                },
-              })
-            }
-          >
-            Copy {plural(count, "item")}
-          </Button>
+          <CopyButton
+            count={count}
+            inUse={inUse}
+            pending={migration.isPending}
+            onCopy={() => migration.mutate({ source, plan })}
+          />
         )}
       </div>
     </div>
@@ -206,8 +258,8 @@ function NothingRunning({
   const installed = sources.filter((source) => source.installed);
   const message =
     installed.length > 0
-      ? `Open ${installed.map((source) => LABELS[source.source]).join(" or ")} to copy what's in it, then check again.`
-      : "Neither Docker Desktop nor OrbStack is installed on this Mac, so there's nothing to bring over.";
+      ? `Start ${installed.map((source) => source.label).join(" or ")} to copy what's in it, then check again.`
+      : "No other container engine is on this Mac, so there's nothing to bring over.";
   return (
     <>
       <Banner>{message}</Banner>
@@ -239,7 +291,7 @@ function SourcesFailed({
   return (
     <>
       <Banner tone="bad">
-        Containeria couldn't look for Docker Desktop and OrbStack: {errorMessage(error)}
+        Containeria couldn't look for other container engines: {errorMessage(error)}
       </Banner>
       <div className="mt-8 flex justify-end gap-2">
         <Button size="lg" onClick={onRetry}>
@@ -253,42 +305,61 @@ function SourcesFailed({
   );
 }
 
+/** Another engine takes the Docker context when it starts; say so while one is up. */
+function RunningAlongside({ running }: { running: SourceStatus[] }) {
+  const names = running.map((source) => source.label);
+  return (
+    <Banner>
+      {listed(names)} {names.length === 1 ? "is" : "are"} running next to Containeria. An engine
+      that starts can make itself the Docker CLI's current context, and then <code>docker</code> and{" "}
+      <code>docker compose</code> commands go to it instead of Containeria. Copy what you need, then
+      stop {names.length === 1 ? "it" : "them"}.
+    </Banner>
+  );
+}
+
 type MigrationViewProps = { onDone: () => void; doneLabel?: string };
 
-/** Copies images, volumes and containers from Docker Desktop or OrbStack into Containeria. */
+/** Copies images, volumes and containers from another engine on the Mac into Containeria. */
 export function MigrationView({ onDone, doneLabel = "Continue" }: MigrationViewProps) {
   const { data: sources, error, refetch } = useMigrationSources();
-  const running = (sources ?? []).filter((source) => source.running).map((source) => source.source);
-  const [picked, setPicked] = useState<MigrationSource | null>(null);
-  const source = picked && running.includes(picked) ? picked : (running[0] ?? null);
-  const { data: inventory } = useInventory(source);
+  const running = (sources ?? []).filter((source) => source.running);
+  const [picked, setPicked] = useState<string | null>(null);
+  const current =
+    running.find((status) => sourceKey(status.source) === picked) ?? running[0] ?? null;
+  const { data: inventory } = useInventory(current?.source ?? null);
   const retry = () => refetch().catch(() => undefined);
   // Also after a failed Check again, which keeps the last sources; a running one stays on screen.
-  if (error && source === null) {
+  if (error && current === null) {
     return <SourcesFailed error={error} onRetry={retry} onDone={onDone} doneLabel={doneLabel} />;
   }
   if (sources === undefined) {
-    return <Progress label="Looking for Docker Desktop and OrbStack" className="mx-auto w-60" />;
+    return <Progress label="Looking for other container engines" className="mx-auto w-60" />;
   }
-  if (source === null) {
+  if (current === null) {
     return (
       <NothingRunning sources={sources} onRetry={retry} onDone={onDone} doneLabel={doneLabel} />
     );
   }
   return (
     <div className="flex flex-col gap-5">
+      <RunningAlongside running={running} />
       {running.length > 1 ? (
         <Segmented
           label="Copy from"
-          value={source}
+          value={sourceKey(current.source)}
           onChange={setPicked}
-          options={running.map((value) => ({ value, label: LABELS[value] }))}
+          options={running.map((status) => ({
+            value: sourceKey(status.source),
+            label: status.label,
+          }))}
         />
       ) : null}
       {inventory ? (
         <Choices
-          key={source}
-          source={source}
+          key={sourceKey(current.source)}
+          source={current.source}
+          name={current.label}
           inventory={inventory}
           onDone={onDone}
           doneLabel={doneLabel}

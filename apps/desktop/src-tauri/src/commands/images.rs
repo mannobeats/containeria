@@ -1,7 +1,7 @@
 use std::pin::pin;
 
 use containeria_docker::{
-    BuildSpec, HubImage, ImageDetail, ImageSummary, PruneReport, PullProgress, ScanReport,
+    BuildSpec, HubImage, ImageDetail, ImageSummary, PullProgress, ScanReport,
 };
 use futures::StreamExt;
 use serde::Serialize;
@@ -11,6 +11,7 @@ use tauri::ipc::Channel;
 use crate::commands::streams::OutputEvent;
 use crate::error::{CommandError, ErrorKind, Result};
 use crate::state::AppState;
+use crate::storage::{CleanUpReport, Prune, clean_up};
 
 #[tauri::command]
 #[specta::specta]
@@ -81,8 +82,9 @@ pub(crate) async fn image_tag(
 /// Deletes images no container uses; with `all` off, only dangling build layers.
 #[tauri::command]
 #[specta::specta]
-pub(crate) async fn images_prune(state: State<'_, AppState>, all: bool) -> Result<PruneReport> {
-    Ok(state.engine.docker().await?.prune_images(all).await?)
+pub(crate) async fn images_prune(state: State<'_, AppState>, all: bool) -> Result<CleanUpReport> {
+    let docker = state.engine.docker().await?;
+    clean_up(&docker, state.engine.own_colima(), Prune::Images { all }).await
 }
 
 #[tauri::command]

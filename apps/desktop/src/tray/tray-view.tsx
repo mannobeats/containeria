@@ -12,6 +12,7 @@ import { useEngineEvents } from "@/app/use-engine-events";
 import { useContainerAction, useContainers } from "@/features/containers/api";
 import { isRunning } from "@/features/containers/model";
 import { canControl, isServing, useEngineControl, useEngineStatus } from "@/features/engine/api";
+import { DockerContextBanner } from "@/features/engine/docker-context-banner";
 import { usageById, useMetrics } from "@/features/metrics/api";
 import { MemoryLedger } from "@/features/metrics/memory-ledger";
 import { fitWindow } from "@/lib/fit-window";
@@ -155,6 +156,7 @@ export function TrayView() {
   return (
     <div ref={fitWindow} className="rounded-[10px] bg-bg text-ink-2">
       <Header />
+      <DockerContextBanner className="mx-3.5 mb-3" />
       <div className="px-3.5 pb-3">
         <span className="mb-1.5 flex justify-between text-12 text-ink-3">
           Memory
