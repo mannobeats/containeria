@@ -12,6 +12,7 @@ mod kubernetes;
 mod machines;
 mod menu;
 mod metrics;
+mod migration;
 mod notifications;
 mod preferences;
 mod settings_window;

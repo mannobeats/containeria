@@ -323,7 +323,7 @@ impl Engine {
         self.colima.as_ref()?.version().await.ok()
     }
 
-    fn socket(&self) -> PathBuf {
+    pub(crate) fn socket(&self) -> PathBuf {
         self.external_socket.clone().unwrap_or_else(|| self.home.docker_socket())
     }
 

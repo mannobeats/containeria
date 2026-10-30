@@ -10,7 +10,10 @@ import { WelcomePage } from "./welcome-page";
 
 const inventory: Inventory = {
   images: ["postgres:18", "redis:8"],
-  volumes: ["shop_pgdata"],
+  volumes: [
+    { name: "shop_pgdata", inUseBy: ["shop-db-1"] },
+    { name: "shop_media", inUseBy: [] },
+  ],
   containers: [
     { id: "c1", name: "shop-db-1", image: "postgres:18", project: "shop", running: true },
   ],
@@ -29,6 +32,21 @@ function renderWelcome(sources: SourceStatus[] | (() => SourceStatus[])) {
 }
 
 const names = (calls: { command: string }[]) => calls.map((call) => call.command);
+
+function desktop(status: Partial<SourceStatus> = {}): SourceStatus {
+  const source = { kind: "dockerDesktop", instance: null } as const;
+  return { source, label: "Docker Desktop", installed: true, running: false, ...status };
+}
+
+function orbStack(status: Partial<SourceStatus> = {}): SourceStatus {
+  const source = { kind: "orbStack", instance: null } as const;
+  return { source, label: "OrbStack", installed: true, running: false, ...status };
+}
+
+function colima(instance: string): SourceStatus {
+  const source = { kind: "colima", instance } as const;
+  return { source, label: `Colima (${instance})`, installed: true, running: true };
+}
 
 async function throughEngine() {
   await userEvent.click(await screen.findByRole("button", { name: "Get started" }));
@@ -55,8 +73,8 @@ describe("WelcomePage", () => {
 
   it("creates the engine, copies what's picked and finishes", async () => {
     const { calls, router } = renderWelcome([
-      { source: "dockerDesktop", installed: false, running: false },
-      { source: "orbStack", installed: true, running: true },
+      desktop({ installed: false }),
+      orbStack({ running: true }),
     ]);
     await throughEngine();
     await waitFor(() =>
@@ -66,10 +84,15 @@ describe("WelcomePage", () => {
     await userEvent.click(
       screen.getByRole("switch", { name: "Start containers that were running" }),
     );
+    await userEvent.click(screen.getByRole("checkbox", { name: "Copy shop_media" }));
+    expect(screen.getByText(/OrbStack is running next to Containeria/)).toBeDefined();
+    expect(screen.getByText(/shop_pgdata is in use by shop-db-1/)).toBeDefined();
     await userEvent.click(screen.getByRole("button", { name: "Copy 3 items" }));
+    expect(names(calls)).not.toContain("migrationImport");
+    await userEvent.click(await screen.findByRole("button", { name: "Copy anyway" }));
     await waitFor(() =>
       expect(calls.find((call) => call.command === "migrationImport")?.args).toMatchObject({
-        source: "orbStack",
+        source: { kind: "orbStack", instance: null },
         plan: {
           images: ["postgres:18"],
           volumes: ["shop_pgdata"],
@@ -89,12 +112,9 @@ describe("WelcomePage", () => {
   });
 
   it("explains when the app to copy from has to be opened first", async () => {
-    const { calls } = renderWelcome([
-      { source: "dockerDesktop", installed: true, running: false },
-      { source: "orbStack", installed: false, running: false },
-    ]);
+    const { calls } = renderWelcome([desktop(), orbStack({ installed: false })]);
     await throughEngine();
-    expect(await screen.findByText(/Open Docker Desktop to copy/)).toBeDefined();
+    expect(await screen.findByText(/Start Docker Desktop to copy/)).toBeDefined();
     await userEvent.click(screen.getByRole("button", { name: "Check again" }));
     await waitFor(() =>
       expect(names(calls).filter((name) => name === "migrationSources")).toHaveLength(2),
@@ -106,9 +126,9 @@ describe("WelcomePage", () => {
       throw { kind: "io", message: "Spotlight is off" };
     });
     await throughEngine();
-    expect(await screen.findByText(/couldn't look for Docker Desktop and OrbStack/)).toBeDefined();
+    expect(await screen.findByText(/couldn't look for other container engines/)).toBeDefined();
     expect(screen.getByText(/Spotlight is off/)).toBeDefined();
-    expect(screen.queryByText(/Neither Docker Desktop nor OrbStack/)).toBeNull();
+    expect(screen.queryByText(/No other container engine/)).toBeNull();
   });
 
   it("says why Check again failed instead of keeping the old answer", async () => {
@@ -118,13 +138,30 @@ describe("WelcomePage", () => {
         throw { kind: "io", message: "Spotlight is off" };
       }
       looked = true;
-      return [{ source: "dockerDesktop", installed: true, running: false }];
+      return [desktop()];
     });
     await throughEngine();
-    expect(await screen.findByText(/Open Docker Desktop to copy/)).toBeDefined();
+    expect(await screen.findByText(/Start Docker Desktop to copy/)).toBeDefined();
     await userEvent.click(screen.getByRole("button", { name: "Check again" }));
     expect(await screen.findByText(/Spotlight is off/)).toBeDefined();
-    expect(screen.queryByText(/Open Docker Desktop to copy/)).toBeNull();
+    expect(screen.queryByText(/Start Docker Desktop to copy/)).toBeNull();
+  });
+
+  it("names each Colima profile and copies from the one picked", async () => {
+    const { calls } = renderWelcome([desktop(), colima("default"), colima("work")]);
+    await throughEngine();
+    expect(
+      await screen.findByText(/Colima \(default\) and Colima \(work\) are running next to/),
+    ).toBeDefined();
+    await userEvent.click(screen.getByRole("radio", { name: "Colima (work)" }));
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Copy shop_pgdata" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Copy shop-db-1" }));
+    await userEvent.click(screen.getByRole("button", { name: "Copy 3 items" }));
+    await waitFor(() =>
+      expect(calls.find((call) => call.command === "migrationImport")?.args).toMatchObject({
+        source: { kind: "colima", instance: "work" },
+      }),
+    );
   });
 
   it("can be skipped, and doesn't open again", async () => {

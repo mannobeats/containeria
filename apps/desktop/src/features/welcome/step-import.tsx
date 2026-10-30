@@ -1,6 +1,6 @@
 import { MigrationView } from "./migration-view";
 
-/** Brings images, volumes and containers over from Docker Desktop or OrbStack. */
+/** Brings images, volumes and containers over from another engine on the Mac. */
 export function StepImport({ onDone }: { onDone: () => void }) {
   return (
     <>

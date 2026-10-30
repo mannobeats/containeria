@@ -72,7 +72,10 @@ export const commands = {
 	containersPrune: () => __TAURI_INVOKE<PruneReport>("containers_prune"),
 	/**  Deletes the build cache no build is using. */
 	buildCachePrune: () => __TAURI_INVOKE<PruneReport>("build_cache_prune"),
-	/**  Whether Docker Desktop and `OrbStack` are installed and running. */
+	/**
+	 *  Every engine on the Mac that can be copied from, and whether each is installed and running:
+	 *  Docker Desktop, `OrbStack`, Rancher Desktop, Colima profiles, Lima instances, Podman machines.
+	 */
 	migrationSources: () => __TAURI_INVOKE<SourceStatus[]>("migration_sources"),
 	/**  What the source has to bring over. Reading changes nothing there. */
 	migrationInventory: (source: MigrationSource) => __TAURI_INVOKE<Inventory>("migration_inventory", { source }),
@@ -1022,7 +1025,7 @@ export type InstanceStatus = "running" | "stopped" | "broken" | "unknown";
 export type Inventory = {
 	images: string[],
 	/**  Named volumes; anonymous ones travel with the container that uses them. */
-	volumes: string[],
+	volumes: MovableVolume[],
 	containers: MovableContainer[],
 };
 
@@ -1167,8 +1170,12 @@ export type MigrationPlan = {
 	start: boolean,
 };
 
-/**  Another container app on the Mac whose images, volumes and containers can be brought over. */
-export type MigrationSource = "dockerDesktop" | "orbStack";
+/**  One engine to copy from: an app, or one Colima profile, Lima instance or Podman machine. */
+export type MigrationSource = {
+	kind: SourceKind,
+	/**  The profile, instance or machine name; empty for the apps, which run one engine each. */
+	instance: string | null,
+};
 
 export type Mount = {
 	kind: MountKind,
@@ -1187,6 +1194,13 @@ export type MovableContainer = {
 	image: string,
 	project: string | null,
 	running: boolean,
+};
+
+/**  A named volume another engine has. */
+export type MovableVolume = {
+	name: string,
+	/**  Running containers that mount it. Copying it now may catch a database mid-write. */
+	inUseBy: string[],
 };
 
 /**  What a move reports, ending with `done` or `failed`. */
@@ -1519,10 +1533,15 @@ export type Sort = {
 	descending: boolean,
 };
 
+/**  Which kind of engine a source is. */
+export type SourceKind = "dockerDesktop" | "orbStack" | "rancherDesktop" | "colima" | "lima" | "podman";
+
 export type SourceStatus = {
 	source: MigrationSource,
+	/**  "Colima (default)", "Docker Desktop": what to call it. */
+	label: string,
 	installed: boolean,
-	/**  Its engine answers, so there's something to read. */
+	/**  Its engine answers, so there's something to read, and it's running next to Containeria. */
 	running: boolean,
 };
 

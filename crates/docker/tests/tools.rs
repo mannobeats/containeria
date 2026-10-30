@@ -285,7 +285,8 @@ async fn copies_volumes_and_containers_to_another_engine() {
     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
     let inventory = docker.inventory().await.unwrap();
-    assert!(inventory.volumes.contains(&volume));
+    let moving = inventory.volumes.iter().find(|moving| moving.name == volume).unwrap();
+    assert_eq!(moving.in_use_by, [format!("containeria-test-app-{id}")]);
     assert!(inventory.containers.iter().any(|container| container.id == source_id));
 
     let copied = docker.copy_container_to(&target, &source_id, true).await.unwrap();
