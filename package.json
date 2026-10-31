@@ -17,7 +17,7 @@
     "fix": "biome check --write . && cargo fmt --all"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.15",
-    "fallow": "3.34.0"
+    "@biomejs/biome": "2.6.3",
+    "fallow": "3.37.0"
   }
 }
