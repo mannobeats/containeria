@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Channel } from "@tauri-apps/api/core";
 import { useState } from "react";
 
@@ -18,8 +18,7 @@ export function useMigrationSources() {
 export function useInventory(source: MigrationSource | null) {
   return useQuery({
     queryKey: ["migration", "inventory", source],
-    queryFn: () => commands.migrationInventory(source ?? "dockerDesktop"),
-    enabled: source !== null,
+    queryFn: source ? () => commands.migrationInventory(source) : skipToken,
   });
 }
 

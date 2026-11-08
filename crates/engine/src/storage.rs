@@ -70,6 +70,17 @@ pub fn location(home: &Home) -> DataLocation {
     DataLocation { path: target.to_string_lossy().into_owned(), is_default, available, size_bytes }
 }
 
+/// The space one profile's VM disks take on the Mac: Lima's instance folder, which holds the boot
+/// disk, and the profile's data disk in `_disks`, where Docker's or Incus's data lives. Holes count
+/// as nothing, so this is what the Mac really gave up, not the size the disks can grow to.
+#[must_use]
+pub fn disk_size(home: &Home, profile: Profile) -> u64 {
+    // Colima names a profile's Lima instance, and its data disk, `colima-<profile>`.
+    let name = format!("colima-{}", profile.name());
+    let lima = home.lima();
+    allocated_size(&lima.join(&name)) + allocated_size(&lima.join("_disks").join(&name))
+}
+
 /// The folder the data would move to inside `folder`, after checking it can hold it. `None` is
 /// the default location.
 ///

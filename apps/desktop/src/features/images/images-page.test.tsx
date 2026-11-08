@@ -39,7 +39,12 @@ function setup(images = [postgres, redis, layer]) {
     engineStatus: () => engineFixture(),
     imagesList: () => images,
     containersList: () => [containerFixture({ id: "db", name: "shop-db-1", image: "postgres:18" })],
-    imagesPrune: () => ({ removed: 2, reclaimedBytes: 150_000_000 }),
+    imagesPrune: () => ({
+      removed: 2,
+      reclaimedBytes: 150_000_000,
+      returnedBytes: 140_000_000,
+      trimError: null,
+    }),
     hubSearch: () => [
       { name: "nginx", description: "Official build of Nginx", official: true, stars: 20_600 },
     ],

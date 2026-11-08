@@ -143,6 +143,12 @@ impl Colima {
             })
     }
 
+    /// Colima at a known path, such as a stand-in script in a test.
+    #[must_use]
+    pub const fn at(bin: PathBuf, home: Home) -> Self {
+        Self { bin, home }
+    }
+
     #[must_use]
     pub const fn home(&self) -> &Home {
         &self.home
@@ -174,6 +180,36 @@ impl Colima {
     pub async fn runtime(&self, profile: Profile) -> Result<RuntimeInfo> {
         let stdout = self.output("status", Some(profile), ["status", "--json"]).await?;
         Ok(serde_json::from_str(&stdout)?)
+    }
+
+    /// Has each running profile's guest discard its free blocks with `fstrim -a`, so space freed
+    /// inside the VM leaves its sparse disk files, and returns how many bytes those files shrank
+    /// by on the Mac. The guest's weekly `fstrim.timer` does the same, but long after a clean-up.
+    ///
+    /// Runs through `colima ssh`, not a privileged `nsenter` container like the engine shell: the
+    /// machines profile has no Docker to start one in, and `ssh` reaches both guests the same way
+    /// with the tools Colima already bundles.
+    ///
+    /// # Errors
+    /// Fails when Colima can't list the profiles or a guest's trim fails.
+    pub async fn return_free_space(&self) -> Result<u64> {
+        let list = self.output("list", None, ["list", "--json"]).await?;
+        let mut running = Vec::new();
+        for profile in [Profile::Containers, Profile::Machines] {
+            let instance = find_instance(&list, profile)?;
+            if instance.is_some_and(|instance| instance.status == InstanceStatus::Running) {
+                running.push(profile);
+            }
+        }
+        let size = || -> u64 {
+            running.iter().map(|profile| crate::storage::disk_size(&self.home, *profile)).sum()
+        };
+        let before = size();
+        for profile in &running {
+            let trim = ["ssh", "--profile", profile.name(), "--", "sudo", "fstrim", "-a"];
+            self.output("ssh -- sudo fstrim -a", None, trim).await?;
+        }
+        Ok(before.saturating_sub(size()))
     }
 
     /// The Colima release, such as `0.10.3`.
@@ -325,7 +361,48 @@ fn pin_virtiofs(lima: &Path) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+
     use super::*;
+
+    /// A stand-in `colima` that logs its arguments, lists the containers profile as running and the
+    /// machines one as stopped, and makes `ssh` empty that profile's data disk, as a trim would.
+    fn fake_colima(root: &Path) -> Colima {
+        let home = Home::at(root.join("home"));
+        for profile in [Profile::Containers, Profile::Machines] {
+            let name = format!("colima-{}", profile.name());
+            let disks = home.lima().join("_disks").join(&name);
+            std::fs::create_dir_all(&disks).unwrap();
+            std::fs::create_dir_all(home.lima().join(&name)).unwrap();
+            std::fs::write(disks.join("datadisk"), vec![1; 2 * 1024 * 1024]).unwrap();
+            std::fs::write(home.lima().join(&name).join("diffdisk"), vec![1; 1024 * 1024]).unwrap();
+        }
+        let bin = root.join("colima");
+        let script = format!(
+            "#!/bin/sh\necho \"$*\" >> {log}\ncase \"$1\" in\n\
+             list) echo '{{\"name\":\"containeria\",\"status\":\"Running\"}}'\n\
+             echo '{{\"name\":\"containeria-machines\",\"status\":\"Stopped\"}}' ;;\n\
+             ssh) : > \"$COLIMA_HOME/_lima/_disks/colima-$3/datadisk\" ;;\nesac\n",
+            log = root.join("log").display()
+        );
+        std::fs::write(&bin, script).unwrap();
+        std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
+        Colima::at(bin, home)
+    }
+
+    #[tokio::test]
+    async fn trims_only_running_profiles_and_reports_what_their_disks_gave_back() {
+        let root = tempfile::tempdir().unwrap();
+        let colima = fake_colima(root.path());
+        let datadisk = colima.home().lima().join("_disks/colima-containeria/datadisk");
+        let before = std::fs::metadata(&datadisk).unwrap().blocks() * 512;
+        let machines_before = crate::storage::disk_size(colima.home(), Profile::Machines);
+
+        assert_eq!(colima.return_free_space().await.unwrap(), before);
+        let log = std::fs::read_to_string(root.path().join("log")).unwrap();
+        assert_eq!(log, "list --json\nssh --profile containeria -- sudo fstrim -a\n");
+        assert_eq!(crate::storage::disk_size(colima.home(), Profile::Machines), machines_before);
+    }
 
     #[test]
     fn looks_next_to_colima_then_in_homebrew() {

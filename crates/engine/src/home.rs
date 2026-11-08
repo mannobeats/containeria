@@ -22,6 +22,12 @@ impl Profile {
         }
     }
 
+    /// The Docker CLI context Colima creates for this profile.
+    #[must_use]
+    pub fn docker_context(self) -> String {
+        format!("colima-{}", self.name())
+    }
+
     #[must_use]
     pub const fn runtime(self) -> &'static str {
         match self {

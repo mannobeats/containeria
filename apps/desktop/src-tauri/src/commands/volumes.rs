@@ -1,10 +1,11 @@
 use std::path::PathBuf;
 
-use containeria_docker::{PruneReport, VolumeFile, VolumeSummary};
+use containeria_docker::{VolumeFile, VolumeSummary};
 use tauri::State;
 
 use crate::error::Result;
 use crate::state::AppState;
+use crate::storage::{CleanUpReport, Prune, clean_up};
 
 #[tauri::command]
 #[specta::specta]
@@ -27,8 +28,9 @@ pub(crate) async fn volume_remove(state: State<'_, AppState>, name: String) -> R
 /// Deletes every volume no container uses.
 #[tauri::command]
 #[specta::specta]
-pub(crate) async fn volumes_prune(state: State<'_, AppState>) -> Result<PruneReport> {
-    Ok(state.engine.docker().await?.prune_volumes().await?)
+pub(crate) async fn volumes_prune(state: State<'_, AppState>) -> Result<CleanUpReport> {
+    let docker = state.engine.docker().await?;
+    clean_up(&docker, state.engine.own_colima(), Prune::Volumes).await
 }
 
 /// One folder of a volume, read through a short-lived helper container.

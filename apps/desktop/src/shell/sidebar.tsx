@@ -10,6 +10,7 @@ import { useContainers } from "@/features/containers/api";
 import { isCrashed } from "@/features/containers/model";
 import { SidebarConnections } from "@/features/data/sidebar-connections";
 import { canControl, isServing, useEngineControl, useEngineStatus } from "@/features/engine/api";
+import { DockerContextBanner } from "@/features/engine/docker-context-banner";
 import { useImages } from "@/features/images/api";
 import { useFailingPods } from "@/features/kubernetes/api";
 import { useMetrics } from "@/features/metrics/api";
@@ -237,6 +238,7 @@ export function Sidebar() {
         </Tip>
       </div>
       <EngineCard />
+      <DockerContextBanner className="mx-2.5 mb-2" />
       <button
         type="button"
         onClick={() => openPalette(true)}

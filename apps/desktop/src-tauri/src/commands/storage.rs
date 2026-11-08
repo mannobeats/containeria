@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
-use containeria_docker::{DiskUsage, PruneReport};
-use containeria_engine::{DataLocation, MoveProgress};
+use containeria_docker::DiskUsage;
+use containeria_engine::{DataLocation, MoveProgress, Profile};
 use serde::Serialize;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, State};
@@ -9,7 +9,7 @@ use tauri::{AppHandle, Manager, State};
 use crate::engine::EnginePhase;
 use crate::error::{CommandError, ErrorKind, Result};
 use crate::state::AppState;
-use crate::storage::MoveGuard;
+use crate::storage::{CleanUpReport, MoveGuard, Prune, clean_up};
 
 /// Where the engine's disks live and how much room they take.
 #[tauri::command]
@@ -183,18 +183,62 @@ pub(crate) async fn storage_usage(state: State<'_, AppState>) -> Result<DiskUsag
     Ok(state.engine.docker().await?.disk_usage().await?)
 }
 
+/// The containers VM's disk files on the Mac.
+#[derive(Debug, Clone, Copy, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct EngineDisk {
+    /// Allocated size, so space Docker freed but the guest hasn't trimmed yet still counts.
+    #[specta(type = specta_typescript::Number)]
+    pub(crate) size_bytes: u64,
+}
+
+/// What the containers VM's disk really takes on the Mac, or `None` on another Docker engine.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn storage_engine_disk(state: State<'_, AppState>) -> Result<Option<EngineDisk>> {
+    if state.engine.own_colima().is_none() {
+        return Ok(None);
+    }
+    let size_bytes = containeria_engine::disk_size(state.engine.home(), Profile::Containers);
+    Ok(Some(EngineDisk { size_bytes }))
+}
+
+/// How much the VM disk files shrank on the Mac.
+#[derive(Debug, Clone, Copy, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ReturnedSpace {
+    #[specta(type = specta_typescript::Number)]
+    pub(crate) returned_bytes: u64,
+}
+
+/// Trims every running VM, without cleaning anything up, so space already freed inside goes back
+/// to the Mac.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn storage_return_free_space(state: State<'_, AppState>) -> Result<ReturnedSpace> {
+    let colima = state.engine.own_colima().ok_or_else(|| {
+        CommandError::new(
+            ErrorKind::InvalidInput,
+            "Containeria is using another Docker engine, whose disk it doesn't manage.",
+        )
+    })?;
+    Ok(ReturnedSpace { returned_bytes: colima.return_free_space().await? })
+}
+
 /// Deletes every stopped container.
 #[tauri::command]
 #[specta::specta]
-pub(crate) async fn containers_prune(state: State<'_, AppState>) -> Result<PruneReport> {
-    Ok(state.engine.docker().await?.prune_containers().await?)
+pub(crate) async fn containers_prune(state: State<'_, AppState>) -> Result<CleanUpReport> {
+    let docker = state.engine.docker().await?;
+    clean_up(&docker, state.engine.own_colima(), Prune::Containers).await
 }
 
 /// Deletes the build cache no build is using.
 #[tauri::command]
 #[specta::specta]
-pub(crate) async fn build_cache_prune(state: State<'_, AppState>) -> Result<PruneReport> {
-    Ok(state.engine.docker().await?.prune_build_cache().await?)
+pub(crate) async fn build_cache_prune(state: State<'_, AppState>) -> Result<CleanUpReport> {
+    let docker = state.engine.docker().await?;
+    clean_up(&docker, state.engine.own_colima(), Prune::BuildCache).await
 }
 
 #[cfg(test)]

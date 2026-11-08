@@ -7,7 +7,7 @@ import { queryKeys } from "@/app/query-keys";
 import { useRemoveMany } from "@/app/use-remove-many";
 import { isServing, useEngineStatus } from "@/features/engine/api";
 import { notifyWhenAway } from "@/features/settings/api";
-import { formatBytes } from "@/lib/format";
+import { announceCleanUp } from "@/features/storage/api";
 import { commands, type ImageSummary, type PullEvent } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
 
@@ -91,9 +91,10 @@ export function usePruneImages() {
   return useMutation({
     mutationFn: (all: boolean) => commands.imagesPrune(all),
     onSuccess: (report) =>
-      toast.success(`Freed ${formatBytes(report.reclaimedBytes)}`, {
-        description: `${report.removed} ${report.removed === 1 ? "image" : "images"} deleted`,
-      }),
+      announceCleanUp(
+        report,
+        `${report.removed} ${report.removed === 1 ? "image" : "images"} deleted`,
+      ),
     onError: (error) => toast.error("Clean-up failed", { description: errorMessage(error) }),
     onSettled: invalidate,
   });

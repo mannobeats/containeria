@@ -43,7 +43,7 @@ pub use scan::{ScanReport, Severity, Vulnerability};
 pub use shell::{Shell, ShellTarget, Utf8Decoder};
 pub use stats::{CpuCounters, StatsSample, Usage};
 pub use system::{DiskUsage, EngineInfo, UsageGroup};
-pub use transfer::{Inventory, MovableContainer};
+pub use transfer::{Inventory, MovableContainer, MovableVolume};
 pub use volumes::{VolumeFile, VolumeFileKind, VolumeSummary, VolumeUser};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

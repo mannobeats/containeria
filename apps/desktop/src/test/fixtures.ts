@@ -49,6 +49,7 @@ export function engineFixture(overrides: Partial<EngineStatus> = {}): EngineStat
     },
     returnsMemory: false,
     dockerSocket: "/Users/ada/.containeria/colima/containeria/docker.sock",
+    dockerContext: null,
     ...overrides,
   };
 }

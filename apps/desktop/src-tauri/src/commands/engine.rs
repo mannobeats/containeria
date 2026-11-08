@@ -1,9 +1,11 @@
 use containeria_engine::{EngineConfig, LogLine};
 use tauri::ipc::Channel;
 use tauri::{AppHandle, State};
+use tauri_specta::Event;
 
-use crate::engine::EngineStatus;
+use crate::engine::{Engine, EngineStatus};
 use crate::error::Result;
+use crate::events::EngineChanged;
 use crate::state::AppState;
 
 #[tauri::command]
@@ -41,6 +43,15 @@ pub(crate) async fn engine_restart(
 ) -> Result<()> {
     state.engine.stop(&app, |line| drop(progress.send(line.clone()))).await?;
     state.engine.start(&app, |line| drop(progress.send(line))).await
+}
+
+/// Points the Docker CLI's current context back at Containeria, as `docker context use` does.
+#[tauri::command]
+#[specta::specta]
+pub(crate) async fn engine_use_docker_context(app: AppHandle) -> Result<()> {
+    Engine::use_docker_context()?;
+    EngineChanged.emit(&app)?;
+    Ok(())
 }
 
 #[tauri::command]

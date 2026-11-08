@@ -25,7 +25,12 @@ function setup(volumes = [pgdata, cache]) {
   const calls = mockCommands({
     engineStatus: () => engineFixture(),
     volumesList: () => volumes,
-    volumesPrune: () => ({ removed: 1, reclaimedBytes: 100_000_000 }),
+    volumesPrune: () => ({
+      removed: 1,
+      reclaimedBytes: 100_000_000,
+      returnedBytes: 0,
+      trimError: "`colima ssh -- sudo fstrim -a` failed: the VM didn't answer",
+    }),
   });
   renderWithApp(<VolumesPage />);
   return calls;

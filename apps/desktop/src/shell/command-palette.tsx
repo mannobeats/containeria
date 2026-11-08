@@ -120,7 +120,7 @@ export function CommandPalette() {
                 />
                 <Item
                   icon="container"
-                  label="Import from Docker Desktop or OrbStack…"
+                  label="Import from another engine…"
                   onSelect={run(() => navigate({ to: "/import" }))}
                 />
                 <Item

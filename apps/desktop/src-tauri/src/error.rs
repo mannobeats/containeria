@@ -69,6 +69,7 @@ impl From<containeria_engine::Error> for CommandError {
             containeria_engine::Error::ColimaMissing { .. } => ErrorKind::EngineMissing,
             containeria_engine::Error::Command { .. } => ErrorKind::Engine,
             containeria_engine::Error::Storage(_) => ErrorKind::InvalidInput,
+            containeria_engine::Error::NoDockerContext(_) => ErrorKind::NotFound,
             _ => ErrorKind::Internal,
         };
         Self::new(kind, error.to_string())
