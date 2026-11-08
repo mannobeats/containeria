@@ -91,6 +91,15 @@ todo = "warn"
 unimplemented = "warn"
 unwrap_used = "warn"
 
+# On macOS a debug build keeps its debug info in object files next to every build, and Cargo
+# never deletes a build it has replaced, so full debug info grew `target/` past 170 GB. Line
+# tables keep file and line numbers in panics and backtraces; dependencies get none.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
+
 [profile.release]
 codegen-units = 1
 lto = "fat"

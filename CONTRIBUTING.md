@@ -18,6 +18,9 @@ pnpm dev
 | `CONTAINERIA_COLIMA` | Path to a Colima binary to use instead of the bundled or installed one. |
 | `RUST_LOG` | Rust log filter, for example `info` or `containeria_app=debug`. |
 
+Cargo never deletes a build it has replaced, so `target/` keeps growing with every dependency or
+toolchain update. Run `cargo clean` now and then; the next `pnpm check` rebuilds what it needs.
+
 ## Making a change
 
 1. Read the convention doc for the area you touch (linked from [AGENTS.md](AGENTS.md)).
