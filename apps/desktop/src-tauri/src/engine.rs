@@ -75,6 +75,24 @@ pub(crate) async fn start_with_app(app: AppHandle) {
     }
 }
 
+/// Stops the engine and the machines VM as the app quits, when Settings start the engine with the
+/// app. Logging out, restarting or shutting down the Mac quits the app first, so the containers
+/// get a clean stop instead of having the VM cut off under them.
+pub(crate) fn stop_with_app(app: &AppHandle) {
+    let state = app.state::<AppState>();
+    if state.preferences.get().start_engine != StartEngine::WithApp {
+        return;
+    }
+    let (engine, machines) = tauri::async_runtime::block_on(async {
+        futures::join!(state.engine.stop_on_quit(), state.machines.stop_on_quit())
+    });
+    for (vm, result) in [("engine", engine), ("machines VM", machines)] {
+        if let Err(error) = result {
+            tracing::warn!("the {vm} didn't stop as the app quit: {}", error.message);
+        }
+    }
+}
+
 fn starts_with_app(choice: StartEngine, phase: EnginePhase) -> bool {
     choice == StartEngine::WithApp && phase == EnginePhase::Stopped
 }
@@ -180,6 +198,16 @@ impl Engine {
         self.forget_docker().await;
         self.transition_while(app, EnginePhase::Stopping, colima.stop(Profile::Containers, on_line))
             .await
+    }
+
+    /// Stops a running VM as the app quits. Docker stops each container cleanly on the way down,
+    /// where a Mac logging out or shutting down would otherwise cut the VM off mid-write. Nothing
+    /// is emitted: the windows are already gone.
+    pub(crate) async fn stop_on_quit(&self) -> Result<()> {
+        if self.is_external() || self.phase().await?.0 != EnginePhase::Running {
+            return Ok(());
+        }
+        Ok(self.colima()?.stop(Profile::Containers, |_| {}).await?)
     }
 
     /// Deletes the engine's VM with every image, container, volume and the Kubernetes cluster in it.
