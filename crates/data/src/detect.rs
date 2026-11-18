@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use containeria_docker::{ContainerState, ContainerSummary};
+use contena_docker::{ContainerState, ContainerSummary};
 use serde::Serialize;
 
 use crate::connection::Target;
@@ -112,7 +112,7 @@ fn credentials(engine: Engine, env: &HashMap<String, String>) -> Credentials {
     }
 }
 
-/// The engine, if this container runs a database Containeria can open. Tools named after a
+/// The engine, if this container runs a database Contena can open. Tools named after a
 /// database (`redis-commander`, `postgres-exporter`) don't expose its port, so they don't match.
 #[must_use]
 pub(crate) fn engine_for(container: &ContainerSummary) -> Option<Engine> {
@@ -168,7 +168,7 @@ pub(crate) fn target(detected: &Detected, env: &HashMap<String, String>) -> Opti
 
 #[cfg(test)]
 mod tests {
-    use containeria_docker::{Port, PortProtocol};
+    use contena_docker::{Port, PortProtocol};
 
     use super::*;
 

@@ -5,7 +5,7 @@ use std::path::Path;
 use std::sync::{Arc, PoisonError, RwLock};
 use std::time::Duration;
 
-use containeria_proto::{Forward, Transport};
+use contena_proto::{Forward, Transport};
 use http_body_util::{Either, Full};
 use hyper::body::{Bytes, Incoming};
 use hyper::header::{CONTENT_TYPE, HOST, HeaderValue, UPGRADE};
@@ -33,7 +33,7 @@ type Inside = Arc<Path>;
 type Body = Either<Incoming, Full<Bytes>>;
 type BoxError = Box<dyn StdError + Send + Sync>;
 
-/// Binds the first of `ports` that is free on 127.0.0.1, so `http://name.containeria.local` works
+/// Binds the first of `ports` that is free on 127.0.0.1, so `http://name.contena.local` works
 /// without a port when 80 and 443 are available and falls back to a fixed high port otherwise.
 ///
 /// # Errors
@@ -132,7 +132,7 @@ async fn proxy(
         table.find(&host).map(|route| (route.container.clone(), route.port, route.upstream))
     };
     let response = match route {
-        None => page(StatusCode::NOT_FOUND, format!("Containeria has no route for {host}.\n")),
+        None => page(StatusCode::NOT_FOUND, format!("Contena has no route for {host}.\n")),
         Some((container, _, None)) => page(
             StatusCode::BAD_GATEWAY,
             format!("{container} isn't running, or has no port {host} could go to.\n"),
@@ -234,7 +234,7 @@ pub(crate) fn tls_config(authority: Arc<Authority>, table: Table) -> Result<Arc<
 
 #[cfg(test)]
 mod tests {
-    use containeria_docker::{ContainerState, ContainerSummary, Port, PortProtocol};
+    use contena_docker::{ContainerState, ContainerSummary, Port, PortProtocol};
     use rustls::pki_types::ServerName;
     use rustls::{ClientConfig, RootCertStore};
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -297,13 +297,7 @@ mod tests {
             port: 8080,
             https: true,
         }];
-        Arc::new(RwLock::new(RouteTable::build(
-            "containeria.local",
-            &[container],
-            &[],
-            &custom,
-            true,
-        )))
+        Arc::new(RwLock::new(RouteTable::build("contena.local", &[container], &[], &custom, true)))
     }
 
     async fn get<S: AsyncRead + AsyncWrite + Unpin>(mut stream: S, host: &str) -> String {
@@ -327,7 +321,7 @@ mod tests {
         assert!(response.ends_with("v2.shop.test http /hello?x=1"), "{response}");
 
         let missing =
-            get(TcpStream::connect(address).await.unwrap(), "nothing.containeria.local").await;
+            get(TcpStream::connect(address).await.unwrap(), "nothing.contena.local").await;
         assert!(missing.starts_with("HTTP/1.1 404"), "{missing}");
     }
 
@@ -371,15 +365,14 @@ mod tests {
             address: Some("172.17.0.9".parse().unwrap()),
             created_at: 0,
         };
-        let table = RouteTable::build("containeria.local", &[container], &[], &[], true);
+        let table = RouteTable::build("contena.local", &[container], &[], &[], true);
         let listener = bind_first(&[0]).await.unwrap();
         let address = listener.local_addr().unwrap();
         tokio::spawn(serve_http(listener, Arc::new(RwLock::new(table)), inside));
 
-        let response =
-            get(TcpStream::connect(address).await.unwrap(), "web.containeria.local").await;
+        let response = get(TcpStream::connect(address).await.unwrap(), "web.contena.local").await;
         assert!(response.starts_with("HTTP/1.1 200"), "{response}");
-        assert!(response.ends_with("web.containeria.local http /hello?x=1"), "{response}");
+        assert!(response.ends_with("web.contena.local http /hello?x=1"), "{response}");
         let asked = asks.recv().await.unwrap();
         assert_eq!(asked.to, "172.17.0.9:80".parse().unwrap());
         assert_eq!(asked.transport, Transport::Tcp);

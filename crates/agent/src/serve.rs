@@ -2,8 +2,8 @@
 
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
-use containeria_proto::rpc::{self, Caller, Incoming};
-use containeria_proto::{
+use contena_proto::rpc::{self, Caller, Incoming};
+use contena_proto::{
     AgentCall, Boot, Booted, CONTROL_PORT, DOCKER_PORT, EngineCall, FORWARD_PORT, Kubernetes,
 };
 use tokio::sync::{mpsc, watch};

@@ -59,7 +59,7 @@ function Hero({ title, body, action }: { title: string; body: string; action: Re
 }
 
 /**
- * First launch: what Containeria is, the engine's size, creating it, and bringing images over.
+ * First launch: what Contena is, the engine's size, creating it, and bringing images over.
  * Finishing it turns on Open at login, as Docker Desktop and OrbStack do; Settings turns it off.
  */
 export function WelcomePage() {
@@ -92,7 +92,7 @@ export function WelcomePage() {
   );
   return (
     <Page
-      crumbs={<b className="px-1 text-14 font-semibold text-ink">Set up Containeria</b>}
+      crumbs={<b className="px-1 text-14 font-semibold text-ink">Set up Contena</b>}
       tools={step === "done" ? null : skip}
     >
       <div className="flex flex-col items-center px-6 pt-7 pb-10">
@@ -101,7 +101,7 @@ export function WelcomePage() {
           {step === "welcome" ? (
             <Hero
               title="Containers, Kubernetes and Linux on your Mac"
-              body="Containeria runs them in one small virtual machine. It works with the docker CLI, Compose and every tool that expects them."
+              body="Contena runs them in one small virtual machine. It works with the docker CLI, Compose and every tool that expects them."
               action={
                 <Button variant="brand" size="lg" onClick={next}>
                   Get started
@@ -132,7 +132,7 @@ function Done({ onFinish, saving }: { onFinish: () => void; saving: boolean }) {
         <Kbd>K</Kbd>
       </span>
       <Button size="lg" className="mt-4" loading={saving} onClick={onFinish}>
-        Open Containeria
+        Open Contena
       </Button>
     </div>
   );

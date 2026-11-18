@@ -1,4 +1,4 @@
-//! Docker's own command-line tools, run against Containeria's engine for what the Engine API
+//! Docker's own command-line tools, run against Contena's engine for what the Engine API
 //! leaves to them: Compose, `BuildKit` builds, and pushes that use the user's registry logins.
 
 use std::env;
@@ -166,7 +166,7 @@ impl BuildSpec {
 }
 
 impl DockerCli {
-    /// Finds `docker`: `$CONTAINERIA_DOCKER`, the copy bundled with the app, then Homebrew and
+    /// Finds `docker`: `$CONTENA_DOCKER`, the copy bundled with the app, then Homebrew and
     /// `PATH`. When the bundled copy is used, it reads `config_dir`, which mirrors the user's
     /// `~/.docker/config.json` so `docker login` still applies, and adds `plugins` so it finds
     /// the bundled buildx.
@@ -177,7 +177,7 @@ impl DockerCli {
         plugins: Option<&Path>,
         config_dir: &Path,
     ) -> Option<Self> {
-        let bin = locate("CONTAINERIA_DOCKER", bundled, [], "docker")?;
+        let bin = locate("CONTENA_DOCKER", bundled, [], "docker")?;
         let config = plugins
             .filter(|_| bundled.is_some_and(|bundled| bundled == bin))
             .map(|plugins| (config_dir.to_path_buf(), plugins.to_path_buf()));
@@ -286,12 +286,12 @@ mod tests {
     fn the_login_command_survives_spaces_and_quotes_in_paths() {
         let cli = DockerCli {
             bin: PathBuf::from("/Applications/My App's/docker"),
-            socket: PathBuf::from("/Users/ada/.containeria/run/docker.sock"),
+            socket: PathBuf::from("/Users/ada/.contena/run/docker.sock"),
             config: None,
         };
         assert_eq!(
-            cli.login_command("containeria-machine-dev", "ada"),
-            r"DOCKER_HOST='unix:///Users/ada/.containeria/run/docker.sock' '/Applications/My App'\''s/docker' exec -it 'containeria-machine-dev' su - 'ada'"
+            cli.login_command("contena-machine-dev", "ada"),
+            r"DOCKER_HOST='unix:///Users/ada/.contena/run/docker.sock' '/Applications/My App'\''s/docker' exec -it 'contena-machine-dev' su - 'ada'"
         );
     }
 
@@ -363,9 +363,9 @@ mod tests {
     #[test]
     fn looks_in_the_tool_folder_first() {
         let path =
-            search_path(Path::new("/Applications/Containeria.app/Contents/Resources/bin/docker"))
+            search_path(Path::new("/Applications/Contena.app/Contents/Resources/bin/docker"))
                 .unwrap();
         let first = env::split_paths(&path).next().unwrap();
-        assert_eq!(first, Path::new("/Applications/Containeria.app/Contents/Resources/bin"));
+        assert_eq!(first, Path::new("/Applications/Contena.app/Contents/Resources/bin"));
     }
 }

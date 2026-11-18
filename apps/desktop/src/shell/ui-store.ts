@@ -21,7 +21,7 @@ export const useUi = create<UiState>()(
       setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
     }),
     {
-      name: "containeria.ui",
+      name: "contena.ui",
       partialize: (state) => ({ sidebarCollapsed: state.sidebarCollapsed }),
     },
   ),

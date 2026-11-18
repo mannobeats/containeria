@@ -5,7 +5,7 @@ const FILL = "fill-current stroke-none opacity-20";
 const ACCENT = "cx-accent fill-current stroke-none opacity-[0.34]";
 
 /**
- * Containeria's own icons for its own objects: Tabler's 24px grid and 1.5px stroke, plus one
+ * Contena's own icons for its own objects: Tabler's 24px grid and 1.5px stroke, plus one
  * duotone layer. The soft fill is the object's body; the accent marks the part that is alive.
  */
 const ICONS = {

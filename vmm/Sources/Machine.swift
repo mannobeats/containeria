@@ -15,7 +15,7 @@ enum MachineError: Error, CustomStringConvertible {
 final class Machine: NSObject, VZVirtualMachineDelegate, VZVirtioSocketListenerDelegate,
     @unchecked Sendable
 {
-    private let queue = DispatchQueue(label: "dev.containeria.vmm")
+    private let queue = DispatchQueue(label: "dev.contena.vmm")
     private let machine: VZVirtualMachine
     /// Connections the engine is using, by the `id` of the `connect` that opened them, or the
     /// one given to those the guest opened. The engine has its own copy of each descriptor, but

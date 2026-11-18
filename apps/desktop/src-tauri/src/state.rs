@@ -7,7 +7,7 @@ use crate::metrics::Sampler;
 use crate::preferences::PreferencesStore;
 use crate::shells::Shells;
 use crate::streams::Streams;
-use containeria_net::Domains;
+use contena_net::Domains;
 
 #[derive(Debug)]
 pub(crate) struct AppState {

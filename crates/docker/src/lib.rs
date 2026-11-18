@@ -1,4 +1,4 @@
-//! Containeria's view of the Docker Engine API. Wraps `bollard` and turns its wire types into the
+//! Contena's view of the Docker Engine API. Wraps `bollard` and turns its wire types into the
 //! small, fully populated types the app shows.
 
 mod builds;

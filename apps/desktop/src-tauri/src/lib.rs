@@ -1,4 +1,4 @@
-//! The Containeria desktop app: the window, the menu bar item and the commands the UI calls.
+//! The Contena desktop app: the window, the menu bar item and the commands the UI calls.
 
 mod commands;
 mod data;
@@ -23,8 +23,8 @@ mod tray;
 
 use std::sync::Arc;
 
-use containeria_engine::Home;
-use containeria_net::Domains;
+use contena_engine::Home;
+use contena_net::Domains;
 use tauri::{ActivationPolicy, AppHandle, Manager, RunEvent, Window, WindowEvent};
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_window_state::StateFlags;
@@ -140,7 +140,7 @@ impl Background {
     }
 }
 
-/// Opened by hand, the window shows; opened at login, Containeria stays in the menu bar. A login
+/// Opened by hand, the window shows; opened at login, Contena stays in the menu bar. A login
 /// item saved before it passed `AT_LOGIN` is rewritten with it.
 fn open_window_unless_at_login(app: &AppHandle) {
     let login = app.autolaunch();
@@ -154,7 +154,7 @@ fn open_window_unless_at_login(app: &AppHandle) {
     }
 }
 
-/// Closing the main window hides it, and the Dock icon with it, while Containeria stays in the
+/// Closing the main window hides it, and the Dock icon with it, while Contena stays in the
 /// menu bar. Closing Settings with the main window hidden takes the Dock icon away too.
 fn on_window_event(window: &Window, event: &WindowEvent) {
     match event {

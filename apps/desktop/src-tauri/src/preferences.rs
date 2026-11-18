@@ -15,7 +15,7 @@ pub(crate) struct Preferences {
     pub(crate) memory_in_menu_bar: bool,
     /// First launch was finished or skipped.
     pub(crate) onboarded: bool,
-    /// What Containeria tells you about in Notification Center.
+    /// What Contena tells you about in Notification Center.
     pub(crate) notify_on: Vec<NotifyOn>,
     /// The zone times show in.
     pub(crate) time_zone: TimeZone,
@@ -26,7 +26,7 @@ pub(crate) struct Preferences {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) enum StartEngine {
-    /// As Containeria opens, so containers with a restart policy come back after the Mac restarts.
+    /// As Contena opens, so containers with a restart policy come back after the Mac restarts.
     WithApp,
     /// Only from the Start button.
     Manually,
@@ -48,7 +48,7 @@ pub(crate) enum NotifyOn {
     Crash,
     /// A container's health check starts failing.
     Unhealthy,
-    /// A pull, build or Compose run ends while Containeria isn't the frontmost app.
+    /// A pull, build or Compose run ends while Contena isn't the frontmost app.
     Finished,
     /// The engine uses more than 90% of its memory.
     LowMemory,
@@ -72,7 +72,7 @@ impl Default for Preferences {
     }
 }
 
-/// `settings.json` in Containeria's home, read once and written on every change.
+/// `settings.json` in Contena's home, read once and written on every change.
 #[derive(Debug)]
 pub(crate) struct PreferencesStore {
     path: PathBuf,

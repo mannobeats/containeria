@@ -1,3 +1,3 @@
 fn main() -> tauri::Result<()> {
-    containeria_app::run()
+    contena_app::run()
 }

@@ -10,8 +10,8 @@ use crate::tray;
 const SETTINGS: &str = "settings";
 const ABOUT: &str = "about";
 const ENGINE_SETTINGS: &str = "engine-settings";
-const DOCS: &str = "https://github.com/mannobeats/containeria#readme";
-const ISSUES: &str = "https://github.com/mannobeats/containeria/issues/new/choose";
+const DOCS: &str = "https://github.com/mannobeats/contena#readme";
+const ISSUES: &str = "https://github.com/mannobeats/contena/issues/new/choose";
 
 /// File menu items the main window handles, with their ids and shortcuts.
 const COMMANDS: [(MenuCommand, &str, &str, Option<&str>); 7] = [
@@ -58,11 +58,11 @@ const SECTIONS: [(&str, &str, &str); 6] = [
     ("/machines", "Linux Machines", "CmdOrCtrl+6"),
 ];
 
-/// The macOS menu bar: the standard app, Edit and Window menus plus Containeria's views, engine
+/// The macOS menu bar: the standard app, Edit and Window menus plus Contena's views, engine
 /// and help.
 pub(crate) fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
-    let containeria = SubmenuBuilder::new(app, "Containeria")
-        .text(ABOUT, "About Containeria")
+    let contena = SubmenuBuilder::new(app, "Contena")
+        .text(ABOUT, "About Contena")
         .separator()
         .item(&tauri::menu::MenuItem::with_id(
             app,
@@ -74,11 +74,11 @@ pub(crate) fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .separator()
         .item(&PredefinedMenuItem::services(app, None)?)
         .separator()
-        .item(&PredefinedMenuItem::hide(app, Some("Hide Containeria"))?)
+        .item(&PredefinedMenuItem::hide(app, Some("Hide Contena"))?)
         .item(&PredefinedMenuItem::hide_others(app, None)?)
         .item(&PredefinedMenuItem::show_all(app, None)?)
         .separator()
-        .item(&PredefinedMenuItem::quit(app, Some("Quit Containeria"))?)
+        .item(&PredefinedMenuItem::quit(app, Some("Quit Contena"))?)
         .build()?;
     let mut file = SubmenuBuilder::new(app, "File");
     for (index, (_, id, label, accelerator)) in COMMANDS.into_iter().enumerate() {
@@ -133,9 +133,7 @@ pub(crate) fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         help = help.item(&tauri::menu::MenuItem::with_id(app, id, label, true, accelerator)?);
     }
     let help = help.separator().text(ISSUES, "Report an Issue").build()?;
-    MenuBuilder::new(app)
-        .items(&[&containeria, &file, &edit, &view, &engine, &window, &help])
-        .build()
+    MenuBuilder::new(app).items(&[&contena, &file, &edit, &view, &engine, &window, &help]).build()
 }
 
 /// Settings opens its own window; routes open a view in the main window; web addresses open in

@@ -9,7 +9,7 @@ import { Kv } from "@/ui/kv";
 import { useAbout } from "./api";
 import { SettingsSection } from "./settings-section";
 
-const SOURCE = "https://github.com/mannobeats/containeria";
+const SOURCE = "https://github.com/mannobeats/contena";
 
 const BUILT_ON: [string, string][] = [
   ["Linux kernel", "GPL-2.0"],
@@ -31,9 +31,7 @@ export function AboutPane() {
     <>
       <div className="flex flex-col items-center gap-2 pt-2 pb-6 text-center">
         <AppMark size={72} />
-        <h2 className="m-0 mt-1.5 text-24 font-semibold tracking-[-0.016em] text-ink">
-          Containeria
-        </h2>
+        <h2 className="m-0 mt-1.5 text-24 font-semibold tracking-[-0.016em] text-ink">Contena</h2>
         <p className="m-0 text-12 text-ink-3">
           Version {about?.appVersion ?? "…"} · Free and open source under Apache-2.0
         </p>

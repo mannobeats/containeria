@@ -56,7 +56,7 @@ App.act('proto-engine', (el) => showMenu(el, [
   { label: 'Stopped', icon: 'player-stop', checked: DB.engine.state === 'stopped', run: () => { DB.engine.state = 'stopped'; App.rerender(); } },
   { sep: true },
   { label: 'Show an error toast', icon: 'alert-circle', run: () => toast({ title: 'Port 5432 is already in use', body: 'Another Postgres on your Mac holds it. Map shop-postgres to 5433 instead?', tone: 'bad', actionLabel: 'Use 5433', action: () => toast({ title: 'shop-postgres now on localhost:5433', tone: 'ok' }), ms: 7000 }) },
-  { label: 'Show an update toast', icon: 'download', run: () => toast({ title: 'Containeria 1.5 is ready', body: 'Restart to update. Containers keep running.', ic: 'download', actionLabel: 'Restart', ms: 7000 }) },
+  { label: 'Show an update toast', icon: 'download', run: () => toast({ title: 'Contena 1.5 is ready', body: 'Restart to update. Containers keep running.', ic: 'download', actionLabel: 'Restart', ms: 7000 }) },
 ]));
 document.addEventListener('click', (e) => { if (e.target.closest('.mb-tray')) openTray(); });
 
@@ -71,13 +71,13 @@ App.menu('engine', () => [
 ]);
 
 App.menu('mb-app', () => [
-  { label: 'About Containeria', run: () => App.go('/settings/about') },
-  { label: 'Check for updates…', run: () => toast({ title: 'Containeria is up to date', body: 'Version 1.4.2', tone: 'ok' }) },
+  { label: 'About Contena', run: () => App.go('/settings/about') },
+  { label: 'Check for updates…', run: () => toast({ title: 'Contena is up to date', body: 'Version 1.4.2', tone: 'ok' }) },
   { sep: true },
   { label: 'Settings…', kbd: '⌘,', run: () => App.go('/settings') },
   { sep: true },
-  { label: 'Hide Containeria', kbd: '⌘H' },
-  { label: 'Quit Containeria', kbd: '⌘Q' },
+  { label: 'Hide Contena', kbd: '⌘H' },
+  { label: 'Quit Contena', kbd: '⌘Q' },
 ]);
 App.menu('mb-file', () => [
   { label: 'Run container…', kbd: '⌘N', act: 'run-container' },
@@ -134,11 +134,11 @@ App.view('icons', {
   render: () => {
     const names = Object.keys(CX_ICONS);
     return `<div class="page" style="max-width:1100px">
-      <h1 class="h-page">Containeria icons</h1>
-      <p class="meta" style="margin:6px 0 20px;max-width:70ch">Drawn for Containeria’s own objects on Tabler’s 24px grid at a 1.5px stroke, so they sit next to Tabler’s UI icons. The soft fill is the object’s body; the accent marks the live part: the edited cell, the running prompt, the used memory.</p>
+      <h1 class="h-page">Contena icons</h1>
+      <p class="meta" style="margin:6px 0 20px;max-width:70ch">Drawn for Contena’s own objects on Tabler’s 24px grid at a 1.5px stroke, so they sit next to Tabler’s UI icons. The soft fill is the object’s body; the accent marks the live part: the edited cell, the running prompt, the used memory.</p>
       <div class="ic-grid">${names.map((n) => `<div class="ic-cell"><span class="tile tile-xl">${cxIcon(n)}</span><b class="ink">${n}</b><span class="ic-sizes">${cxIcon(n, 'sm')}${cxIcon(n)}${cxIcon(n, 'lg')}</span></div>`).join('')}</div>
       <h2 class="h-page" style="margin-top:40px">Logos</h2>
-      <p class="meta" style="margin:6px 0 20px;max-width:70ch">Real brand marks, never redrawn: Devicon originals (MIT) first, Simple Icons (CC0) where Devicon has none. Near-black marks get a light version in dark mode. Images with no known logo fall back to Containeria’s container or image icon.</p>
+      <p class="meta" style="margin:6px 0 20px;max-width:70ch">Real brand marks, never redrawn: Devicon originals (MIT) first, Simple Icons (CC0) where Devicon has none. Near-black marks get a light version in dark mode. Images with no known logo fall back to Contena’s container or image icon.</p>
       <div class="ic-grid">${Object.entries(LOGOS).map(([k, t]) => `<div class="ic-cell"><span class="tile tile-lg">${logoImg(k)}</span><span class="meta">${esc(t)}</span></div>`).join('')}</div>
     </div>`;
   },

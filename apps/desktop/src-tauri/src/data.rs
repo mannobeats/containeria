@@ -3,7 +3,7 @@ use std::future::Future;
 use std::path::Path;
 use std::sync::{Mutex, PoisonError};
 
-use containeria_data::Data;
+use contena_data::Data;
 use tokio::task::AbortHandle;
 
 use crate::error::{CommandError, ErrorKind, Result};

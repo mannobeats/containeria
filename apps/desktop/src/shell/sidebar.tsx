@@ -89,7 +89,7 @@ function engineLabel(status: EngineStatus | undefined): string {
     return "Engine";
   }
   if (status.phase === "external") {
-    return "Docker engine from CONTAINERIA_DOCKER_SOCKET";
+    return "Docker engine from CONTENA_DOCKER_SOCKET";
   }
   return `Engine · ${status.config.cpus} CPUs · ${status.config.memoryGib} GB`;
 }
@@ -148,7 +148,7 @@ function EngineCard() {
       >
         <AppMark size={28} />
         <span className="min-w-0 flex-1">
-          <b className="block text-13 leading-tight font-semibold text-ink">Containeria</b>
+          <b className="block text-13 leading-tight font-semibold text-ink">Contena</b>
           <span
             className={clsx(
               "block text-12 leading-snug text-ink-3",

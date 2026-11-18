@@ -4,7 +4,7 @@ import { type Appearance, commands } from "@/lib/ipc/bindings";
 
 export type { Appearance } from "@/lib/ipc/bindings";
 
-const KEY = "containeria.appearance";
+const KEY = "contena.appearance";
 const media = matchMedia("(prefers-color-scheme: dark)");
 const listeners = new Set<() => void>();
 

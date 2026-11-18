@@ -12,10 +12,10 @@ const PLUGINS: &str = "/usr/local/lib/docker/cli-plugins";
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) enum ToolState {
-    /// Linked to Containeria's copy.
+    /// Linked to Contena's copy.
     Installed,
     Missing,
-    /// Something else is there, such as Homebrew's or Docker Desktop's; Containeria leaves it.
+    /// Something else is there, such as Homebrew's or Docker Desktop's; Contena leaves it.
     Other,
 }
 
@@ -27,7 +27,7 @@ pub(crate) struct CliTool {
     pub(crate) state: ToolState,
 }
 
-/// Each tool Containeria can put on the `PATH`: (name, its copy here, where it goes).
+/// Each tool Contena can put on the `PATH`: (name, its copy here, where it goes).
 fn sources(app: &AppHandle) -> Vec<(String, PathBuf, PathBuf)> {
     let mut sources = Vec::new();
     if let Some(cx) = std::env::current_exe().ok().and_then(|exe| Some(exe.parent()?.join("cx"))) {
@@ -64,7 +64,7 @@ fn state(source: &Path, target: &Path) -> ToolState {
     }
 }
 
-/// The tools Containeria can install, and whether each one is.
+/// The tools Contena can install, and whether each one is.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn cli_tools(app: AppHandle) -> Result<Vec<CliTool>> {
@@ -97,16 +97,14 @@ pub(crate) async fn cli_tools_install(app: AppHandle) -> Result<()> {
         return Ok(());
     }
     let shell = format!("/bin/mkdir -p {BIN} {PLUGINS} && {}", links.join(" && "));
-    containeria_net::privileged(
+    contena_net::privileged(
         "Installing command-line tools",
         &shell,
-        "Containeria wants to add its command-line tools to /usr/local.",
+        "Contena wants to add its command-line tools to /usr/local.",
     )
     .await
     .map_err(|error| match error {
-        containeria_net::Error::Cancelled => {
-            CommandError::new(ErrorKind::Cancelled, error.to_string())
-        }
+        contena_net::Error::Cancelled => CommandError::new(ErrorKind::Cancelled, error.to_string()),
         other => CommandError::new(ErrorKind::Internal, other.to_string()),
     })
 }

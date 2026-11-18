@@ -79,7 +79,7 @@ describe("WelcomePage", () => {
       }),
     );
     await userEvent.click(await screen.findByRole("button", { name: "Continue" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Open Containeria" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Open Contena" }));
     await waitFor(() => expect(router.state.location.pathname).toBe("/containers"));
     expect(calls).toContainEqual({
       command: "preferencesSet",

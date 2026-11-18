@@ -1,4 +1,4 @@
-//! The agent inside Containeria's Linux guest. One binary with three jobs, chosen by how it is
+//! The agent inside Contena's Linux guest. One binary with three jobs, chosen by how it is
 //! started:
 //!
 //! - as process 1 it is the guest's init (`init`): it mounts the system, starts itself again as
@@ -69,6 +69,6 @@ fn main() -> ExitCode {
 
 #[cfg(not(target_os = "linux"))]
 fn main() -> ExitCode {
-    log("this program runs only inside Containeria's Linux guest");
+    log("this program runs only inside Contena's Linux guest");
     ExitCode::FAILURE
 }

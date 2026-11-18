@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use containeria_data::{
+use contena_data::{
     ChangeSet, Connection, ConnectionInput, Detected, ExportFormat, HistoryEntry, HostKey,
     ImportOptions, ImportPreview, ImportRequest, ImportedRows, Namespace, QueryResult,
     RedisKeyPage, RedisValue, RowPage, RowsRequest, SavedQuery, ServerInfo, SshTunnel, TableRef,
@@ -67,7 +67,7 @@ pub(crate) async fn data_ssh_host_key(
     Ok(state.data.data.ssh_host_key(&ssh).await?)
 }
 
-/// Trusts an SSH server's key in Containeria's own known hosts; `~/.ssh` is never changed.
+/// Trusts an SSH server's key in Contena's own known hosts; `~/.ssh` is never changed.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn data_trust_host_key(state: State<'_, AppState>, key: HostKey) -> Result<()> {

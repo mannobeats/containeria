@@ -1,4 +1,4 @@
-# Containeria
+# Contena
 
 An open-source macOS app that replaces Docker Desktop and OrbStack: containers, Kubernetes, Linux
 machines and a database browser, on its own engine, with a Tauri UI. Free for commercial use.
@@ -14,7 +14,7 @@ machines and a database browser, on its own engine, with a Tauri UI. Free for co
   cargo-deny. Fix the code; never add a suppression, `@ts-ignore`, `allow` or config exception to get
   green. The few deliberate exceptions are listed in docs/quality-gate.md with their reasons.
 - The UI talks to Rust only through generated bindings (`apps/desktop/src/lib/ipc/bindings.ts`, from
-  `cargo test -p containeria-app`). Never hand-edit them or call `invoke` directly.
+  `cargo test -p contena-app`). Never hand-edit them or call `invoke` directly.
 - No comments that restate the code. Doc comments say why, or what a caller must know.
 - Latest stable versions only, pinned exactly. Check the registry before adding anything.
 
@@ -29,6 +29,7 @@ machines and a database browser, on its own engine, with a Tauri UI. Free for co
   then run the end-to-end tests in docs/testing.md
 - Writing tests: docs/testing.md
 - Before committing or opening a PR: docs/quality-gate.md
+- Cutting a release, signing or notarizing: docs/release.md
 - Recording a decision that future work depends on: docs/adr/
 
 ## Skills

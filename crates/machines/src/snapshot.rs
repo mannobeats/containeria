@@ -13,10 +13,10 @@ use crate::{Error, Machines, Result};
 /// Snapshots are images in this repository, tagged with the machine's name, a dot and the
 /// snapshot's. A machine's name has no dot, so the first one divides them. Labels wouldn't do:
 /// a machine restored from a snapshot inherits the image's, and so would every copy of it.
-const SNAPSHOTS: &str = "containeria/machine-snapshot";
+const SNAPSHOTS: &str = "contena/machine-snapshot";
 /// The image a machine's container was made from when that isn't a distribution's shared one: a
 /// clone's source, an imported disk.
-const OWN_IMAGE: &str = "containeria/machine-image";
+const OWN_IMAGE: &str = "contena/machine-image";
 
 /// A saved state of a machine's disk that it can go back to.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
@@ -142,8 +142,8 @@ impl Machines {
         let label = |key: &str| labels.get(key).cloned().unwrap_or_default();
         let shape = Shape {
             name: machine.to_owned(),
-            distro: label("dev.containeria.machine.distro"),
-            release: label("dev.containeria.machine.release"),
+            distro: label("dev.contena.machine.distro"),
+            release: label("dev.contena.machine.release"),
             user: label(USER),
             init: config
                 .cmd
@@ -166,7 +166,7 @@ mod tests {
     fn a_snapshot_is_an_image_named_after_its_machine() {
         assert_eq!(
             reference("dev", "before-upgrade").unwrap(),
-            "containeria/machine-snapshot:dev.before-upgrade"
+            "contena/machine-snapshot:dev.before-upgrade"
         );
     }
 

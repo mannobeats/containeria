@@ -3,7 +3,7 @@
 use yaml_serde::{Mapping, Value};
 
 /// The name of the cluster, its user and its context.
-pub(crate) const NAME: &str = "containeria";
+pub(crate) const NAME: &str = "contena";
 
 const SECTIONS: [&str; 3] = ["clusters", "users", "contexts"];
 

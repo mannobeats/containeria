@@ -1,5 +1,5 @@
 /// The top-level domain every container gets a name under.
-pub const DEFAULT_TLD: &str = "containeria.local";
+pub const DEFAULT_TLD: &str = "contena.local";
 
 /// A host name as it may appear in a Host header, an SNI or a DNS query, reduced to the canonical
 /// form routes are keyed by: lowercase, no port, no trailing dot. `None` when it isn't a valid
@@ -37,7 +37,7 @@ fn label(name: &str) -> Option<String> {
     (!trimmed.is_empty()).then(|| trimmed.to_owned())
 }
 
-/// `web.shop.containeria.local` for service `web` of Compose project `shop`, `redis.containeria.local`
+/// `web.shop.contena.local` for service `web` of Compose project `shop`, `redis.contena.local`
 /// for a container started on its own.
 #[must_use]
 pub fn container_host(
@@ -66,8 +66,8 @@ mod tests {
     #[test]
     fn normalizes_what_browsers_and_resolvers_send() {
         assert_eq!(
-            normalize("Web.Shop.Containeria.Local:443").as_deref(),
-            Some("web.shop.containeria.local")
+            normalize("Web.Shop.Contena.Local:443").as_deref(),
+            Some("web.shop.contena.local")
         );
         assert_eq!(normalize("shop.test.").as_deref(), Some("shop.test"));
     }
@@ -92,18 +92,18 @@ mod tests {
     fn names_compose_services_under_their_project() {
         assert_eq!(
             container_host("shop-web-1", Some("shop"), Some("web"), DEFAULT_TLD).as_deref(),
-            Some("web.shop.containeria.local")
+            Some("web.shop.contena.local")
         );
         assert_eq!(
             container_host("My_Redis", None, None, DEFAULT_TLD).as_deref(),
-            Some("my-redis.containeria.local")
+            Some("my-redis.contena.local")
         );
         assert_eq!(container_host("___", None, None, DEFAULT_TLD), None);
     }
 
     #[test]
     fn matches_a_zone_and_names_under_it_only() {
-        assert!(is_within("containeria.local", "containeria.local"));
+        assert!(is_within("contena.local", "contena.local"));
         assert!(is_within("api.shop.test", "shop.test"));
         assert!(!is_within("myshop.test", "shop.test"));
     }

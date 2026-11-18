@@ -14,7 +14,7 @@ import { useKubeconfigPath } from "./api";
 import type { KubeSheet } from "./kube-sheet";
 import { k3sVersion, podMemory } from "./model";
 
-const CONTEXT = "containeria";
+const CONTEXT = "contena";
 
 export function ClusterHeader({
   cluster,

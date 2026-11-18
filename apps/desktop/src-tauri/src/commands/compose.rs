@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use containeria_docker::{ComposeFiles, ComposePreview, ComposeVerb, is_project_name};
+use contena_docker::{ComposeFiles, ComposePreview, ComposeVerb, is_project_name};
 use serde::{Deserialize, Serialize};
 use tauri::State;
 use tauri::ipc::Channel;
@@ -18,7 +18,7 @@ const MAX_FILE_BYTES: u64 = 1024 * 1024;
 pub(crate) enum ComposeSource {
     /// A file on the Mac. With `text`, the edits are saved to it first.
     File { path: String, text: Option<String> },
-    /// Pasted YAML, kept in Containeria's own folder so later rebuilds find it.
+    /// Pasted YAML, kept in Contena's own folder so later rebuilds find it.
     Text { text: String },
 }
 
@@ -145,7 +145,7 @@ pub(crate) async fn compose_project_file(
     let Some(path) = files.and_then(|files| files.files.into_iter().next()) else {
         return Err(CommandError::new(
             ErrorKind::NotFound,
-            format!("{project} wasn't started from a Compose file Containeria can find."),
+            format!("{project} wasn't started from a Compose file Contena can find."),
         ));
     };
     compose_read(path.to_string_lossy().into_owned()).await
@@ -190,7 +190,7 @@ pub(crate) async fn compose_act(
     if needs_files && files.files.is_empty() {
         return Err(CommandError::new(
             ErrorKind::NotFound,
-            format!("{project} wasn't started from a Compose file Containeria can find."),
+            format!("{project} wasn't started from a Compose file Contena can find."),
         ));
     }
     Ok(state.streams.spawn(async move {

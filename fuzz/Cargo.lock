@@ -220,7 +220,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "containeria-docker"
+name = "contena-docker"
 version = "0.1.0"
 dependencies = [
  "bollard",
@@ -240,19 +240,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "containeria-fuzz"
+name = "contena-fuzz"
 version = "0.0.0"
 dependencies = [
- "containeria-net",
+ "contena-net",
  "hickory-proto",
  "libfuzzer-sys",
 ]
 
 [[package]]
-name = "containeria-net"
+name = "contena-net"
 version = "0.1.0"
 dependencies = [
- "containeria-docker",
+ "contena-docker",
  "hickory-proto",
  "http-body-util",
  "hyper",

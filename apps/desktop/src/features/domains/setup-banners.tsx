@@ -27,15 +27,15 @@ export function SetupBanners({ status }: { status: DomainsStatus }) {
           }
         >
           <b>Your Mac doesn't know .{status.tld} names yet.</b> macOS asks for your password once,
-          so Containeria can add one small file,{" "}
+          so Contena can add one small file,{" "}
           <code className="font-mono text-mono-12">/etc/resolver/{status.tld}</code>, that sends
           these names to it.
         </Banner>
       )}
       {status.caTrusted ? (
         <Banner tone="ok" icon={<IconShieldCheck aria-hidden />}>
-          <b>HTTPS is trusted.</b> The Containeria certificate authority is in your login keychain.
-          It was created on this Mac and never leaves it.
+          <b>HTTPS is trusted.</b> The Contena certificate authority is in your login keychain. It
+          was created on this Mac and never leaves it.
         </Banner>
       ) : (
         <Banner

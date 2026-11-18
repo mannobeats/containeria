@@ -46,7 +46,7 @@ export function engineFixture(overrides: Partial<EngineStatus> = {}): EngineStat
       registryMirrors: [],
       insecureRegistries: [],
     },
-    dockerSocket: "/Users/ada/.containeria/run/docker.sock",
+    dockerSocket: "/Users/ada/.contena/run/docker.sock",
     ...overrides,
   };
 }

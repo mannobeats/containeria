@@ -27,7 +27,7 @@ pub(crate) fn install(app: &AppHandle) -> tauri::Result<()> {
         interactive: false,
     };
     let popover = WebviewWindowBuilder::new(app, POPOVER, WebviewUrl::App("tray.html".into()))
-        .title("Containeria")
+        .title("Contena")
         .inner_size(POPOVER_WIDTH, POPOVER_HEIGHT)
         .resizable(false)
         .decorations(false)
@@ -48,7 +48,7 @@ pub(crate) fn install(app: &AppHandle) -> tauri::Result<()> {
     TrayIconBuilder::with_id(TRAY)
         .icon(Image::from_bytes(include_bytes!("../icons/tray.png"))?)
         .icon_as_template(true)
-        .tooltip("Containeria")
+        .tooltip("Contena")
         .show_menu_on_left_click(false)
         .on_tray_icon_event(|tray, event| {
             if let TrayIconEvent::Click {

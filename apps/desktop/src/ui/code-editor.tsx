@@ -19,7 +19,7 @@ type CodeEditorProps = {
 };
 
 /**
- * CodeMirror 6 with Containeria's tokens, loaded on first use so it stays out of the startup
+ * CodeMirror 6 with Contena's tokens, loaded on first use so it stays out of the startup
  * bundle. Uncontrolled inside; follows `value` when it changes outside.
  */
 export function CodeEditor({

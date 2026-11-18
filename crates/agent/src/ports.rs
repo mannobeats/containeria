@@ -7,7 +7,7 @@
 
 use std::net::IpAddr;
 
-use containeria_proto::{Port, Transport};
+use contena_proto::{Port, Transport};
 
 /// Reads the port out of the proxy's arguments, without the program name.
 ///

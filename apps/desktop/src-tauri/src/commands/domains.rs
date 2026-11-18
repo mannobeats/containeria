@@ -1,4 +1,4 @@
-use containeria_net::{CustomRoute, DomainsStatus};
+use contena_net::{CustomRoute, DomainsStatus};
 use tauri::State;
 
 use crate::error::Result;

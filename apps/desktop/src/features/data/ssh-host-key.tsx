@@ -11,7 +11,7 @@ type HostKeyPromptProps = { ssh: SshTunnel; onTrusted: () => void; className: st
 
 /**
  * An SSH server seen for the first time: its key fingerprint to compare, and the choice to trust
- * it. Trusted keys go to Containeria's own known hosts, never `~/.ssh`.
+ * it. Trusted keys go to Contena's own known hosts, never `~/.ssh`.
  */
 export function HostKeyPrompt({ ssh, onTrusted, className }: HostKeyPromptProps) {
   const key = useSshHostKey(ssh);

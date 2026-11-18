@@ -12,7 +12,7 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({ open: () => Promise.resolve("/Volu
 const GB = 1_000_000_000;
 
 const atHome: DataLocation = {
-  path: "/Users/ada/.containeria/vm",
+  path: "/Users/ada/.contena/vm",
   isDefault: true,
   available: true,
   sizeBytes: 8.4 * GB,
@@ -35,7 +35,7 @@ function setup(at: DataLocation = atHome) {
     storageLocation: () => location,
     storageUsage: () => usage,
     storageCheck: (args) =>
-      args.folder ? `${String(args.folder)}/Containeria` : "/Users/ada/.containeria/vm",
+      args.folder ? `${String(args.folder)}/Contena` : "/Users/ada/.contena/vm",
     storageMove: (args) => {
       channel = args.channel;
       return 3;
@@ -58,7 +58,7 @@ describe("StoragePane", () => {
     const calls = setup();
     renderWithApp(<StoragePane />);
     await userEvent.click(await screen.findByRole("button", { name: "Change…" }));
-    expect(await screen.findByText("/Volumes/Fast SSD/Containeria")).toBeDefined();
+    expect(await screen.findByText("/Volumes/Fast SSD/Contena")).toBeDefined();
     await userEvent.click(screen.getByRole("button", { name: "Move Data" }));
     await waitFor(() =>
       expect(calls).toContainEqual(
@@ -82,7 +82,7 @@ describe("StoragePane", () => {
 
   it("offers to move data on another drive back, and warns when that drive is missing", async () => {
     const calls = setup({
-      path: "/Volumes/Fast SSD/Containeria",
+      path: "/Volumes/Fast SSD/Contena",
       isDefault: false,
       available: false,
       sizeBytes: 0,
@@ -90,7 +90,7 @@ describe("StoragePane", () => {
     renderWithApp(<StoragePane />);
     expect(await screen.findByText(/isn't connected/)).toBeDefined();
     await userEvent.click(screen.getByRole("button", { name: "Move Back" }));
-    expect(await screen.findByText("/Users/ada/.containeria/vm")).toBeDefined();
+    expect(await screen.findByText("/Users/ada/.contena/vm")).toBeDefined();
     await userEvent.click(screen.getByRole("button", { name: "Move Data" }));
     await waitFor(() =>
       expect(calls).toContainEqual(

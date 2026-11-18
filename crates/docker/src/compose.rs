@@ -1,4 +1,4 @@
-//! Docker Compose, run as its own CLI against Containeria's engine. Compose is a large spec (builds,
+//! Docker Compose, run as its own CLI against Contena's engine. Compose is a large spec (builds,
 //! profiles, env files, healthcheck ordering); running the real tool keeps every project working the
 //! way it does with Docker Desktop.
 
@@ -148,14 +148,14 @@ pub struct Compose {
 }
 
 impl Compose {
-    /// Finds Compose: `$CONTAINERIA_COMPOSE`, the copy bundled with the app, the Docker CLI
+    /// Finds Compose: `$CONTENA_COMPOSE`, the copy bundled with the app, the Docker CLI
     /// plugin, then `docker-compose` on the `PATH`.
     #[must_use]
     pub fn locate(socket: &Path, bundled: Option<&Path>) -> Option<Self> {
         let plugin = env::home_dir().map(|home| home.join(".docker/cli-plugins/docker-compose"));
         let installed = PLUGIN_DIRS.iter().map(|dir| Path::new(dir).join("docker-compose"));
         cli::locate(
-            "CONTAINERIA_COMPOSE",
+            "CONTENA_COMPOSE",
             bundled,
             plugin.into_iter().chain(installed),
             "docker-compose",

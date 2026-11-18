@@ -12,7 +12,7 @@ needed a second VM. None of it could be changed from outside Colima and Lima.
 
 ## Decision
 
-Containeria runs its own engine. Docker itself stays: the guest runs the unmodified Docker Engine
+Contena runs its own engine. Docker itself stays: the guest runs the unmodified Docker Engine
 (dockerd, containerd, runc, BuildKit), so every `docker` feature behaves as it does everywhere.
 
 - **VM**: Apple Virtualization, driven by a small Swift helper (`vmm/`). Swift because the
@@ -38,7 +38,7 @@ Containeria runs its own engine. Docker itself stays: the guest runs the unmodif
 - We maintain a kernel configuration and must ship a new guest for kernel and Docker security
   fixes. The kernel is GPL-2.0; it is built unpatched from the release named in
   `guest/Dockerfile`.
-- Building the guest needs a Docker engine. Containeria's own builds it.
+- Building the guest needs a Docker engine. Contena's own builds it.
 - Not carried over from Colima: file-watch events for bind mounts, SSH agent forwarding, reaching
   containers by IP from the Mac, full VMs as Linux machines, and Intel Macs.
 - The helper must keep each VM connection alive until the engine is done with it, and the engine

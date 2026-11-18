@@ -42,7 +42,7 @@ function Moving({ state }: { state: Exclude<MoveState, null> }) {
           ? `Moving ${formatBytes(state.copied)} of ${formatBytes(state.total)}`
           : STEP_LABELS[state.step]
       }
-      hint="Keep Containeria open until it's done."
+      hint="Keep Contena open until it's done."
     >
       {copying ? (
         <Progress
@@ -107,7 +107,7 @@ function LocationRows({ location, onPending }: LocationRowsProps) {
       {location.isDefault ? null : (
         <SettingsRow
           label="Default location"
-          hint="Brings the data back to the Mac's own disk, in ~/.containeria."
+          hint="Brings the data back to the Mac's own disk, in ~/.contena."
         >
           <Button size="sm" onClick={() => check(null).then(onPending, () => undefined)}>
             Move Back
@@ -136,7 +136,7 @@ function MoveSheet({
       title="Move the engine's data?"
       description={
         <>
-          Containeria stops the engine and Linux machines, moves {formatBytes(size)} to{" "}
+          Contena stops the engine and Linux machines, moves {formatBytes(size)} to{" "}
           <b className="[overflow-wrap:anywhere]">{pending?.target}</b>, and starts them again.
           {pending?.folder ? " The engine can't start while that drive is disconnected." : null}
         </>

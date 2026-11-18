@@ -15,8 +15,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use containeria_proto::rpc::Caller;
-use containeria_proto::{Change, Changed, EngineCall};
+use contena_proto::rpc::Caller;
+use contena_proto::{Change, Changed, EngineCall};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
@@ -252,9 +252,9 @@ mod tests {
 
     #[test]
     fn the_library_and_the_engines_own_folder_are_left_out() {
-        let ignored = [PathBuf::from("/Users/ada/.containeria")];
+        let ignored = [PathBuf::from("/Users/ada/.contena")];
         assert!(is_ignored(Path::new("/Users/ada/Library/Caches/x"), &ignored));
-        assert!(is_ignored(Path::new("/Users/ada/.containeria/vm/data.img"), &ignored));
+        assert!(is_ignored(Path::new("/Users/ada/.contena/vm/data.img"), &ignored));
         assert!(!is_ignored(Path::new("/Users/ada/shop/Library/book.rs"), &ignored));
         assert!(!is_ignored(Path::new("/Users/ada/shop/main.rs"), &ignored));
         assert!(!is_ignored(Path::new("/Volumes/Work/Library/x"), &ignored));

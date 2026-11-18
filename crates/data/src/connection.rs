@@ -167,7 +167,7 @@ impl Target {
     }
 }
 
-/// Saved connections, as `connections.json` in Containeria's data folder.
+/// Saved connections, as `connections.json` in Contena's data folder.
 #[derive(Debug, Clone)]
 pub(crate) struct ConnectionStore {
     path: PathBuf,
@@ -221,7 +221,7 @@ impl ConnectionStore {
 pub(crate) struct Keychain;
 
 impl Keychain {
-    const SERVICE: &'static str = "dev.containeria.app.database";
+    const SERVICE: &'static str = "dev.contena.desktop.database";
 
     /// The Keychain account holding a connection's SSH password or key passphrase.
     #[must_use]

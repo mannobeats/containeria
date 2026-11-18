@@ -29,10 +29,10 @@ pub enum Error {
     Io(#[from] io::Error),
 }
 
-impl From<containeria_proto::rpc::Error> for Error {
-    fn from(error: containeria_proto::rpc::Error) -> Self {
+impl From<contena_proto::rpc::Error> for Error {
+    fn from(error: contena_proto::rpc::Error) -> Self {
         match error {
-            containeria_proto::rpc::Error::Closed => Self::Stopped,
+            contena_proto::rpc::Error::Closed => Self::Stopped,
             other => Self::Engine(other.to_string()),
         }
     }

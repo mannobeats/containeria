@@ -8,7 +8,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use containeria_proto::{DOCKER_PORT, FORWARD_PORT};
+use contena_proto::{DOCKER_PORT, FORWARD_PORT};
 use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt, ReadBuf, copy_bidirectional};
 use tokio::net::{UnixListener, UnixStream};
 
@@ -44,7 +44,7 @@ async fn work(mut client: UnixStream, engine: &Arc<Engine>) -> io::Result<()> {
     let guest = match engine.wake().await {
         Ok(guest) => guest,
         Err(error) => {
-            let reason = format!("Containeria's engine couldn't start. {error}");
+            let reason = format!("Contena's engine couldn't start. {error}");
             return refuse(&mut client, &reason).await;
         }
     };
@@ -52,8 +52,7 @@ async fn work(mut client: UnixStream, engine: &Arc<Engine>) -> io::Result<()> {
         Ok(docker) => docker,
         Err(error) => {
             tracing::warn!("a connection to Docker couldn't reach the guest: {error}");
-            return refuse(&mut client, "Docker in Containeria's engine couldn't be reached.")
-                .await;
+            return refuse(&mut client, "Docker in Contena's engine couldn't be reached.").await;
         }
     };
     let mut client = Watched { stream: client, activity: &engine.activity, asked: false };
@@ -64,7 +63,7 @@ async fn work(mut client: UnixStream, engine: &Arc<Engine>) -> io::Result<()> {
 
 async fn watch(mut client: UnixStream, engine: &Engine) -> io::Result<()> {
     let Some(guest) = engine.running() else {
-        return refuse(&mut client, "Containeria's engine is asleep.").await;
+        return refuse(&mut client, "Contena's engine is asleep.").await;
     };
     let mut docker = guest.vmm.connect(DOCKER_PORT).await.map_err(io::Error::other)?;
     copy_bidirectional(&mut client, &mut docker).await?;
@@ -82,7 +81,7 @@ async fn inside(mut client: UnixStream, engine: &Engine) -> io::Result<()> {
 /// Answers as Docker would, so the `docker` command prints why the engine couldn't start.
 async fn refuse(client: &mut UnixStream, reason: &str) -> io::Result<()> {
     let body =
-        serde_json::json!({ "message": format!("Containeria's engine couldn't start. {reason}") })
+        serde_json::json!({ "message": format!("Contena's engine couldn't start. {reason}") })
             .to_string();
     let answer = format!(
         "HTTP/1.1 503 Service Unavailable\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",

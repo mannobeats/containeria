@@ -1,9 +1,9 @@
 # Security
 
-Containeria runs a VM, talks to the Docker socket, stores database passwords in the macOS Keychain
+Contena runs a VM, talks to the Docker socket, stores database passwords in the macOS Keychain
 and, for domains and HTTPS, installs a local certificate authority. Please report vulnerabilities
 privately through GitHub's "Report a vulnerability" on this repository
-(<https://github.com/mannobeats/containeria/security/advisories/new>), not in a public issue.
+(<https://github.com/mannobeats/contena/security/advisories/new>), not in a public issue.
 We aim to reply within three working days.
 
 ## Checking a download
@@ -12,7 +12,7 @@ Each release's disk image carries a build provenance attestation from the GitHub
 built it. Check one with:
 
 ```sh
-gh attestation verify Containeria_*.dmg --repo mannobeats/containeria
+gh attestation verify Contena_*.dmg --repo mannobeats/contena
 ```
 
 ## What runs on this repository

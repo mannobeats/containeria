@@ -8,7 +8,7 @@ pub const SOCKET: &str = "/run/docker.sock";
 /// their own beside it, which is how the agent tells work from the engine.
 pub const GROUP: &str = "engine";
 /// The name Docker runs the agent by to publish a port.
-pub const PORT_PROXY: &str = "/usr/local/bin/containeria-port-proxy";
+pub const PORT_PROXY: &str = "/usr/local/bin/contena-port-proxy";
 
 /// The settings Docker starts with. `custom` comes from the engine (registry mirrors and the
 /// like); the keys the guest depends on can't be changed by it. `host-gateway` stands for the
@@ -17,7 +17,7 @@ pub const PORT_PROXY: &str = "/usr/local/bin/containeria-port-proxy";
 pub fn settings(custom: &Value) -> Value {
     let mut settings = custom.as_object().cloned().unwrap_or_default();
     let fixed = json!({
-        "host-gateway-ip": containeria_proto::MAC.to_string(),
+        "host-gateway-ip": contena_proto::MAC.to_string(),
         "hosts": [format!("unix://{SOCKET}")],
         "group": "root",
         "data-root": "/var/lib/docker",

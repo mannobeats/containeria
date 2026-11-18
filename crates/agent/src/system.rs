@@ -3,9 +3,9 @@
 use std::fs;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use containeria_agent::daemon::GROUP;
-use containeria_agent::memory::{Memory, populated};
-use containeria_proto::{Alias, Boot, Share, Stats};
+use contena_agent::daemon::GROUP;
+use contena_agent::memory::{Memory, populated};
+use contena_proto::{Alias, Boot, Share, Stats};
 use rustix::mount::{MountFlags, mount};
 use rustix::time::{ClockId, Timespec, clock_settime};
 use tokio::process::{Child, Command};
@@ -120,7 +120,7 @@ pub(crate) fn set_clock(unix_millis: u64) -> Result<()> {
 /// The Mac's address on the network it shares with the guest: where the guest's packets out of
 /// the VM go first.
 pub(crate) fn gateway() -> Option<std::net::Ipv4Addr> {
-    containeria_agent::network::default_gateway(&fs::read_to_string("/proc/net/route").ok()?)
+    contena_agent::network::default_gateway(&fs::read_to_string("/proc/net/route").ok()?)
 }
 
 /// Docker, BuildKit and Kubernetes each put their work in a control group of its own. So any

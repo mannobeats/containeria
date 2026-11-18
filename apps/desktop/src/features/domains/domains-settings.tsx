@@ -5,7 +5,7 @@ import { Switch } from "@/ui/switch";
 
 import { useCertificate, useResolver, useSetDomainsEnabled } from "./api";
 
-/** How names reach Containeria, and how to undo each change it made to the Mac. */
+/** How names reach Contena, and how to undo each change it made to the Mac. */
 export function DomainsSettings({ status }: { status: DomainsStatus }) {
   const enable = useSetDomainsEnabled();
   const resolver = useResolver();
@@ -24,7 +24,7 @@ export function DomainsSettings({ status }: { status: DomainsStatus }) {
           label="Domains"
         />
       </FieldRow>
-      <FieldRow label="Top-level domain" hint="Resolved by Containeria's DNS on this Mac only.">
+      <FieldRow label="Top-level domain" hint="Resolved by Contena's DNS on this Mac only.">
         <span className="font-mono text-mono-13 text-ink">.{status.tld}</span>
       </FieldRow>
       <FieldRow
@@ -38,7 +38,7 @@ export function DomainsSettings({ status }: { status: DomainsStatus }) {
       {status.resolver === "installed" ? (
         <FieldRow
           label="Resolver file"
-          hint={`/etc/resolver/${status.tld} sends these names to Containeria.`}
+          hint={`/etc/resolver/${status.tld} sends these names to Contena.`}
         >
           <Button
             size="sm"

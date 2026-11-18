@@ -46,14 +46,14 @@ impl CommandError {
     }
 }
 
-impl From<containeria_data::Error> for CommandError {
-    fn from(error: containeria_data::Error) -> Self {
-        use containeria_data::Error as Data;
+impl From<contena_data::Error> for CommandError {
+    fn from(error: contena_data::Error) -> Self {
+        use contena_data::Error as Data;
         let kind = match &error {
             Data::UnknownConnection(_) => ErrorKind::NotFound,
             Data::ReadOnly(_) => ErrorKind::ReadOnly,
             Data::Invalid(_) | Data::Unsupported(_) => ErrorKind::InvalidInput,
-            Data::Docker(containeria_docker::Error::Unreachable(_)) => ErrorKind::EngineStopped,
+            Data::Docker(contena_docker::Error::Unreachable(_)) => ErrorKind::EngineStopped,
             Data::NotConnected(_) | Data::Database(_) | Data::Docker(_) => ErrorKind::Database,
             Data::Ssh(_) | Data::HostKeyChanged(_) => ErrorKind::Ssh,
             Data::UnknownHostKey { .. } => ErrorKind::UnknownHostKey,
@@ -63,34 +63,34 @@ impl From<containeria_data::Error> for CommandError {
     }
 }
 
-impl From<containeria_engine::Error> for CommandError {
-    fn from(error: containeria_engine::Error) -> Self {
+impl From<contena_engine::Error> for CommandError {
+    fn from(error: contena_engine::Error) -> Self {
         let kind = match error {
-            containeria_engine::Error::Missing { .. } => ErrorKind::EngineMissing,
-            containeria_engine::Error::Stopped => ErrorKind::EngineStopped,
-            containeria_engine::Error::Engine(_) => ErrorKind::Engine,
-            containeria_engine::Error::Storage(_) => ErrorKind::InvalidInput,
+            contena_engine::Error::Missing { .. } => ErrorKind::EngineMissing,
+            contena_engine::Error::Stopped => ErrorKind::EngineStopped,
+            contena_engine::Error::Engine(_) => ErrorKind::Engine,
+            contena_engine::Error::Storage(_) => ErrorKind::InvalidInput,
             _ => ErrorKind::Internal,
         };
         Self::new(kind, error.to_string())
     }
 }
 
-impl From<containeria_docker::Error> for CommandError {
-    fn from(error: containeria_docker::Error) -> Self {
+impl From<contena_docker::Error> for CommandError {
+    fn from(error: contena_docker::Error) -> Self {
         let kind = match error {
-            containeria_docker::Error::Unreachable(_) => ErrorKind::EngineStopped,
-            containeria_docker::Error::NotFound(_) => ErrorKind::NotFound,
-            containeria_docker::Error::Engine(_) => ErrorKind::Engine,
-            containeria_docker::Error::Io(_) => ErrorKind::Internal,
+            contena_docker::Error::Unreachable(_) => ErrorKind::EngineStopped,
+            contena_docker::Error::NotFound(_) => ErrorKind::NotFound,
+            contena_docker::Error::Engine(_) => ErrorKind::Engine,
+            contena_docker::Error::Io(_) => ErrorKind::Internal,
         };
         Self::new(kind, error.to_string())
     }
 }
 
-impl From<containeria_net::Error> for CommandError {
-    fn from(error: containeria_net::Error) -> Self {
-        use containeria_net::Error as Net;
+impl From<contena_net::Error> for CommandError {
+    fn from(error: contena_net::Error) -> Self {
+        use contena_net::Error as Net;
         let kind = match error {
             Net::Cancelled => ErrorKind::Cancelled,
             Net::InvalidHost(_) => ErrorKind::InvalidInput,
@@ -101,27 +101,25 @@ impl From<containeria_net::Error> for CommandError {
     }
 }
 
-impl From<containeria_machines::Error> for CommandError {
-    fn from(error: containeria_machines::Error) -> Self {
+impl From<contena_machines::Error> for CommandError {
+    fn from(error: contena_machines::Error) -> Self {
         let kind = match error {
-            containeria_machines::Error::Unreachable => ErrorKind::EngineStopped,
-            containeria_machines::Error::NotFound(_) => ErrorKind::NotFound,
-            containeria_machines::Error::Invalid(_) => ErrorKind::InvalidInput,
-            containeria_machines::Error::Engine(_) => ErrorKind::Engine,
-            containeria_machines::Error::File { .. } => ErrorKind::Internal,
+            contena_machines::Error::Unreachable => ErrorKind::EngineStopped,
+            contena_machines::Error::NotFound(_) => ErrorKind::NotFound,
+            contena_machines::Error::Invalid(_) => ErrorKind::InvalidInput,
+            contena_machines::Error::Engine(_) => ErrorKind::Engine,
+            contena_machines::Error::File { .. } => ErrorKind::Internal,
         };
         Self::new(kind, error.to_string())
     }
 }
 
-impl From<containeria_kube::Error> for CommandError {
-    fn from(error: containeria_kube::Error) -> Self {
+impl From<contena_kube::Error> for CommandError {
+    fn from(error: contena_kube::Error) -> Self {
         let kind = match error {
-            containeria_kube::Error::Unreachable(_) => ErrorKind::KubernetesUnavailable,
-            containeria_kube::Error::NotFound(_) => ErrorKind::NotFound,
-            containeria_kube::Error::Manifest(_) | containeria_kube::Error::Api(_) => {
-                ErrorKind::Engine
-            }
+            contena_kube::Error::Unreachable(_) => ErrorKind::KubernetesUnavailable,
+            contena_kube::Error::NotFound(_) => ErrorKind::NotFound,
+            contena_kube::Error::Manifest(_) | contena_kube::Error::Api(_) => ErrorKind::Engine,
         };
         Self::new(kind, error.to_string())
     }

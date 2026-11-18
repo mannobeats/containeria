@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::pin::pin;
 
-use containeria_docker::{ContainerDetails, FileEntry, LogEntry};
+use contena_docker::{ContainerDetails, FileEntry, LogEntry};
 use futures::StreamExt;
 use tauri::State;
 use tauri::ipc::Channel;

@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use containeria_docker::{ContainerState, ContainerSummary, PortProtocol};
+use contena_docker::{ContainerState, ContainerSummary, PortProtocol};
 use serde::{Deserialize, Serialize};
 
 use crate::host::{container_host, is_within, normalize};
@@ -33,7 +33,7 @@ pub struct ClusterService {
     pub mac_port: u16,
 }
 
-/// `web` in `shop` → `web.shop.k8s.containeria.local`.
+/// `web` in `shop` → `web.shop.k8s.contena.local`.
 fn service_route(service: &ClusterService, tld: &str, https: bool) -> Option<DomainRoute> {
     let host = normalize(&format!("{}.{}.k8s.{tld}", service.name, service.namespace))?;
     Some(DomainRoute {
@@ -81,7 +81,7 @@ pub struct DomainRoute {
     pub down: Option<RouteDown>,
 }
 
-/// Every name Containeria answers for, and where each one goes.
+/// Every name Contena answers for, and where each one goes.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct RouteTable {
     tld: String,
@@ -208,7 +208,7 @@ impl RouteTable {
     }
 
     /// The route for a request's host: an exact match, else the closest parent, so
-    /// `assets.web.shop.containeria.local` reaches `web.shop.containeria.local`.
+    /// `assets.web.shop.contena.local` reaches `web.shop.contena.local`.
     #[must_use]
     pub(crate) fn find(&self, host: &str) -> Option<&DomainRoute> {
         let host = normalize(host)?;
@@ -221,7 +221,7 @@ impl RouteTable {
 
 #[cfg(test)]
 mod tests {
-    use containeria_docker::Port;
+    use contena_docker::Port;
 
     use super::*;
 
@@ -272,7 +272,7 @@ mod tests {
             port: 8080,
             https: true,
         }];
-        RouteTable::build("containeria.local", &containers, &[], &custom, true)
+        RouteTable::build("contena.local", &containers, &[], &custom, true)
     }
 
     #[test]
@@ -283,18 +283,18 @@ mod tests {
             port: 80,
             mac_port: 30080,
         };
-        let table = RouteTable::build("containeria.local", &[], &[service], &[], true);
+        let table = RouteTable::build("contena.local", &[], &[service], &[], true);
         let route = &table.routes()[0];
-        assert_eq!(route.host, "web.shop.k8s.containeria.local");
+        assert_eq!(route.host, "web.shop.k8s.contena.local");
         assert_eq!(route.kind, RouteKind::Service);
         assert_eq!(route.upstream, Some(Upstream::Published(30080)));
-        assert!(table.resolves("web.shop.k8s.containeria.local"));
+        assert!(table.resolves("web.shop.k8s.contena.local"));
     }
 
     #[test]
     fn routes_a_compose_service_to_its_web_port() {
         let table = table();
-        let route = table.find("web.shop.containeria.local").unwrap();
+        let route = table.find("web.shop.contena.local").unwrap();
         assert_eq!(
             (route.port, route.upstream, route.down),
             (Some(3000), Some(Upstream::Published(3001)), None)
@@ -304,10 +304,7 @@ mod tests {
     #[test]
     fn subdomains_reach_the_closest_route() {
         let table = table();
-        assert_eq!(
-            table.find("assets.web.shop.containeria.local").unwrap().container,
-            "shop-web-1"
-        );
+        assert_eq!(table.find("assets.web.shop.contena.local").unwrap().container, "shop-web-1");
         assert_eq!(
             table.find("v2.shop.test:443").unwrap().upstream,
             Some(Upstream::Published(18080))
@@ -317,14 +314,14 @@ mod tests {
     #[test]
     fn a_container_with_no_port_at_all_is_down_not_missing() {
         let table = table();
-        assert_eq!(table.find("redis.containeria.local").unwrap().down, Some(RouteDown::NoPort));
+        assert_eq!(table.find("redis.contena.local").unwrap().down, Some(RouteDown::NoPort));
     }
 
     #[test]
     fn a_container_that_publishes_nothing_is_reached_at_its_own_address() {
         let containers = [unpublished("web", &[9000, 80])];
-        let table = RouteTable::build("containeria.local", &containers, &[], &[], true);
-        let route = table.find("web.containeria.local").unwrap();
+        let table = RouteTable::build("contena.local", &containers, &[], &[], true);
+        let route = table.find("web.contena.local").unwrap();
         let inside = Upstream::Inside("172.17.0.5:80".parse().unwrap());
         assert_eq!((route.port, route.upstream, route.down), (Some(80), Some(inside), None));
     }
@@ -333,8 +330,8 @@ mod tests {
     fn a_published_port_is_preferred_to_one_the_image_only_exposes() {
         let mut web = unpublished("web", &[80]);
         web.ports.push(Port { container: 9000, host: Some(19000), protocol: PortProtocol::Tcp });
-        let table = RouteTable::build("containeria.local", &[web], &[], &[], true);
-        let route = table.find("web.containeria.local").unwrap();
+        let table = RouteTable::build("contena.local", &[web], &[], &[], true);
+        let route = table.find("web.contena.local").unwrap();
         assert_eq!(route.upstream, Some(Upstream::Published(19000)));
     }
 
@@ -347,7 +344,7 @@ mod tests {
             https: false,
         }];
         let table =
-            RouteTable::build("containeria.local", &[unpublished("web", &[])], &[], &custom, true);
+            RouteTable::build("contena.local", &[unpublished("web", &[])], &[], &custom, true);
         let route = table.find("admin.test").unwrap();
         assert_eq!(route.upstream, Some(Upstream::Inside("172.17.0.5:9100".parse().unwrap())));
         assert_eq!(route.down, None);
@@ -363,14 +360,14 @@ mod tests {
             port: 80,
             https: false,
         }];
-        let table = RouteTable::build("containeria.local", &[stopped], &[], &custom, true);
+        let table = RouteTable::build("contena.local", &[stopped], &[], &custom, true);
         assert_eq!(table.find("blog.test").unwrap().down, Some(RouteDown::Stopped));
     }
 
     #[test]
     fn resolves_the_zone_and_custom_routes_only() {
         let table = table();
-        assert!(table.resolves("anything.containeria.local"));
+        assert!(table.resolves("anything.contena.local"));
         assert!(table.resolves("api.shop.test."));
         assert!(!table.resolves("example.com"));
         assert!(!table.resolves("myshop.test"));

@@ -15,8 +15,8 @@ export function StepEngine({ onDone }: { onDone: () => void }) {
     <>
       <h1 className="m-0 text-24 font-semibold tracking-[-0.016em] text-ink">Create the engine</h1>
       <p className="m-0 mt-2 mb-6 text-14 text-ink-2">
-        Containeria runs Docker in a small Linux VM of its own. It starts in about a second, and
-        turns itself off again when nothing runs in it.
+        Contena runs Docker in a small Linux VM of its own. It starts in about a second, and turns
+        itself off again when nothing runs in it.
       </p>
       {ready ? (
         <Banner tone="ok" icon={<IconCircleCheck aria-hidden />}>

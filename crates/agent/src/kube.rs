@@ -1,7 +1,7 @@
 //! What running k3s takes that is plain text and JSON: where a release is fetched from, checking
 //! what was fetched, and which ports a service wants on the Mac.
 
-use containeria_proto::Transport;
+use contena_proto::Transport;
 use serde_json::Value;
 
 /// Where the k3s binary and its checksums are published for `version`, such as `v1.37.2+k3s1`.

@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use containeria_engine::Home;
+use contena_engine::Home;
 
 use crate::error::{CommandError, ErrorKind, Result};
 
@@ -18,7 +18,7 @@ pub(crate) fn ensure_data_ready(home: &Home) -> Result<()> {
             "The engine's data is moving. It starts again by itself when the move is done.",
         ));
     }
-    let location = containeria_engine::location(home);
+    let location = contena_engine::location(home);
     if !location.available {
         return Err(CommandError::new(
             ErrorKind::InvalidInput,

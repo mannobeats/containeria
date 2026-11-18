@@ -1,7 +1,7 @@
 //! Changes to the Mac's files, as the guest's kernel is told of them, and which of the Mac's
 //! folders running containers have mounted.
 
-use containeria_proto::{Change, Changed};
+use contena_proto::{Change, Changed};
 use serde::Deserialize;
 
 /// Where the kernel takes changes made outside it (see `guest/patches`).

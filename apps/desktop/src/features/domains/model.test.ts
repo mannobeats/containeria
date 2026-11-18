@@ -6,7 +6,7 @@ import { groupRoutes, isValidHost, routeState, routeUrl } from "./model";
 
 function route(overrides: Partial<DomainRoute> = {}): DomainRoute {
   return {
-    host: "web.shop.containeria.local",
+    host: "web.shop.contena.local",
     kind: "container",
     container: "shop-web-1",
     port: 3000,
@@ -19,19 +19,19 @@ function route(overrides: Partial<DomainRoute> = {}): DomainRoute {
 describe("routeUrl", () => {
   it("leaves out standard ports and keeps fallback ones", () => {
     expect(routeUrl(route(), { dns: 15353, http: 80, https: 443 })).toBe(
-      "https://web.shop.containeria.local",
+      "https://web.shop.contena.local",
     );
     expect(routeUrl(route({ https: false }), { dns: 15353, http: 7080, https: 7443 })).toBe(
-      "http://web.shop.containeria.local:7080",
+      "http://web.shop.contena.local:7080",
     );
-    expect(routeUrl(route(), null)).toBe("https://web.shop.containeria.local");
+    expect(routeUrl(route(), null)).toBe("https://web.shop.contena.local");
   });
 });
 
 describe("groupRoutes", () => {
   it("lists Kubernetes services after containers", () => {
     const groups = groupRoutes([
-      route({ host: "web.shop.k8s.containeria.local", kind: "service", container: "shop/web" }),
+      route({ host: "web.shop.k8s.contena.local", kind: "service", container: "shop/web" }),
       route(),
     ]);
     expect(groups.map((group) => group.label)).toEqual(["Containers", "Kubernetes services"]);

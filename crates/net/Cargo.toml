@@ -1,5 +1,5 @@
 [package]
-name = "containeria-net"
+name = "contena-net"
 description = "Domains for containers on the Mac: DNS, the local certificate authority and the reverse proxy."
 version.workspace = true
 edition.workspace = true
@@ -13,8 +13,8 @@ publish.workspace = true
 fuzzing = []
 
 [dependencies]
-containeria-docker.workspace = true
-containeria-proto.workspace = true
+contena-docker.workspace = true
+contena-proto.workspace = true
 hickory-proto.workspace = true
 http-body-util.workspace = true
 hyper.workspace = true

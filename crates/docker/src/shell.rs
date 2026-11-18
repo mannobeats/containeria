@@ -115,7 +115,7 @@ impl Docker {
     /// # Errors
     /// Fails when the container isn't running or busybox can't be pulled.
     pub async fn debug_shell(&self, id: &str, cols: u16, rows: u16) -> Result<Shell> {
-        let name = format!("containeria-debug-{}", id.get(..12).unwrap_or(id));
+        let name = format!("contena-debug-{}", id.get(..12).unwrap_or(id));
         let joined = format!("container:{id}");
         let host = HostConfig {
             pid_mode: Some(joined.clone()),
@@ -144,7 +144,7 @@ impl Docker {
             "nsenter", "-t", "1", "-m", "-u", "-i", "-n", "-p", "--", SHELL[0], SHELL[1], SHELL[2],
         ];
         let command = enter.map(str::to_owned).to_vec();
-        self.sidecar_shell("containeria-engine-shell", host, command, cols, rows).await
+        self.sidecar_shell("contena-engine-shell", host, command, cols, rows).await
     }
 
     async fn sidecar_shell(

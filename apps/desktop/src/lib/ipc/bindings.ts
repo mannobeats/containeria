@@ -33,7 +33,7 @@ export const commands = {
 	hostInfo: () => __TAURI_INVOKE<Host>("host_info"),
 	clock: () => __TAURI_INVOKE<Clock>("clock"),
 	about: () => __TAURI_INVOKE<About>("about"),
-	/**  The tools Containeria can install, and whether each one is. */
+	/**  The tools Contena can install, and whether each one is. */
 	cliTools: () => __TAURI_INVOKE<CliTool[]>("cli_tools"),
 	/**
 	 *  Links every missing tool into `/usr/local` after the macOS administrator prompt. Tools already
@@ -267,7 +267,7 @@ export const commands = {
 	dataTestConnection: (input: ConnectionInput) => __TAURI_INVOKE<string>("data_test_connection", { input }),
 	/**  The host key an SSH server offers, so the user can check its fingerprint before trusting it. */
 	dataSshHostKey: (ssh: SshTunnel) => __TAURI_INVOKE<HostKey>("data_ssh_host_key", { ssh }),
-	/**  Trusts an SSH server's key in Containeria's own known hosts; `~/.ssh` is never changed. */
+	/**  Trusts an SSH server's key in Contena's own known hosts; `~/.ssh` is never changed. */
 	dataTrustHostKey: (key: HostKey) => __TAURI_INVOKE<null>("data_trust_host_key", { key }),
 	dataConnect: (id: string) => __TAURI_INVOKE<ServerInfo>("data_connect", { id }),
 	dataDisconnect: (id: string) => __TAURI_INVOKE<null>("data_disconnect", { id }),
@@ -493,7 +493,7 @@ export type ComposeService = {
 export type ComposeSource = 
 /**  A file on the Mac. With `text`, the edits are saved to it first. */
 { kind: "file"; path: string; text: string | null } | 
-/**  Pasted YAML, kept in Containeria's own folder so later rebuilds find it. */
+/**  Pasted YAML, kept in Contena's own folder so later rebuilds find it. */
 { kind: "text"; text: string };
 
 /**  What can be done to a whole project. */
@@ -729,7 +729,7 @@ export type DomainsStatus = {
 	routes: DomainRoute[],
 };
 
-/**  A database engine Containeria can open. */
+/**  A database engine Contena can open. */
 export type Engine = "postgres" | "mysql" | "mariadb" | "sqlite" | "clickhouse" | "mongodb" | "redis";
 
 /**  The engine started, stopped or changed settings; refetch its status. */
@@ -772,7 +772,7 @@ export type EnginePhase =
 "notCreated" | "stopped" | "starting" | "running" | 
 /**  On, with its VM off because nothing runs in it. Showing a window wakes it. */
 "asleep" | "stopping" | "broken" | 
-/**  `CONTAINERIA_DOCKER_SOCKET` points at another Docker engine. */
+/**  `CONTENA_DOCKER_SOCKET` points at another Docker engine. */
 "external";
 
 export type EngineStatus = {
@@ -1226,7 +1226,7 @@ export type NotifyOn =
 "crash" | 
 /**  A container's health check starts failing. */
 "unhealthy" | 
-/**  A pull, build or Compose run ends while Containeria isn't the frontmost app. */
+/**  A pull, build or Compose run ends while Contena isn't the frontmost app. */
 "finished" | 
 /**  The engine uses more than 90% of its memory. */
 "lowMemory";
@@ -1287,7 +1287,7 @@ export type Preferences = {
 	memoryInMenuBar: boolean,
 	/**  First launch was finished or skipped. */
 	onboarded: boolean,
-	/**  What Containeria tells you about in Notification Center. */
+	/**  What Contena tells you about in Notification Center. */
 	notifyOn: NotifyOn[],
 	/**  The zone times show in. */
 	timeZone: TimeZone,
@@ -1353,7 +1353,7 @@ export type Release = {
 	label: string,
 };
 
-/**  Whether macOS sends the zone's lookups to Containeria. */
+/**  Whether macOS sends the zone's lookups to Contena. */
 export type ResolverState = "installed" | 
 /**  The file exists but points somewhere else, usually an old port. */
 "stale" | "missing";
@@ -1500,7 +1500,7 @@ export type SourceStatus = {
 	running: boolean,
 };
 
-/**  How Containeria proves who it is to the SSH server. */
+/**  How Contena proves who it is to the SSH server. */
 export type SshAuth = 
 /**  The keys loaded in ssh-agent, through `SSH_AUTH_SOCK`. */
 "agent" | 
@@ -1523,7 +1523,7 @@ export type SshTunnel = {
 };
 
 export type StartEngine = 
-/**  As Containeria opens, so containers with a restart policy come back after the Mac restarts. */
+/**  As Contena opens, so containers with a restart policy come back after the Mac restarts. */
 "withApp" | 
 /**  Only from the Start button. */
 "manually";
@@ -1572,9 +1572,9 @@ export type TimeZone =
 "utc";
 
 export type ToolState = 
-/**  Linked to Containeria's copy. */
+/**  Linked to Contena's copy. */
 "installed" | "missing" | 
-/**  Something else is there, such as Homebrew's or Docker Desktop's; Containeria leaves it. */
+/**  Something else is there, such as Homebrew's or Docker Desktop's; Contena leaves it. */
 "other";
 
 /**  One kind of thing taking space in the engine. */

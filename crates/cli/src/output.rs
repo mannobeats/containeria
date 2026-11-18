@@ -1,5 +1,5 @@
-use containeria_docker::{ContainerState, ContainerSummary, Port, PortProtocol};
-use containeria_net::{DomainPorts, container_host};
+use contena_docker::{ContainerState, ContainerSummary, Port, PortProtocol};
+use contena_net::{DomainPorts, container_host};
 
 /// Lines up `rows` under `header`, two spaces between columns, no trailing spaces.
 pub(crate) fn table(header: &[&str], rows: &[Vec<String>]) -> String {
@@ -53,8 +53,8 @@ fn state(container: &ContainerSummary) -> &'static str {
 
 /// `cx ps`: one line per container, Kubernetes pods left out.
 /// One line saying what the engine is doing, with the size of its VM while that runs.
-pub(crate) fn engine(status: &containeria_engine::Status, created: bool) -> String {
-    use containeria_engine::{ClusterState, Phase};
+pub(crate) fn engine(status: &contena_engine::Status, created: bool) -> String {
+    use contena_engine::{ClusterState, Phase};
     let phase = match status.phase {
         Phase::Stopped if !created => "not set up yet",
         Phase::Stopped => "stopped",
@@ -137,30 +137,30 @@ pub(crate) fn open_url(
 mod tests {
     use super::*;
 
-    fn status(phase: containeria_engine::Phase) -> containeria_engine::Status {
-        containeria_engine::Status { phase, ..containeria_engine::Status::stopped() }
+    fn status(phase: contena_engine::Phase) -> contena_engine::Status {
+        contena_engine::Status { phase, ..contena_engine::Status::stopped() }
     }
 
     #[test]
     fn an_engine_never_started_is_not_set_up_yet() {
-        let stopped = status(containeria_engine::Phase::Stopped);
+        let stopped = status(contena_engine::Phase::Stopped);
         assert_eq!(engine(&stopped, false), "not set up yet");
         assert_eq!(engine(&stopped, true), "stopped");
     }
 
     #[test]
     fn a_running_engine_says_what_its_vm_uses() {
-        let mut running = status(containeria_engine::Phase::Running);
-        running.vm = Some(containeria_engine::Vm {
+        let mut running = status(contena_engine::Phase::Running);
+        running.vm = Some(contena_engine::Vm {
             cpus: 8,
-            memory: containeria_engine::MemoryUse {
+            memory: contena_engine::MemoryUse {
                 ceiling_bytes: 8 << 30,
                 allowed_bytes: 2 << 30,
                 used_bytes: 3 << 29,
             },
             kernel: "6.18.63".to_owned(),
         });
-        running.kubernetes = containeria_engine::ClusterState::Running;
+        running.kubernetes = contena_engine::ClusterState::Running;
         assert_eq!(
             engine(&running, true),
             "running · 8 CPUs · 1.5 of 8 GiB in use · Kubernetes on"
@@ -169,7 +169,7 @@ mod tests {
 
     #[test]
     fn a_failed_engine_says_why() {
-        let mut failed = status(containeria_engine::Phase::Failed);
+        let mut failed = status(contena_engine::Phase::Failed);
         failed.problem = Some("The VM helper wasn't found.".to_owned());
         assert_eq!(engine(&failed, true), "failed: The VM helper wasn't found.");
     }
@@ -212,13 +212,13 @@ mod tests {
                 container("shop-web-1", Some("shop"), vec![tcp(3000, 3001), tcp(9229, 9229)]),
                 stopped,
             ],
-            "containeria.local",
+            "contena.local",
         );
         assert_eq!(
             out,
             "NAME        PROJECT  STATE    PORTS            DOMAIN\n\
-             shop-web-1  shop     running  3001:3000, 9229  web.shop.containeria.local\n\
-             redis       -        stopped  -                redis.containeria.local\n"
+             shop-web-1  shop     running  3001:3000, 9229  web.shop.contena.local\n\
+             redis       -        stopped  -                redis.contena.local\n"
         );
     }
 
@@ -227,17 +227,14 @@ mod tests {
         let web = container("shop-web-1", Some("shop"), vec![tcp(3000, 3001)]);
         let served = DomainPorts { dns: 15353, http: 80, https: 443 };
         assert_eq!(
-            open_url(&web, "containeria.local", Some(served)).as_deref(),
-            Some("https://web.shop.containeria.local")
+            open_url(&web, "contena.local", Some(served)).as_deref(),
+            Some("https://web.shop.contena.local")
         );
         let fallback = DomainPorts { https: 7443, ..served };
         assert_eq!(
-            open_url(&web, "containeria.local", Some(fallback)).as_deref(),
-            Some("https://web.shop.containeria.local:7443")
+            open_url(&web, "contena.local", Some(fallback)).as_deref(),
+            Some("https://web.shop.contena.local:7443")
         );
-        assert_eq!(
-            open_url(&web, "containeria.local", None).as_deref(),
-            Some("http://localhost:3001")
-        );
+        assert_eq!(open_url(&web, "contena.local", None).as_deref(), Some("http://localhost:3001"));
     }
 }

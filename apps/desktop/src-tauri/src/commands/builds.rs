@@ -1,4 +1,4 @@
-use containeria_docker::{BuildDetail, BuildRecord};
+use contena_docker::{BuildDetail, BuildRecord};
 use tauri::State;
 use tauri::ipc::Channel;
 

@@ -6,8 +6,8 @@
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|raw: &str| {
-    let Some(name) = containeria_net::fuzzing::normalize_host(raw) else { return };
-    assert_eq!(containeria_net::fuzzing::normalize_host(&name).as_deref(), Some(name.as_str()));
+    let Some(name) = contena_net::fuzzing::normalize_host(raw) else { return };
+    assert_eq!(contena_net::fuzzing::normalize_host(&name).as_deref(), Some(name.as_str()));
     assert!(name.len() <= 253);
     assert!(!name.bytes().any(|byte| byte.is_ascii_uppercase()));
 });

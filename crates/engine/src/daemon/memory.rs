@@ -4,7 +4,7 @@
 //! and the Mac never gets it back while the VM runs. So the engine keeps the guest close to what
 //! its work holds, and lets it have more the moment it asks.
 
-use containeria_proto::Stats;
+use contena_proto::Stats;
 
 const MIB: u64 = 1 << 20;
 /// Room above what the work holds: for file cache, and for growth between two looks.

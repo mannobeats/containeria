@@ -20,7 +20,7 @@ pub enum Error {
     Certificate(#[from] rcgen::Error),
 
     #[error(
-        "the certificate authority's file is damaged; delete ~/.containeria/net to create a new one"
+        "the certificate authority's file is damaged; delete ~/.contena/net to create a new one"
     )]
     DamagedCertificate,
 

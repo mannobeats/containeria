@@ -1,7 +1,7 @@
-# Containeria feature map
+# Contena feature map
 
 Every feature in the design prototype (`design/`), mapped to the part of the engine that makes it
-work. The engine is Containeria's own ([ADR 4](adr/0004-our-own-engine.md)); the figures here were
+work. The engine is Contena's own ([ADR 4](adr/0004-our-own-engine.md)); the figures here were
 measured on an M1 Max with macOS 27.2 in November 2026.
 
 ## How the engine is built
@@ -10,8 +10,8 @@ measured on an M1 Max with macOS 27.2 in November 2026.
 |---|---|---|
 | App | Tauri 2, Rust core, React UI | Apache-2.0 (ours) |
 | Our Rust layer | Docker API client (`bollard`), domain DNS and HTTPS proxy, file and volume browsing, migration, stats, database drivers, Linux machines, `cx` CLI | ours |
-| Engine | `containeria-engine`: owns the VM, Docker's socket on the Mac, published ports, the VM's memory and its sleep (`crates/engine`) | ours |
-| VM helper | `containeria-vmm`: runs the VM with Apple Virtualization (`vmm/`, Swift) | ours |
+| Engine | `contena-engine`: owns the VM, Docker's socket on the Mac, published ports, the VM's memory and its sleep (`crates/engine`) | ours |
+| VM helper | `contena-vmm`: runs the VM with Apple Virtualization (`vmm/`, Swift) | ours |
 | Guest | A Linux 6.18 LTS kernel with our configuration, an Alpine userland, and our agent as process 1 (`guest/`, `crates/agent`) | GPL-2.0 (kernel), ours |
 | Inside the guest | Docker Engine (moby), containerd, BuildKit, runc, unmodified; k3s when Kubernetes is on | Apache-2.0 |
 
@@ -19,7 +19,7 @@ There is one VM. Containers, the Kubernetes cluster and Linux machines all run i
 
 ## Legend
 
-- **Engine**: Containeria's engine or its guest does it.
+- **Engine**: Contena's engine or its guest does it.
 - **Docker API**: the Docker Engine API does it; we call it through `bollard`.
 - **We build**: our own Rust code on top of the engine.
 - **Limited**: works, with a limit written next to it.
@@ -42,10 +42,10 @@ There is one VM. Containers, the Kubernetes cluster and Linux machines all run i
 | File-watch events (hot reload) | the VM helper watches the folders running containers have mounted (FSEvents); the guest's kernel raises the inotify events (`guest/patches`) | Engine | Saves in place and by rename, new and deleted files and folders, permissions and `touch`. Measured with Node's chokidar and 300 saves on the Mac: all 300 seen, arriving within 20 ms of each other. A change a container makes itself is raised twice, once by Linux and once on its way back from the Mac. Changes under `~/Library` aren't reported. |
 | A saved file is the new file at once | the same reports end the guest's trust in what it cached | Engine | Apple's file sharing lets the guest believe what it last saw for up to a second: a file saved on the Mac kept its old size in a container, and one saved by renaming a new file over it, as vim and JetBrains do, couldn't be opened. Now the next look asks the Mac, whether or not anything watches. |
 | SSH agent forwarding | the guest's `/run/host-services/ssh-auth.sock` is the Mac's SSH agent | Engine | Mount it and set `SSH_AUTH_SOCK`, as with Docker Desktop: `-v /run/host-services/ssh-auth.sock:/ssh-agent -e SSH_AUTH_SOCK=/ssh-agent`. Any user in the container can use it. The agent is the one of whoever started the engine (`SSH_AUTH_SOCK` at that moment). Linux machines have it without asking. `docker build --ssh` needs none of this: the `docker` command hands the agent to the build itself. |
-| `host.docker.internal` | the guest answers DNS for it and carries what is sent there to the Mac | Engine | Resolves in every container with nothing added, as `host.containeria.internal` does, and `host-gateway` means the same address. TCP reaches servers on the Mac's own `localhost`, also ones that listen for nobody else; a port nothing listens on is refused at once. UDP reaches what listens on every address of the Mac. IPv4 only. |
+| `host.docker.internal` | the guest answers DNS for it and carries what is sent there to the Mac | Engine | Resolves in every container with nothing added, as `host.contena.internal` does, and `host-gateway` means the same address. TCP reaches servers on the Mac's own `localhost`, also ones that listen for nobody else; a port nothing listens on is refused at once. UDP reaches what listens on every address of the Mac. IPv4 only. |
 | The guest's clock | set from the Mac at start, and again whenever it is more than a second off | Engine | It stands still while the Mac sleeps. |
 | Docker daemon settings (mirrors, insecure registries) | `engine.json` → the guest's `daemon.json` | Engine | |
-| Make `docker` use Containeria | `docker context create` and `use`, when the app starts the engine | Built | The context is named `containeria`. Settings → Engine turns it off. |
+| Make `docker` use Contena | `docker context create` and `use`, when the app starts the engine | Built | The context is named `contena`. Settings → Engine turns it off. |
 | What was written survives a stop | the guest powers itself off after writing its disk out | Engine | The engine cuts the power only when the guest stays on 30 s after its agent ended. |
 
 ## Containers
@@ -56,7 +56,7 @@ There is one VM. Containers, the Kubernetes cluster and Linux machines all run i
 | Live CPU, memory, network, disk stats | `/containers/{id}/stats` stream | Docker API | |
 | Live state changes without polling | `/events` stream | Docker API | |
 | Group by Compose project | `com.docker.compose.*` labels | Docker API | |
-| Deploy, edit, rebuild, pull, remove a project | Docker Compose CLI | Built | Paste YAML, open or drop a `compose.yaml`. Compose is Apache-2.0; the app looks for `cli-plugins/docker-compose` in its bundle, then the Docker CLI plugin, then Homebrew. Pasted projects live in `~/.containeria/compose/<name>`. |
+| Deploy, edit, rebuild, pull, remove a project | Docker Compose CLI | Built | Paste YAML, open or drop a `compose.yaml`. Compose is Apache-2.0; the app looks for `cli-plugins/docker-compose` in its bundle, then the Docker CLI plugin, then Homebrew. Pasted projects live in `~/.contena/compose/<name>`. |
 | Logs with follow, filter, levels | `/containers/{id}/logs` | Docker API | Levels parsed by us. |
 | Terminal into a container | exec API with TTY | Docker API | |
 | Debug shell for minimal images | sidecar container sharing PID and network namespaces | We build | Same idea as `docker debug`. |
@@ -72,12 +72,12 @@ There is one VM. Containers, the Kubernetes cluster and Linux machines all run i
 
 | Feature | Source | Status | Notes |
 |---|---|---|---|
-| `name.project.containeria.local` for every container | our DNS server (127.0.0.1:15353) + `/etc/resolver/containeria.local` | Built | `crates/net`. Admin password once, through a macOS prompt the user starts. |
+| `name.project.contena.local` for every container | our DNS server (127.0.0.1:15353) + `/etc/resolver/contena.local` | Built | `crates/net`. Admin password once, through a macOS prompt the user starts. |
 | Reaching containers with no published port | the proxy connects to the container's own address through the engine (`run/inside.sock`) | Built | A published port is used when there is one; else the port the image exposes, a usual web port first. A custom route reaches any port. A container that exposes nothing shows "No port to send to". HTTP and HTTPS only: other protocols need a published port. |
 | Local HTTPS with a trusted certificate | our local CA (rcgen), trusted in the login keychain once | Built | Leaf certificates issued per host on first use, valid 397 days (Apple's limit is 825). Proxy on 80/443 when free, else 7080/7443. |
-| Custom routes like `shop.test` | same proxy | Built | Saved in `~/.containeria/net/settings.json`. |
+| Custom routes like `shop.test` | same proxy | Built | Saved in `~/.contena/net/settings.json`. |
 | Direct container IP from the Mac | | Not yet | Needs a route on the Mac, which only root can add: a helper installed with the admin password. |
-| `*.k8s.containeria.local` for services | proxy reads k3s services | Built | `<service>.<namespace>.k8s.containeria.local` for LoadBalancer and NodePort services, through the port the engine publishes on the Mac. ClusterIP-only services aren't reachable from the Mac. |
+| `*.k8s.contena.local` for services | proxy reads k3s services | Built | `<service>.<namespace>.k8s.contena.local` for LoadBalancer and NodePort services, through the port the engine publishes on the Mac. ClusterIP-only services aren't reachable from the Mac. |
 
 ## Images, volumes, networks
 
@@ -87,12 +87,12 @@ There is one VM. Containers, the Kubernetes cluster and Linux machines all run i
 | Disk usage and clean-up | `/system/df`, prune APIs | Docker API | Settings → Storage: images, stopped containers, volumes and the build cache, each with its own clean-up. |
 | Layers and history | `/images/{id}/history` | Docker API | |
 | Docker Hub search | Docker Hub API | We build | |
-| Vulnerability scan | Trivy (Apache-2.0) run as a container | Built | `aquasec/trivy` pinned, docker socket mounted, database cached in the `containeria-trivy-cache` volume. |
+| Vulnerability scan | Trivy (Apache-2.0) run as a container | Built | `aquasec/trivy` pinned, docker socket mounted, database cached in the `contena-trivy-cache` volume. |
 | Build from a Dockerfile | BuildKit through `docker build` | Built | Build sheet or drop a Dockerfile on the window; plain BuildKit progress streams into the run sheet. |
 | Build history | `docker buildx history` (`ls`, `inspect`, `logs`, `rm`) on the engine's `default` builder | Built | Builds from the app and from `docker build` or `docker compose build` in a terminal: running ones first with live output, then the history with duration, cache hits, build arguments and the failing step. BuildKit only counts steps when a build ends, so a running build's bar is indeterminate. |
 | Volumes: list, size, used by | volumes API + `/system/df` | Docker API | |
 | Browse volume files | short-lived helper container mounting the volume | We build | |
-| Back up, restore, clone, export a volume | helper container with tar | Built | Restore takes Containeria backups and plain tar or tar.gz archives of a volume's files. |
+| Back up, restore, clone, export a volume | helper container with tar | Built | Restore takes Contena backups and plain tar or tar.gz archives of a volume's files. |
 | Networks: list, create, connect, inspect | networks API | Docker API | |
 
 ## Kubernetes
@@ -100,7 +100,7 @@ There is one VM. Containers, the Kubernetes cluster and Linux machines all run i
 | Feature | Source | Status | Notes |
 |---|---|---|---|
 | Turn on and off, pick version | the agent fetches the k3s release, checks it against the release's SHA-256 and runs it | Engine | First start 17 s including the download, 4 s after an engine restart. Turning it off stops its pods; its objects are kept. While it is on, the VM doesn't sleep. |
-| `kubectl` works | the engine writes a `containeria` context into `~/.kube/config` (or the first file in `$KUBECONFIG`) and publishes the API on `127.0.0.1:6443` | Engine | Turning Kubernetes on selects the context. Other clusters in the file stay as they are. If 6443 is taken, the next free port is used. |
+| `kubectl` works | the engine writes a `contena` context into `~/.kube/config` (or the first file in `$KUBECONFIG`) and publishes the API on `127.0.0.1:6443` | Engine | Turning Kubernetes on selects the context. Other clusters in the file stay as they are. If 6443 is taken, the next free port is used. |
 | Pods, deployments, services, ingress, config | Kubernetes API via `kube-rs` | We build | |
 | Pod logs, terminal, events, YAML | Kubernetes API | Built | The terminal is `kubectl exec -it` through kube-rs, with a container picker. |
 | Apply YAML, scale, restart, port-forward, namespaces | Kubernetes API | Built | Deployments edit their YAML in place; New Namespace…; Copy kubeconfig Path. |
@@ -123,11 +123,11 @@ path. `crates/machines` makes and keeps them through the Docker API.
 | Mac home folder inside the machine | a bind mount at the same path | Built | Chosen when the machine is made. |
 | Terminal and files | Docker exec and the archive API, as for any container | Built | The terminal is a login shell as your user. |
 | Machines come back with the engine | restart policy `unless-stopped` | Built | A running machine keeps the VM awake. |
-| Open in Terminal App, Copy Shell Command | `docker exec -it … su - you` with the bundled Docker CLI | Built | Opens a `.command` file from `~/.containeria/terminal`, so macOS asks for no Automation permission. |
+| Open in Terminal App, Copy Shell Command | `docker exec -it … su - you` with the bundled Docker CLI | Built | Opens a `.command` file from `~/.contena/terminal`, so macOS asks for no Automation permission. |
 | Snapshots: take, restore, delete | `docker commit` to an image named after the machine and the snapshot | Built | A running machine pauses for the moment a snapshot takes (0.3 s for a fresh Ubuntu). Restoring keeps the machine as it was until the restored one exists. |
 | Clone | commit, then a new machine from that image | Built | The copy is stopped. |
-| Export and import | the container's filesystem as a tar, in and out | Built | Without snapshots. The machine records its distribution and user in `/etc/containeria-machine.json`, so an import knows what it is. |
-| `ssh name@containeria` | | Not yet | |
+| Export and import | the container's filesystem as a tar, in and out | Built | Without snapshots. The machine records its distribution and user in `/etc/contena-machine.json`, so an import knows what it is. |
+| `ssh name@contena` | | Not yet | |
 | amd64 machines | | Not yet | |
 | Engine shell | privileged busybox entering PID 1 with `nsenter` | Built | Engine → Open Engine Shell: root in the VM. |
 
@@ -164,7 +164,7 @@ None of this depends on the engine. It runs in the app's Rust core.
 | Memory ledger (per project) | Docker stats + k3s metrics | We build | |
 | Activity charts | same sources, sampled | We build | |
 | ⌘K command palette, shortcuts | our UI | We build | |
-| Settings | `~/.containeria/engine.json` + our own settings | We build | |
+| Settings | `~/.contena/engine.json` + our own settings | We build | |
 | Launch at login | Tauri autostart plugin, a LaunchAgent passing `--at-login` | Built | On once first launch is finished or skipped. A login launch stays in the menu bar without the window. |
 | Engine starts with the app | `engine::start_with_app` when the engine is stopped | Built | On by default (General settings), so after a Mac restart the engine and containers with a restart policy come back. A never-created or broken engine waits for the user. |
 | Auto-update | Tauri updater | We build | Needs Developer ID signing first. |
@@ -173,7 +173,7 @@ None of this depends on the engine. It runs in the app's Rust core.
 | `cx` command-line tool | `crates/cli` | Built | `cx ps`, `start`, `stop`, `restart`, `logs -f`, `open`, `engine start\|stop\|status`, `data`. Works without the app. |
 | Select many and delete at once: containers, images, volumes, networks | `useSelection`, `SelectionBar`, `useRemoveMany` | Built | Boxes on every row, ⌘-click and ⇧-click like Finder, ⌘⌫ to delete, Esc to let go. Images and volumes a container uses, built-in networks and networks with containers on them can't be selected; their box says why. Running containers can, and are stopped as they're deleted. |
 | Times in the Mac's time zone and clock | `Intl` with the 12- or 24-hour setting read from `NSDateFormatter` | Built | Settings → General → Time, on by default; off shows UTC. Every time in the app goes through `lib/clock.ts`. |
-| Closing the window leaves the Dock | `ActivationPolicy::Accessory` while no window is open | Built | Containeria stays in the menu bar; opening a window brings the Dock icon back. Quit ends it. |
+| Closing the window leaves the Dock | `ActivationPolicy::Accessory` while no window is open | Built | Contena stays in the menu bar; opening a window brings the Dock icon back. Quit ends it. |
 | Native notifications | `tauri-plugin-notification` | Built | Crashes, failing health checks, low memory, and finished pulls, builds and Compose runs while in the background. Settings → General. |
 | Reset the engine | stop it and delete its data disk | Built | Settings → Advanced, typed confirmation. Linux machines live on the same disk and go with it. |
 | Collect diagnostics | the engine's log and the guest's console | Built | Help → Collect Diagnostics…: versions, engine status, container names and states, engine settings, the tail of both logs. No container settings, so no secrets. |
@@ -185,5 +185,5 @@ None of this depends on the engine. It runs in the app's Rust core.
    workload did touch is returned by turning the VM off, which is why that is automatic and why
    booting takes a second.
 2. **One VM.** Containers, Kubernetes and Linux machines share it.
-3. **Domains, HTTPS and the data browser are ours.** They are where Containeria stands apart.
+3. **Domains, HTTPS and the data browser are ours.** They are where Contena stands apart.
 4. **Every number in the app or these docs is measured**, on a named Mac and macOS.

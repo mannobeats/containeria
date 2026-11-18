@@ -19,7 +19,7 @@ type MemoryLedgerProps = {
   highlight?: string | null;
 };
 
-/** Containeria's signature: the engine's memory, split by what is using it. */
+/** Contena's signature: the engine's memory, split by what is using it. */
 export function MemoryLedger({
   ledger,
   size = "md",

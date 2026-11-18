@@ -32,7 +32,7 @@ export function EnginePicker({ onPick }: { onPick: (form: ConnectionForm) => voi
       <Field
         label="Paste a connection string"
         htmlFor={url}
-        hint="Paste it, or type it and press Return. Containeria fills in the form and picks the engine."
+        hint="Paste it, or type it and press Return. Contena fills in the form and picks the engine."
       >
         <Input
           id={url}

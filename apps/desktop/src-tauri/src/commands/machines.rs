@@ -1,9 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use containeria_docker::FileEntry;
-use containeria_machines::{
-    CreateMachine, DISTROS, Distro, Machine, MachineAction, MachineSnapshot,
-};
+use contena_docker::FileEntry;
+use contena_machines::{CreateMachine, DISTROS, Distro, Machine, MachineAction, MachineSnapshot};
 use tauri::ipc::Channel;
 use tauri::{AppHandle, State};
 use tauri_specta::Event;

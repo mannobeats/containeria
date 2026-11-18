@@ -1,10 +1,10 @@
-//! Linux machines as the app offers them: made and kept by `containeria_machines` in the engine,
+//! Linux machines as the app offers them: made and kept by `contena_machines` in the engine,
 //! with their terminals and files going through Docker like any container's.
 
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::path::Path;
 
-use containeria_machines::{Machines, User};
+use contena_machines::{Machines, User};
 
 use crate::engine::Engine;
 use crate::error::{CommandError, ErrorKind, Result};
@@ -20,8 +20,8 @@ pub(crate) async fn machines(engine: &Engine) -> Result<Machines> {
 
 /// The container behind a machine, by the name Docker knows it by.
 pub(crate) fn container(name: &str) -> Result<String> {
-    containeria_machines::validate_name(name)?;
-    Ok(format!("containeria-machine-{name}"))
+    contena_machines::validate_name(name)?;
+    Ok(format!("contena-machine-{name}"))
 }
 
 /// The person at the Mac: who a new machine's user is, and whose home folder it can mount.
@@ -86,7 +86,7 @@ mod tests {
 
     #[test]
     fn a_machines_container_carries_its_name() {
-        assert_eq!(container("dev").unwrap(), "containeria-machine-dev");
+        assert_eq!(container("dev").unwrap(), "contena-machine-dev");
     }
 
     #[test]

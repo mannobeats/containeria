@@ -3,8 +3,8 @@
 use std::io;
 use std::net::SocketAddr;
 
-use containeria_agent::daemon::SOCKET;
-use containeria_proto::{Forward, Transport, datagram};
+use contena_agent::daemon::SOCKET;
+use contena_proto::{Forward, Transport, datagram};
 use tokio::io::{AsyncBufReadExt, BufReader, copy_bidirectional};
 use tokio::net::{TcpStream, UdpSocket, UnixStream};
 use tokio_vsock::{VsockListener, VsockStream};

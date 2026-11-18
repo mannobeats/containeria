@@ -1,6 +1,6 @@
 use std::pin::Pin;
 
-use containeria_docker::Utf8Decoder;
+use contena_docker::Utf8Decoder;
 use futures::StreamExt;
 use futures::stream::BoxStream;
 use serde::Serialize;

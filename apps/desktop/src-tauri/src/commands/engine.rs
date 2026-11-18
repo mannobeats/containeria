@@ -1,4 +1,4 @@
-use containeria_engine::EngineConfig;
+use contena_engine::EngineConfig;
 use tauri::{AppHandle, State};
 
 use crate::engine::EngineStatus;

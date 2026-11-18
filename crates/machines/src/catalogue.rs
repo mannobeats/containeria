@@ -51,7 +51,7 @@ const fn release(alias: &'static str, label: &'static str) -> Release {
     Release { alias, label }
 }
 
-// ponytail: a curated list, refreshed with each release of Containeria. Read Docker Hub's tags
+// ponytail: a curated list, refreshed with each release of Contena. Read Docker Hub's tags
 // instead if users need releases between updates.
 pub const DISTROS: &[Distro] = &[
     Distro {

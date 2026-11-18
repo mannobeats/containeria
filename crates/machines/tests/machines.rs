@@ -1,10 +1,10 @@
-//! Machines against a real engine: `cargo test -p containeria-machines -- --ignored`, with the
-//! engine running. `$CONTAINERIA_DOCKER_SOCKET` names another Docker socket. The machines it
-//! makes are named `containeria-test-…` and removed again; the Ubuntu image it sets up stays.
+//! Machines against a real engine: `cargo test -p contena-machines -- --ignored`, with the
+//! engine running. `$CONTENA_DOCKER_SOCKET` names another Docker socket. The machines it
+//! makes are named `contena-test-…` and removed again; the Ubuntu image it sets up stays.
 
 use std::path::PathBuf;
 
-use containeria_machines::{CreateMachine, DISTROS, MachineAction, MachineState, Machines, User};
+use contena_machines::{CreateMachine, DISTROS, MachineAction, MachineState, Machines, User};
 
 type Outcome<T = ()> = Result<T, Box<dyn std::error::Error>>;
 
@@ -16,13 +16,13 @@ macro_rules! ensure {
     };
 }
 
-const MACHINE: &str = "containeria-test-machine";
-const COPY: &str = "containeria-test-copy";
-const IMPORTED: &str = "containeria-test-imported";
+const MACHINE: &str = "contena-test-machine";
+const COPY: &str = "contena-test-copy";
+const IMPORTED: &str = "contena-test-imported";
 
 fn socket() -> PathBuf {
-    std::env::var_os("CONTAINERIA_DOCKER_SOCKET").map_or_else(
-        || std::env::home_dir().unwrap_or_default().join(".containeria/run/docker.sock"),
+    std::env::var_os("CONTENA_DOCKER_SOCKET").map_or_else(
+        || std::env::home_dir().unwrap_or_default().join(".contena/run/docker.sock"),
         PathBuf::from,
     )
 }
@@ -108,7 +108,7 @@ async fn every_distribution_makes_a_running_machine() -> Outcome {
     let user = User { name: "ada".to_owned(), uid: 501, home: None };
     let mut failed = Vec::new();
     for distro in DISTROS {
-        let name = format!("containeria-test-{}", distro.id);
+        let name = format!("contena-test-{}", distro.id);
         let spec = CreateMachine {
             name: name.clone(),
             distro: distro.id.to_owned(),

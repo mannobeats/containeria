@@ -1157,10 +1157,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "containeria-agent"
+name = "contena-agent"
 version = "0.1.0"
 dependencies = [
- "containeria-proto",
+ "contena-proto",
  "rustix",
  "serde",
  "serde_json",
@@ -1171,15 +1171,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "containeria-app"
+name = "contena-app"
 version = "0.1.0"
 dependencies = [
- "containeria-data",
- "containeria-docker",
- "containeria-engine",
- "containeria-kube",
- "containeria-machines",
- "containeria-net",
+ "contena-data",
+ "contena-docker",
+ "contena-engine",
+ "contena-kube",
+ "contena-machines",
+ "contena-net",
  "flate2",
  "futures",
  "objc2-foundation",
@@ -1206,24 +1206,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "containeria-cli"
+name = "contena-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
- "containeria-docker",
- "containeria-engine",
- "containeria-net",
+ "contena-docker",
+ "contena-engine",
+ "contena-net",
  "futures",
  "tokio",
 ]
 
 [[package]]
-name = "containeria-data"
+name = "contena-data"
 version = "0.1.0"
 dependencies = [
  "chrono",
  "clickhouse",
- "containeria-docker",
+ "contena-docker",
  "csv",
  "futures",
  "keyring",
@@ -1243,7 +1243,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "containeria-docker"
+name = "contena-docker"
 version = "0.1.0"
 dependencies = [
  "bollard",
@@ -1263,10 +1263,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "containeria-engine"
+name = "contena-engine"
 version = "0.1.0"
 dependencies = [
- "containeria-proto",
+ "contena-proto",
  "rustix",
  "serde",
  "serde_json",
@@ -1282,7 +1282,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "containeria-kube"
+name = "contena-kube"
 version = "0.1.0"
 dependencies = [
  "futures",
@@ -1299,11 +1299,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "containeria-machines"
+name = "contena-machines"
 version = "0.1.0"
 dependencies = [
  "bollard",
- "containeria-proto",
+ "contena-proto",
  "futures",
  "jiff",
  "serde",
@@ -1317,11 +1317,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "containeria-net"
+name = "contena-net"
 version = "0.1.0"
 dependencies = [
- "containeria-docker",
- "containeria-proto",
+ "contena-docker",
+ "contena-proto",
  "hickory-proto",
  "http-body-util",
  "hyper",
@@ -1341,7 +1341,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "containeria-proto"
+name = "contena-proto"
 version = "0.1.0"
 dependencies = [
  "serde",

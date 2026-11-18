@@ -1,11 +1,11 @@
-// Containeria prototype core: router, layers, helpers. Plain DOM, no build step.
+// Contena prototype core: router, layers, helpers. Plain DOM, no build step.
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const icon = (name, cls = '') => (name.startsWith('cx-') ? cxIcon(name, cls) : `<i class="ti ti-${name} ${cls}" aria-hidden="true"></i>`);
 const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-// a container, image, connection or machine gets a face: its real logo, or Containeria's own icon for the object
+// a container, image, connection or machine gets a face: its real logo, or Contena's own icon for the object
 function tile(o, size = '', extra = '') {
   const key = logoKey(o);
   if (key) return `<span class="tile is-logo ${size} ${extra}">${logoImg(key)}</span>`;
@@ -341,7 +341,7 @@ function openPalette(prefill = '') {
   closeLayers();
   const wrap = document.createElement('div');
   wrap.className = 'palette-wrap';
-  wrap.innerHTML = `<div class="palette" role="dialog" aria-label="Command palette"><div class="palette-in">${icon('search')}<input placeholder="Search containers, tables, images, actions" value="${esc(prefill)}" aria-label="Search"><span class="kbd">esc</span></div><div class="palette-list" role="listbox"></div><div class="palette-foot"><span><span class="kbd">↑</span><span class="kbd">↓</span> move</span><span><span class="kbd">↵</span> open</span><span><span class="kbd">⌘</span><span class="kbd">↵</span> open in new window</span><span class="right">Containeria</span></div></div>`;
+  wrap.innerHTML = `<div class="palette" role="dialog" aria-label="Command palette"><div class="palette-in">${icon('search')}<input placeholder="Search containers, tables, images, actions" value="${esc(prefill)}" aria-label="Search"><span class="kbd">esc</span></div><div class="palette-list" role="listbox"></div><div class="palette-foot"><span><span class="kbd">↑</span><span class="kbd">↓</span> move</span><span><span class="kbd">↵</span> open</span><span><span class="kbd">⌘</span><span class="kbd">↵</span> open in new window</span><span class="right">Contena</span></div></div>`;
   $('.window').append(wrap);
   const input = $('input', wrap), list = $('.palette-list', wrap);
   const all = paletteItems();
@@ -382,17 +382,17 @@ function openTray() {
   el.className = 'tray';
   const on = DB.engine.state === 'running';
   el.innerHTML = `
-    <div class="tray-head">${engineMark(26)}<div class="grow"><b class="ink" style="font-weight:600">Containeria</b><div class="meta">${on ? `Engine running · ${running.length} containers` : 'Engine stopped'}</div></div>
+    <div class="tray-head">${engineMark(26)}<div class="grow"><b class="ink" style="font-weight:600">Contena</b><div class="meta">${on ? `Engine running · ${running.length} containers` : 'Engine stopped'}</div></div>
       <label class="switch" data-tip="${on ? 'Stop engine' : 'Start engine'}"><input type="checkbox" ${on ? 'checked' : ''} data-tray-engine aria-label="Engine"><span></span></label></div>
     ${on ? `<div style="padding:0 14px 12px"><div class="row" style="justify-content:space-between;margin-bottom:6px"><span class="meta"><b class="ink num" data-mem-used>${fmt.mb(d.used)}</b> of ${DB.engine.memGB} GB</span><span class="meta">${fmt.mb(d.returned)} returned to macOS</span></div>${ledgerHTML('ledger-sm')}</div>` : ''}
     ${crashed.length ? `<div class="tray-sec"><div class="menu-label">Needs attention</div>${crashed.map((c) => `<button class="tray-row" data-go="/containers/${c.name}/logs">${tile(c, '', 'is-bad')}<span class="truncate">${esc(c.name)}</span><span class="meta bad-ink">Exited (${c.exitCode}) ${fmt.ago(c.finished)}</span></button>`).join('')}</div>` : ''}
     ${on ? DB.projects.map((p) => { const cs = running.filter((c) => c.project === p.id); if (!cs.length) return ''; return `<div class="tray-sec"><div class="menu-label row">${esc(p.name)}<span class="right meta num">${fmt.mb(cs.reduce((a, c) => a + c.memMB, 0))}</span></div>${cs.slice(0, 5).map((c) => `<button class="tray-row" data-go="/containers/${c.name}">${tile(c)}<span class="truncate grow">${esc(c.service || c.name)}</span>${c.ports[0] ? `<span class="tray-act btn btn-ghost btn-icon btn-sm" data-tip="Open localhost:${c.ports[0].host}">${icon('external-link', 'sm')}</span>` : ''}<span class="tray-act btn btn-ghost btn-icon btn-sm" data-tip="Terminal">${icon('terminal-2', 'sm')}</span><span class="meta tray-mem">${fmt.mb(c.memMB)}</span></button>`).join('')}</div>`; }).join('') : ''}
     <div class="tray-sec">
-      <button class="tray-row" data-tray-open>${icon('app-window')}Open Containeria<span class="meta">⌘⇧O</span></button>
+      <button class="tray-row" data-tray-open>${icon('app-window')}Open Contena<span class="meta">⌘⇧O</span></button>
       <button class="tray-row" data-go="/data">${icon('cx-data')}Data browser</button>
       <button class="tray-row" data-go="/settings">${icon('cx-settings')}Settings…<span class="meta">⌘,</span></button>
     </div>
-    <div class="tray-sec"><button class="tray-row" data-tray-quit>${icon('power')}Quit Containeria<span class="meta">⌘Q</span></button></div>`;
+    <div class="tray-sec"><button class="tray-row" data-tray-quit>${icon('power')}Quit Contena<span class="meta">⌘Q</span></button></div>`;
   document.body.append(el);
   const r = btn.getBoundingClientRect();
   el.style.left = Math.min(innerWidth - 348, r.right - 340 + 20) + 'px';

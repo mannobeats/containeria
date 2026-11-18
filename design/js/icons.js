@@ -1,4 +1,4 @@
-// Containeria's own icons for its own objects. 24px grid, 1.5px stroke, round joins, one duotone layer.
+// Contena's own icons for its own objects. 24px grid, 1.5px stroke, round joins, one duotone layer.
 // `.f` is the soft fill (the object's body), `.a` the accent (the part that's alive: an edited cell, a running prompt).
 const CX_ICONS = {
   // a shipping container in three-quarter view, lit from the top

@@ -1,4 +1,4 @@
-use containeria_docker::RunSpec;
+use contena_docker::RunSpec;
 use tauri::State;
 
 use crate::error::Result;

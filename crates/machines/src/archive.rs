@@ -18,7 +18,7 @@ use crate::provision;
 use crate::snapshot::own_image;
 use crate::{Error, Machines, Result};
 
-/// What a machine recorded about itself in `/etc/containeria-machine.json`.
+/// What a machine recorded about itself in `/etc/contena-machine.json`.
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
 struct Recorded {
@@ -91,12 +91,11 @@ impl Machines {
     /// Reads what the disk in `image` says it is, with a container that only prints the file.
     /// A disk that says nothing imports as a machine of an unknown distribution.
     async fn recorded(&self, image: &str) -> Recorded {
-        let name =
-            format!("containeria-machine-import-{}", image.rsplit(':').next().unwrap_or("x"));
+        let name = format!("contena-machine-import-{}", image.rsplit(':').next().unwrap_or("x"));
         let _ = self.remove(&name).await;
         let body = ContainerCreateBody {
             image: Some(image.to_owned()),
-            cmd: Some(["cat", "/etc/containeria-machine.json"].map(str::to_owned).into()),
+            cmd: Some(["cat", "/etc/contena-machine.json"].map(str::to_owned).into()),
             ..ContainerCreateBody::default()
         };
         let read = async {

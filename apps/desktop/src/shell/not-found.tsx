@@ -17,7 +17,7 @@ export function NotFound() {
           </Link>
         }
       >
-        The link may come from an older version of Containeria.
+        The link may come from an older version of Contena.
       </EmptyState>
     </Page>
   );

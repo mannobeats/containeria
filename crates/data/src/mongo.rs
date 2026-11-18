@@ -144,7 +144,7 @@ impl Mongo {
             host: target.host.clone(),
             port: Some(target.port.unwrap_or(27017)),
         }];
-        options.app_name = Some("Containeria".into());
+        options.app_name = Some("Contena".into());
         options.server_selection_timeout = Some(Duration::from_secs(10));
         options.connect_timeout = Some(Duration::from_secs(10));
         options.direct_connection = Some(true);

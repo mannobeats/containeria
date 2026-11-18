@@ -6,7 +6,7 @@ use std::net::{IpAddr, Ipv4Addr};
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
-use containeria_proto::{EngineCall, Kubernetes, Port, Transport};
+use contena_proto::{EngineCall, Kubernetes, Port, Transport};
 
 use super::guest::Guest;
 use super::kubeconfig;
@@ -92,7 +92,7 @@ fn rewrite(change: impl FnOnce(&str) -> yaml_serde::Result<String>) -> Result<()
     if let Some(folder) = path.parent() {
         fs::create_dir_all(folder)?;
     }
-    let new = path.with_extension("containeria");
+    let new = path.with_extension("contena");
     fs::write(&new, changed)?;
     fs::set_permissions(&new, fs::Permissions::from_mode(0o600))?;
     Ok(fs::rename(new, path)?)

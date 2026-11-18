@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-use containeria_docker::{DockerEvent, ObjectKind};
+use contena_docker::{DockerEvent, ObjectKind};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_notification::NotificationExt;
 use tauri_specta::Event;
@@ -12,7 +12,7 @@ use crate::preferences::NotifyOn;
 use crate::state::AppState;
 use crate::tray;
 
-/// Something in the engine worth telling a person who isn't looking at Containeria.
+/// Something in the engine worth telling a person who isn't looking at Contena.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Alert {
     Crashed { id: String, name: String, exit_code: i32 },

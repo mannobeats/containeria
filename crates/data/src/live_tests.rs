@@ -2,13 +2,13 @@
 //! engine, so they're ignored by default. Start the containers, run, then remove them:
 //!
 //! ```sh
-//! docker run -d --name containeria-test-postgres -e POSTGRES_PASSWORD=test-pass -e POSTGRES_DB=shop -p 55432:5432 postgres:18-alpine
-//! docker run -d --name containeria-test-mysql -e MYSQL_ROOT_PASSWORD=test-pass -e MYSQL_DATABASE=shop -p 53306:3306 mysql:8.4
-//! docker run -d --name containeria-test-redis -p 56379:6379 redis:8-alpine
-//! docker run -d --name containeria-test-mongo -e MONGO_INITDB_ROOT_USERNAME=root -e MONGO_INITDB_ROOT_PASSWORD=test-pass -p 57017:27017 mongo:8
-//! docker run -d --name containeria-test-clickhouse -e CLICKHOUSE_PASSWORD=test-pass -e CLICKHOUSE_DB=events -p 58123:8123 clickhouse/clickhouse-server:25.8-alpine
-//! DOCKER_SOCKET=$HOME/.orbstack/run/docker.sock cargo test -p containeria-data -- --ignored --test-threads=1
-//! docker rm -f containeria-test-postgres containeria-test-mysql containeria-test-redis containeria-test-mongo containeria-test-clickhouse
+//! docker run -d --name contena-test-postgres -e POSTGRES_PASSWORD=test-pass -e POSTGRES_DB=shop -p 55432:5432 postgres:18-alpine
+//! docker run -d --name contena-test-mysql -e MYSQL_ROOT_PASSWORD=test-pass -e MYSQL_DATABASE=shop -p 53306:3306 mysql:8.4
+//! docker run -d --name contena-test-redis -p 56379:6379 redis:8-alpine
+//! docker run -d --name contena-test-mongo -e MONGO_INITDB_ROOT_USERNAME=root -e MONGO_INITDB_ROOT_PASSWORD=test-pass -p 57017:27017 mongo:8
+//! docker run -d --name contena-test-clickhouse -e CLICKHOUSE_PASSWORD=test-pass -e CLICKHOUSE_DB=events -p 58123:8123 clickhouse/clickhouse-server:25.8-alpine
+//! DOCKER_SOCKET=$HOME/.orbstack/run/docker.sock cargo test -p contena-data -- --ignored --test-threads=1
+//! docker rm -f contena-test-postgres contena-test-mysql contena-test-redis contena-test-mongo contena-test-clickhouse
 //! ```
 //!
 //! Each test opens its database the way the app does: found in its container, credentials read
@@ -16,7 +16,7 @@
 
 use std::path::PathBuf;
 
-use containeria_docker::Docker;
+use contena_docker::Docker;
 
 use crate::changes::{Cell, ChangeSet, RowUpdate};
 use crate::export::ExportFormat;
@@ -118,9 +118,9 @@ async fn browse_edit_and_export(data: &Data, id: &str, schema: Option<&str>) {
 }
 
 #[tokio::test]
-#[ignore = "needs a Docker engine and the containeria-test-postgres container"]
+#[ignore = "needs a Docker engine and the contena-test-postgres container"]
 async fn postgres_end_to_end() {
-    let (_folder, data, id) = open("containeria-test-postgres").await;
+    let (_folder, data, id) = open("contena-test-postgres").await;
     data.run(
         &id,
         "DROP TABLE IF EXISTS orders, customers;
@@ -145,9 +145,9 @@ async fn postgres_end_to_end() {
 }
 
 #[tokio::test]
-#[ignore = "needs a Docker engine and the containeria-test-mysql container"]
+#[ignore = "needs a Docker engine and the contena-test-mysql container"]
 async fn mysql_end_to_end() {
-    let (_folder, data, id) = open("containeria-test-mysql").await;
+    let (_folder, data, id) = open("contena-test-mysql").await;
     data.run(
         &id,
         "DROP TABLE IF EXISTS orders; DROP TABLE IF EXISTS customers;
@@ -189,36 +189,34 @@ async fn refuses_writes_in_safe_mode(container: &str) {
 }
 
 #[tokio::test]
-#[ignore = "needs a Docker engine and the containeria-test-postgres and containeria-test-mysql containers"]
+#[ignore = "needs a Docker engine and the contena-test-postgres and contena-test-mysql containers"]
 async fn safe_mode_is_enforced_by_the_database() {
-    let (_pg_folder, pg, pg_id) = open("containeria-test-postgres").await;
+    let (_pg_folder, pg, pg_id) = open("contena-test-postgres").await;
     pg.run(&pg_id, "CREATE TABLE IF NOT EXISTS customers (id serial PRIMARY KEY)").await.unwrap();
-    refuses_writes_in_safe_mode("containeria-test-postgres").await;
-    let (_my_folder, my, my_id) = open("containeria-test-mysql").await;
+    refuses_writes_in_safe_mode("contena-test-postgres").await;
+    let (_my_folder, my, my_id) = open("contena-test-mysql").await;
     my.run(&my_id, "CREATE TABLE IF NOT EXISTS customers (id int PRIMARY KEY)").await.unwrap();
-    refuses_writes_in_safe_mode("containeria-test-mysql").await;
+    refuses_writes_in_safe_mode("contena-test-mysql").await;
 }
 
 #[tokio::test]
-#[ignore = "needs a Docker engine and the containeria-test-redis container"]
+#[ignore = "needs a Docker engine and the contena-test-redis container"]
 async fn redis_keys_and_values() {
-    let (_folder, data, id) = open("containeria-test-redis").await;
-    data.redis_set(&id, "containeria:test:greeting", "hello").await.unwrap();
-    let page = data.redis_keys(&id, "containeria:test:*", None).await.unwrap();
-    assert!(
-        page.keys.iter().any(|key| key.key == "containeria:test:greeting" && key.kind == "string")
-    );
+    let (_folder, data, id) = open("contena-test-redis").await;
+    data.redis_set(&id, "contena:test:greeting", "hello").await.unwrap();
+    let page = data.redis_keys(&id, "contena:test:*", None).await.unwrap();
+    assert!(page.keys.iter().any(|key| key.key == "contena:test:greeting" && key.kind == "string"));
     assert_eq!(
-        data.redis_value(&id, "containeria:test:greeting").await.unwrap(),
+        data.redis_value(&id, "contena:test:greeting").await.unwrap(),
         crate::redis::RedisValue::Text { value: "hello".into() }
     );
-    data.redis_delete(&id, "containeria:test:greeting").await.unwrap();
+    data.redis_delete(&id, "contena:test:greeting").await.unwrap();
 }
 
 #[tokio::test]
-#[ignore = "needs a Docker engine and the containeria-test-mongo container"]
+#[ignore = "needs a Docker engine and the contena-test-mongo container"]
 async fn mongo_collections_and_filters() {
-    let (_folder, data, id) = open("containeria-test-mongo").await;
+    let (_folder, data, id) = open("contena-test-mongo").await;
     let mongodb = mongodb::Client::with_uri_str(
         "mongodb://root:test-pass@127.0.0.1:57017/?directConnection=true",
     )
@@ -243,9 +241,9 @@ async fn mongo_collections_and_filters() {
 }
 
 #[tokio::test]
-#[ignore = "needs a Docker engine and the containeria-test-clickhouse container"]
+#[ignore = "needs a Docker engine and the contena-test-clickhouse container"]
 async fn clickhouse_tables_and_queries() {
-    let (_folder, data, id) = open("containeria-test-clickhouse").await;
+    let (_folder, data, id) = open("contena-test-clickhouse").await;
     data.run(&id, "DROP TABLE IF EXISTS events.hits").await.unwrap();
     data.run(
         &id,

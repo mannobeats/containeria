@@ -1,6 +1,6 @@
-// containeria-vmm runs one Linux guest with Apple Virtualization for the Containeria engine.
+// contena-vmm runs one Linux guest with Apple Virtualization for the Contena engine.
 //
-//   containeria-vmm <config.json>
+//   contena-vmm <config.json>
 //
 // Standard input is a Unix socket to the engine (see Channel). The guest stops when the engine
 // closes it, so a VM never outlives the engine that started it.
@@ -8,7 +8,7 @@
 import Foundation
 
 guard CommandLine.arguments.count == 2 else {
-    FileHandle.standardError.write(Data("usage: containeria-vmm <config.json>\n".utf8))
+    FileHandle.standardError.write(Data("usage: contena-vmm <config.json>\n".utf8))
     exit(64)
 }
 

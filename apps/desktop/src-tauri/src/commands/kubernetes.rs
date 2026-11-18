@@ -1,6 +1,6 @@
 use std::pin::pin;
 
-use containeria_kube::{Cluster, ConfigKind, Kube, KubeEvent, ResourceKind};
+use contena_kube::{Cluster, ConfigKind, Kube, KubeEvent, ResourceKind};
 use futures::StreamExt;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, State};
@@ -56,7 +56,7 @@ pub(crate) async fn kubernetes_create_namespace(
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn kubernetes_kubeconfig_path() -> Result<String> {
-    containeria_kube::kubeconfig_path()
+    contena_kube::kubeconfig_path()
         .map(|path| path.display().to_string())
         .ok_or_else(|| CommandError::new(ErrorKind::NotFound, "Your home folder can't be found."))
 }

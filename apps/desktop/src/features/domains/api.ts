@@ -62,7 +62,7 @@ export function useResolver() {
   return {
     install: useDomainsChange<void>({
       run: commands.domainsInstallResolver,
-      done: () => "Your Mac now finds .containeria.local names",
+      done: () => "Your Mac now finds .contena.local names",
       failed: "Name resolution wasn't set up",
     }),
     uninstall: useDomainsChange<void>({

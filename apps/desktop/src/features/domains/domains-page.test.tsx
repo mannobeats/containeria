@@ -11,7 +11,7 @@ import { DomainsPage } from "./domains-page";
 function status(overrides: Partial<DomainsStatus> = {}): DomainsStatus {
   return {
     enabled: true,
-    tld: "containeria.local",
+    tld: "contena.local",
     https: true,
     ports: { dns: 15353, http: 80, https: 7443 },
     resolver: "installed",
@@ -26,7 +26,7 @@ function status(overrides: Partial<DomainsStatus> = {}): DomainsStatus {
         down: null,
       },
       {
-        host: "web.shop.containeria.local",
+        host: "web.shop.contena.local",
         kind: "container",
         container: "shop-web-1",
         port: 3000,
@@ -34,7 +34,7 @@ function status(overrides: Partial<DomainsStatus> = {}): DomainsStatus {
         down: null,
       },
       {
-        host: "redis.containeria.local",
+        host: "redis.contena.local",
         kind: "container",
         container: "redis",
         port: null,
@@ -76,7 +76,7 @@ describe("DomainsPage", () => {
     expect(await screen.findByText("2 of 3")).toBeDefined();
     const rows = screen.getAllByRole("row").map((row) => row.textContent ?? "");
     const custom = rows.findIndex((text) => text.includes("shop.test"));
-    const container = rows.findIndex((text) => text.includes("web.shop.containeria.local"));
+    const container = rows.findIndex((text) => text.includes("web.shop.contena.local"));
     expect(custom).toBeLessThan(container);
     expect(screen.getByText("No port to send to")).toBeDefined();
     expect(screen.getByText("HTTP 80 · HTTPS 7443 · DNS 15353")).toBeDefined();

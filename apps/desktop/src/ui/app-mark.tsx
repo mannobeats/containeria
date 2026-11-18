@@ -1,6 +1,6 @@
 import { useId } from "react";
 
-/** Containeria's mark: three containers stacked on the macOS accent. */
+/** Contena's mark: three containers stacked on the macOS accent. */
 export function AppMark({ size = 28 }: { size?: number }) {
   const gradient = useId();
   return (

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// A database engine Containeria can open.
+/// A database engine Contena can open.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "lowercase")]
 pub enum Engine {

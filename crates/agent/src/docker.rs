@@ -3,7 +3,7 @@
 use std::fs;
 use std::time::Duration;
 
-use containeria_agent::daemon::{GROUP, SOCKET, settings};
+use contena_agent::daemon::{GROUP, SOCKET, settings};
 use rustix::process::{Pid, Signal, kill_process};
 use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};

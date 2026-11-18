@@ -1,4 +1,4 @@
-# Containeria design system
+# Contena design system
 
 Developers on macOS who run local containers, databases, Kubernetes and Linux machines, and open
 the app dozens of times a day for a few seconds each. Flavor: technical, native macOS. Built with
@@ -7,7 +7,7 @@ art-director.
 ## Direction
 
 ```
-App: Containeria, for developers on macOS, doing local container, database, Kubernetes and Linux
+App: Contena, for developers on macOS, doing local container, database, Kubernetes and Linux
   machine work, dozens of times a day, mostly in short visits from the menu bar.
   They open it asking: is my stack up, what is eating my Mac, and where is the thing I need
   right now (a log line, a shell, a URL, a table row)?
@@ -30,7 +30,7 @@ Three directions, each from one thing in the user's world:
      Compose project, with the part handed back to macOS shown as its own hatched segment,
      above the container list grouped by project / neutral cool grays + system accent / Geist.
   B. The cargo manifest: each Compose project is a bay, rows read like a manifest, ports drawn
-     as routes from container to *.containeria.local domain / warm grays + signal orange / Geist.
+     as routes from container to *.contena.local domain / warm grays + signal orange / Geist.
   C. The process tree: Activity Monitor meets a terminal, keyboard-only list of every process
      across containers and machines / near-black + green / Geist Mono everywhere.
 Pick: A, because people leave Docker Desktop over memory they cannot see; showing where every
@@ -69,7 +69,7 @@ danger; sizes sm (24px), md (28px), lg (32px).
 ## Icons and logos
 
 Three sources, each with one job:
-- **Containeria icons** (`design/js/icons.js`, `cxIcon`) for Containeria's own objects: container,
+- **Contena icons** (`design/js/icons.js`, `cxIcon`) for Contena's own objects: container,
   image, volume, network, kube, pod, machine, data, domain, activity, settings, compose, layer.
   24px grid, 1.5px stroke, round joins, one soft fill (`.f`, the body) and one accent (`.a`, the
   live part). The accent turns brand-colored only when the item is active or shown large.
@@ -79,7 +79,7 @@ Three sources, each with one job:
   chip (`.tile`), never a colored one. `logoKey()` maps an image, connection or distro to its logo.
 - **Tabler** (`tabler-icons-300`, 1.5px) for generic UI actions: search, play, stop, copy, filter.
 
-No two-letter monograms. An object without a known logo gets the Containeria icon for its kind.
+No two-letter monograms. An object without a known logo gets the Contena icon for its kind.
 
 ## Rules
 

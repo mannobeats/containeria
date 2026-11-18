@@ -16,7 +16,7 @@ use crate::sql::SqlPool;
 use crate::tunnel::{KnownHosts, Tunnel};
 use crate::value::Value;
 
-/// The engines Containeria speaks, behind one set of operations.
+/// The engines Contena speaks, behind one set of operations.
 #[derive(Debug, Clone)]
 pub(crate) enum Driver {
     Sql(SqlPool),

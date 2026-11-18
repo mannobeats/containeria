@@ -12,7 +12,7 @@ use bollard::query_parameters::{
     RestartContainerOptionsBuilder, StartContainerOptions, StatsOptionsBuilder,
     StopContainerOptionsBuilder,
 };
-use containeria_proto::SSH_AGENT;
+use contena_proto::SSH_AGENT;
 use futures::StreamExt;
 use futures::future::join_all;
 use serde::{Deserialize, Serialize};
@@ -23,19 +23,19 @@ use crate::provision;
 use crate::{Error, Machines, Result};
 
 /// On every machine's container, with the machine's name.
-pub(crate) const LABEL: &str = "dev.containeria.machine";
-const DISTRO: &str = "dev.containeria.machine.distro";
-const RELEASE: &str = "dev.containeria.machine.release";
-pub(crate) const USER: &str = "dev.containeria.machine.user";
+pub(crate) const LABEL: &str = "dev.contena.machine";
+const DISTRO: &str = "dev.contena.machine.distro";
+const RELEASE: &str = "dev.contena.machine.release";
+pub(crate) const USER: &str = "dev.contena.machine.user";
 /// A distribution's image once set up, shared by every machine of that release.
-const BASE: &str = "containeria/machine-base";
+const BASE: &str = "contena/machine-base";
 const GIB: i64 = 1 << 30;
 /// How long a machine's init gets to shut its services down.
 const STOP_SECONDS: i32 = 20;
 
 /// The container behind the machine `name`.
 pub(crate) fn container(name: &str) -> String {
-    format!("containeria-machine-{name}")
+    format!("contena-machine-{name}")
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
@@ -362,7 +362,7 @@ impl Machines {
             let progress = progress?;
             on_line(format!("Pulling {image}: {}", progress.status.unwrap_or_default()));
         }
-        let setup = format!("containeria-machine-setup-{}-{tag}", distro.id);
+        let setup = format!("contena-machine-setup-{}-{tag}", distro.id);
         let _ = self.remove(&setup).await;
         let body = ContainerCreateBody {
             image: Some(image.to_owned()),
@@ -515,7 +515,7 @@ mod tests {
     fn a_machine_is_a_privileged_container_with_its_own_init() {
         let (shape, _, image) = asked().shape(&ada()).unwrap();
         assert_eq!(image, "ubuntu:24.04");
-        let body = shape.body("containeria/machine-base:ubuntu-24.04");
+        let body = shape.body("contena/machine-base:ubuntu-24.04");
         assert_eq!(body.hostname.as_deref(), Some("dev"));
         assert_eq!(body.cmd, Some(vec!["/usr/lib/systemd/systemd".to_owned()]));
         assert_eq!(body.stop_signal.as_deref(), Some("SIGRTMIN+3"));

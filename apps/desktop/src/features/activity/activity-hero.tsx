@@ -7,7 +7,7 @@ import type { EngineStatus, Ledger } from "@/lib/ipc/bindings";
 
 function memoryNote(status: EngineStatus | undefined): string {
   if (status?.phase === "external") {
-    return "Measured on the Docker engine set in CONTAINERIA_DOCKER_SOCKET.";
+    return "Measured on the Docker engine set in CONTENA_DOCKER_SOCKET.";
   }
   return status?.config.sleepWhenIdle
     ? "The engine takes what its containers need, and gives all of it back when nothing runs."

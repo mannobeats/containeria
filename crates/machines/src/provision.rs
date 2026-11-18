@@ -1,7 +1,7 @@
 //! The shell scripts that turn a distribution's bare image into a machine: an init system, sudo
 //! and the few tools a shell needs, then a user who is the Mac's.
 
-use containeria_proto::SSH_AGENT;
+use contena_proto::SSH_AGENT;
 
 use crate::catalogue::Family;
 
@@ -68,9 +68,9 @@ pub(crate) fn user(name: &str, uid: u32, distro: &str, release: &str) -> String 
          mkdir -p /etc/sudoers.d && echo '{name} ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/{name} \
          && chmod 440 /etc/sudoers.d/{name}; \
          mkdir -p /etc/profile.d \
-         && echo 'export SSH_AUTH_SOCK={SSH_AGENT}' > /etc/profile.d/containeria.sh; \
+         && echo 'export SSH_AUTH_SOCK={SSH_AGENT}' > /etc/profile.d/contena.sh; \
          printf '%s' '{{\"distro\":\"{distro}\",\"release\":\"{release}\",\"user\":\"{name}\"}}' \
-           > /etc/containeria-machine.json"
+           > /etc/contena-machine.json"
     )
 }
 

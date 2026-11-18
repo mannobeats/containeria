@@ -7,7 +7,7 @@
 | UI | `apps/desktop/src` | React views. Reads state through TanStack Query, never holds a copy of engine state. |
 | App shell | `apps/desktop/src-tauri` | Tauri commands, events, streams, tray, windows. Thin: translates between the UI and the crates. |
 | Domain crates | `crates/*` | One per engine area. Plain async Rust, no Tauri types, testable without a window. |
-| Engine | `crates/engine`, `vmm/`, `guest/`, `crates/agent` | Containeria's own: a VM that runs the unmodified Docker Engine. See "The engine" below. |
+| Engine | `crates/engine`, `vmm/`, `guest/`, `crates/agent` | Contena's own: a VM that runs the unmodified Docker Engine. See "The engine" below. |
 
 `crates/docker` wraps the Docker Engine API (`bollard`). The areas (Kubernetes, Linux machines,
 data browser, domains) each get their own crate; the app shell composes them.
@@ -16,17 +16,17 @@ data browser, domains) each get their own crate; the app shell composes them.
 
 ```
 docker, compose, the app, cx
-        │  ~/.containeria/run/docker.sock
-containeria-engine ──── containeria-vmm ──── the guest
+        │  ~/.contena/run/docker.sock
+contena-engine ──── contena-vmm ──── the guest
   (crates/engine)        (vmm/, Swift)        kernel + agent (crates/agent) + Docker
 ```
 
-- **`containeria-engine`** is one process, started by the app or `cx engine start` and running
+- **`contena-engine`** is one process, started by the app or `cx engine start` and running
   until it is stopped. It owns the VM, Docker's socket on the Mac and the ports containers
   publish. With nothing running in the VM it turns it off (`Asleep`); the next connection to the
-  socket boots it again. `containeria_engine::Engine` is how the app and `cx` start it, ask its
+  socket boots it again. `contena_engine::Engine` is how the app and `cx` start it, ask its
   status and stop it, over `run/engine.sock`.
-- **`containeria-vmm`** is the part that speaks to Apple's frameworks. It runs the VM with Apple
+- **`contena-vmm`** is the part that speaks to Apple's frameworks. It runs the VM with Apple
   Virtualization and watches the Mac's folders for changes. Its standard input is a socket to
   the engine: lines of JSON, and the descriptor of each connection into or out of the guest. It
   is the only binary with the virtualization entitlement, and the VM stops when the engine's end
@@ -52,7 +52,7 @@ containeria-engine ──── containeria-vmm ──── the guest
   network, as the watchers' socket does to Docker; the domain proxy reaches containers that
   publish no port through it.
 - **Kubernetes** is k3s, fetched and run by the agent with Docker as its runtime. The engine
-  writes the `containeria` kubeconfig context and publishes the API and service ports.
+  writes the `contena` kubeconfig context and publishes the API and service ports.
 - **Linux machines** are containers, made by `crates/machines` through the Docker API.
 
 ## How the UI talks to Rust
@@ -75,7 +75,7 @@ the only way the UI reaches Rust.
 1. Put the logic in the domain crate, returning its own types and errors.
 2. Add a thin `#[tauri::command] #[specta::specta]` function in `src-tauri/src/commands/<area>.rs`.
 3. Register it in `src-tauri/src/ipc.rs`.
-4. Run `cargo test -p containeria-app` to regenerate `bindings.ts`, and commit both.
+4. Run `cargo test -p contena-app` to regenerate `bindings.ts`, and commit both.
 5. Wrap it in a query or mutation hook in `src/features/<area>/api.ts`.
 
 Types crossing the boundary derive `serde::Serialize` and `specta::Type`, use `camelCase`, and mark
@@ -108,14 +108,14 @@ The app starts its long-lived tasks in `lib.rs` setup, among them:
 - Every window shares the same commands and hooks, and `behaveNatively()`: focus rings only for
   keyboard use, and no WebKit context menu outside text.
 - The native menu (`src-tauri/src/menu.rs`) emits `Navigate(path)`; the UI opens that path.
-- App preferences that aren't engine settings live in `~/.containeria/settings.json`
-  (`preferences.rs`); engine settings live in `~/.containeria/engine.json`.
+- App preferences that aren't engine settings live in `~/.contena/settings.json`
+  (`preferences.rs`); engine settings live in `~/.contena/engine.json`.
 
 ## Engine state
 
-`~/.containeria` is Containeria's home (`$CONTAINERIA_HOME` overrides it): `engine.json` (settings),
+`~/.contena` is Contena's home (`$CONTENA_HOME` overrides it): `engine.json` (settings),
 `run/` (sockets and the lock that keeps the engine to one process), `vm/` (the data disk, or a
 link to where it was moved), `log/` (the engine's log and the guest's console).
 
-`CONTAINERIA_DOCKER_SOCKET` points the app at any other Docker engine (the phase reads `external`),
+`CONTENA_DOCKER_SOCKET` points the app at any other Docker engine (the phase reads `external`),
 which is how the UI is developed and tested without starting a VM.

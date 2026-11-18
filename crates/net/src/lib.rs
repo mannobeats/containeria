@@ -1,6 +1,6 @@
-//! Domains for containers on the Mac. A DNS server answers `*.containeria.local` (and the user's own
+//! Domains for containers on the Mac. A DNS server answers `*.contena.local` (and the user's own
 //! names) with 127.0.0.1, a reverse proxy routes each name to its container, and a local certificate
-//! authority makes `https://` work. Nothing outside `~/.containeria/net` changes until the user
+//! authority makes `https://` work. Nothing outside `~/.contena/net` changes until the user
 //! approves it.
 
 mod ca;

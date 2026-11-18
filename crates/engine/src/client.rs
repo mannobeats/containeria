@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::{Duration, Instant};
 
-use containeria_proto::rpc::{self, Caller, Incoming};
+use contena_proto::rpc::{self, Caller, Incoming};
 use tokio::net::UnixStream;
 use tokio::process::Command;
 use tokio::sync::mpsc;
@@ -13,7 +13,7 @@ use crate::api::{ClientCall, EngineNote, Status};
 use crate::error::{Error, Result};
 use crate::home::Home;
 
-const PROGRAM: &str = "containeria-engine";
+const PROGRAM: &str = "contena-engine";
 const START_PATIENCE: Duration = Duration::from_secs(10);
 
 #[derive(Debug, Clone)]
@@ -60,7 +60,7 @@ impl Changes {
 }
 
 impl Engine {
-    /// The engine for `home`. Its program is `$CONTAINERIA_ENGINE`, else `bundled` (the app's
+    /// The engine for `home`. Its program is `$CONTENA_ENGINE`, else `bundled` (the app's
     /// copy), else the one next to this program, else the one in the app bundle this program is
     /// part of, which is where `cx` finds it.
     #[must_use]
@@ -70,7 +70,7 @@ impl Engine {
         let beside = folder.join(PROGRAM);
         let in_bundle = folder.join("../../engine").join(PROGRAM);
         let in_bundle = std::fs::canonicalize(&in_bundle).unwrap_or(in_bundle);
-        let program = std::env::var_os("CONTAINERIA_ENGINE")
+        let program = std::env::var_os("CONTENA_ENGINE")
             .map(PathBuf::from)
             .or_else(|| bundled.map(Path::to_path_buf))
             .unwrap_or_else(|| if in_bundle.is_file() { in_bundle } else { beside });
@@ -213,7 +213,7 @@ impl Engine {
             .append(true)
             .open(self.home.logs().join("engine.log"))?;
         let mut engine = Command::new(&self.program)
-            .env("CONTAINERIA_HOME", self.home.root())
+            .env("CONTENA_HOME", self.home.root())
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(log)

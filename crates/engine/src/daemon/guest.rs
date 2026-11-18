@@ -6,8 +6,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use containeria_proto::rpc::{self, Caller, Incoming};
-use containeria_proto::{AgentCall, Alias, Boot, Booted, CONTROL_PORT, EngineCall, HOST_PORT};
+use contena_proto::rpc::{self, Caller, Incoming};
+use contena_proto::{AgentCall, Alias, Boot, Booted, CONTROL_PORT, EngineCall, HOST_PORT};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
@@ -19,10 +19,11 @@ use crate::config::EngineConfig;
 use crate::error::{Error, Result};
 use crate::home::Home;
 
-const HOSTNAME: &str = "containeria";
+const HOSTNAME: &str = "contena";
 const ROSETTA: &str = "rosetta";
 /// The system image is the first disk and the data disk the second, which the agent relies on.
-const COMMAND_LINE: &str = "console=hvc0 root=/dev/vda ro rootfstype=erofs init=/sbin/containeria-agent panic=-1 loglevel=4";
+const COMMAND_LINE: &str =
+    "console=hvc0 root=/dev/vda ro rootfstype=erofs init=/sbin/contena-agent panic=-1 loglevel=4";
 /// The Mac's folders the guest sees at the same paths, so a bind mount means the same on both
 /// sides: by tag, then path.
 const SHARES: [(&str, &str); 3] =
@@ -46,17 +47,17 @@ pub(crate) struct Paths {
 }
 
 impl Paths {
-    /// Finds the VM helper and the guest: `$CONTAINERIA_VMM` and `$CONTAINERIA_GUEST`, or next to
+    /// Finds the VM helper and the guest: `$CONTENA_VMM` and `$CONTENA_GUEST`, or next to
     /// this program, where the app bundle has them.
     pub(crate) fn locate(home: Home) -> Result<Self> {
         let beside = std::env::current_exe()?.parent().map(Path::to_path_buf).unwrap_or_default();
         let from = |variable: &str, name: &str| {
             std::env::var_os(variable).map_or_else(|| beside.join(name), PathBuf::from)
         };
-        let guest = from("CONTAINERIA_GUEST", "guest");
+        let guest = from("CONTENA_GUEST", "guest");
         let paths = Self {
             home,
-            helper: from("CONTAINERIA_VMM", "containeria-vmm"),
+            helper: from("CONTENA_VMM", "contena-vmm"),
             kernel: guest.join("Image"),
             system: guest.join("rootfs.erofs"),
         };
@@ -197,10 +198,7 @@ fn settings(config: &EngineConfig) -> Boot {
         hostname: HOSTNAME.to_owned(),
         unix_seconds: SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |now| now.as_secs()),
         shares: shared()
-            .map(|(tag, path)| containeria_proto::Share {
-                tag: tag.to_owned(),
-                path: path.to_owned(),
-            })
+            .map(|(tag, path)| contena_proto::Share { tag: tag.to_owned(), path: path.to_owned() })
             .collect(),
         aliases: ALIASES
             .into_iter()

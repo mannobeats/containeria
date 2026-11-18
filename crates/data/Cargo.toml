@@ -1,6 +1,6 @@
 [package]
-name = "containeria-data"
-description = "Containeria's database browser: connections, schemas, rows, edits and SQL for every supported engine."
+name = "contena-data"
+description = "Contena's database browser: connections, schemas, rows, edits and SQL for every supported engine."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,7 +12,7 @@ publish.workspace = true
 [dependencies]
 chrono.workspace = true
 clickhouse.workspace = true
-containeria-docker.workspace = true
+contena-docker.workspace = true
 csv.workspace = true
 futures.workspace = true
 keyring.workspace = true

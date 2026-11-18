@@ -5,9 +5,9 @@ import { toast } from "sonner";
 import { commands } from "./ipc/bindings";
 import { errorMessage } from "./ipc/errors";
 
-/** `containeria-diagnostics-2026-10-17.tar.gz`, dated so several don't overwrite each other. */
+/** `contena-diagnostics-2026-10-17.tar.gz`, dated so several don't overwrite each other. */
 export function diagnosticsName(now: Date): string {
-  return `containeria-diagnostics-${now.toISOString().slice(0, 10)}.tar.gz`;
+  return `contena-diagnostics-${now.toISOString().slice(0, 10)}.tar.gz`;
 }
 
 /** Asks where to save, then writes a diagnostics bundle there for an issue report. */

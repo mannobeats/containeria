@@ -1,16 +1,16 @@
 //! Runs against a real Docker engine with the Docker CLI and Compose installed:
-//! `CONTAINERIA_DOCKER_SOCKET=... cargo test -p containeria-docker --test tools -- --ignored`.
-//! Everything it makes is named `containeria-test-*` and removed at the end.
+//! `CONTENA_DOCKER_SOCKET=... cargo test -p contena-docker --test tools -- --ignored`.
+//! Everything it makes is named `contena-test-*` and removed at the end.
 
 use std::path::PathBuf;
 
-use containeria_docker::{
+use contena_docker::{
     BuildSpec, BuildStatus, Compose, ComposeFiles, ComposeVerb, ContainerAction, Docker, DockerCli,
     EnvVar, Restart, RunSpec,
 };
 
 fn socket() -> PathBuf {
-    std::env::var_os("CONTAINERIA_DOCKER_SOCKET")
+    std::env::var_os("CONTENA_DOCKER_SOCKET")
         .map_or_else(|| PathBuf::from("/var/run/docker.sock"), PathBuf::from)
 }
 
@@ -18,7 +18,7 @@ fn socket() -> PathBuf {
 #[ignore = "needs a Docker engine"]
 async fn recreates_a_container_with_its_name_settings_and_volume_data() {
     let docker = Docker::connect(&socket()).unwrap();
-    let name = format!("containeria-test-recreate-{}", std::process::id());
+    let name = format!("contena-test-recreate-{}", std::process::id());
     let spec = RunSpec {
         image: "busybox:1.37".to_owned(),
         name: Some(name.clone()),
@@ -51,7 +51,7 @@ async fn builds_exports_and_scans_an_image() {
         "FROM busybox:1.37\nARG WHO\nRUN echo \"hi $WHO\" > /hello\n",
     )
     .unwrap();
-    let tag = format!("containeria-test-build:{}", std::process::id());
+    let tag = format!("contena-test-build:{}", std::process::id());
     let mut lines = Vec::new();
     cli.build(
         &BuildSpec {
@@ -90,14 +90,14 @@ async fn finds_a_build_in_the_history_with_its_logs_and_removes_it() {
         "FROM busybox:1.37\nARG WHO\nRUN echo \"history for $WHO\"\n",
     )
     .unwrap();
-    let tag = format!("containeria-test-build-history:{}", std::process::id());
+    let tag = format!("contena-test-build-history:{}", std::process::id());
     let before: Vec<String> = cli.builds().await.unwrap().into_iter().map(|b| b.id).collect();
     cli.build(
         &BuildSpec {
             context: context.path().to_string_lossy().into_owned(),
             dockerfile: None,
             tag: tag.clone(),
-            build_args: vec!["WHO=containeria".to_owned()],
+            build_args: vec!["WHO=contena".to_owned()],
             no_cache: true,
             pull: false,
         },
@@ -119,18 +119,18 @@ async fn finds_a_build_in_the_history_with_its_logs_and_removes_it() {
     assert!(record.total_steps > 0 && record.completed_at_ms.is_some(), "{record:?}");
 
     let detail = cli.build_detail(&record.id).await.unwrap();
-    assert!(detail.build_args.iter().any(|arg| arg.key == "WHO" && arg.value == "containeria"));
+    assert!(detail.build_args.iter().any(|arg| arg.key == "WHO" && arg.value == "contena"));
     let image = docker.image(&tag).await.unwrap();
     assert_eq!(detail.image_id.as_deref(), Some(image.id.as_str()));
 
     let mut lines = Vec::new();
     cli.build_logs(&record.id, |line| lines.push(line)).await.unwrap();
-    assert!(lines.iter().any(|line| line.contains("history for containeria")), "{lines:?}");
+    assert!(lines.iter().any(|line| line.contains("history for contena")), "{lines:?}");
 
     cli.remove_build(&record.id).await.unwrap();
     assert!(cli.builds().await.unwrap().iter().all(|build| build.id != record.id));
     let gone = cli.build_detail(&record.id).await;
-    assert!(matches!(gone, Err(containeria_docker::Error::NotFound(_))), "{gone:?}");
+    assert!(matches!(gone, Err(contena_docker::Error::NotFound(_))), "{gone:?}");
     docker.remove_image(&tag, true).await.unwrap();
 }
 
@@ -143,7 +143,7 @@ async fn deploys_previews_and_removes_a_compose_project() {
     std::fs::write(&file, "services:\n  app:\n    image: busybox:1.37\n    command: sleep 300\n")
         .unwrap();
     let files = ComposeFiles { files: vec![file], directory: Some(folder.path().to_path_buf()) };
-    let name = format!("containeria-test-compose-{}", std::process::id());
+    let name = format!("contena-test-compose-{}", std::process::id());
     let preview = compose.preview(&files, Some(&name)).await.unwrap();
     assert_eq!(preview.services[0].name, "app");
     compose.run(&files, &name, ComposeVerb::Up, |_| {}).await.unwrap();
@@ -179,14 +179,14 @@ async fn backs_up_and_restores_a_volume() {
     let docker = Docker::connect(&socket()).unwrap();
     let id = std::process::id();
     let (source, restored) =
-        (format!("containeria-test-vol-{id}"), format!("containeria-test-restored-{id}"));
+        (format!("contena-test-vol-{id}"), format!("contena-test-restored-{id}"));
     docker.create_volume(&source).await.unwrap();
     let writer = RunSpec {
         image: "busybox:1.37".to_owned(),
-        name: Some(format!("containeria-test-writer-{id}")),
+        name: Some(format!("contena-test-writer-{id}")),
         ports: Vec::new(),
         env: Vec::new(),
-        storage: vec![containeria_docker::StorageMapping {
+        storage: vec![contena_docker::StorageMapping {
             source: source.clone(),
             target: "/d".to_owned(),
             read_only: false,
@@ -214,7 +214,7 @@ async fn backs_up_and_restores_a_volume() {
     docker.remove_volume(&restored).await.unwrap();
 }
 
-/// A throwaway Docker engine inside Containeria's, reached over TCP, to copy into.
+/// A throwaway Docker engine inside Contena's, reached over TCP, to copy into.
 async fn second_engine(name: &str) -> Result<Docker, Box<dyn std::error::Error>> {
     use bollard::models::{ContainerCreateBody, HostConfig, PortBinding};
     use bollard::query_parameters::{CreateContainerOptionsBuilder, CreateImageOptionsBuilder};
@@ -263,16 +263,16 @@ async fn second_engine(name: &str) -> Result<Docker, Box<dyn std::error::Error>>
 async fn copies_volumes_and_containers_to_another_engine() {
     let docker = Docker::connect(&socket()).unwrap();
     let id = std::process::id();
-    let dind = format!("containeria-test-dind-{id}");
+    let dind = format!("contena-test-dind-{id}");
     let target = second_engine(&dind).await.unwrap();
-    let volume = format!("containeria-test-move-{id}");
+    let volume = format!("contena-test-move-{id}");
     docker.create_volume(&volume).await.unwrap();
     let app = RunSpec {
         image: "busybox:1.37".to_owned(),
-        name: Some(format!("containeria-test-app-{id}")),
+        name: Some(format!("contena-test-app-{id}")),
         ports: Vec::new(),
         env: vec![EnvVar { key: "KEEP".to_owned(), value: "me".to_owned() }],
-        storage: vec![containeria_docker::StorageMapping {
+        storage: vec![contena_docker::StorageMapping {
             source: volume.clone(),
             target: "/d".to_owned(),
             read_only: false,

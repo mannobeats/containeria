@@ -439,7 +439,7 @@
       const c = DB.containers.find((x) => x.name === name);
       c.state = 'running'; c.started = Date.now(); c.memMB = 162; c.cpu = 0.6;
       DB.connections.push({ id: 'mongo', name, kind: 'mongodb', host: c.domain, port: 27017, db: 'sandbox', from: 'container', container: name, env: 'local', mono: 'Mg', th: 145, tables: 3, sizeMB: 41 });
-      toast({ title: `${name} started`, body: 'Connected to mongodb://mongo-sandbox.containeria.local', tone: 'ok' });
+      toast({ title: `${name} started`, body: 'Connected to mongodb://mongo-sandbox.contena.local', tone: 'ok' });
       App.rerender();
     }, 1400);
   });
@@ -504,7 +504,7 @@
     return `<div class="empty db-error">${tile(c, 'tile-xl', 'is-bad')}<h2 class="h-sec">Couldn’t connect to ${esc(c.name)}</h2>
       <p>Supabase rejected the login for <span class="mono-sm">${esc(c.user)}</span> at <span class="mono-sm">${esc(c.host)}:${c.port}</span>.</p>
       <pre class="code db-error-msg selectable">FATAL:  password authentication failed for user "postgres"\nSQLSTATE 28P01 · after 412 ms</pre>
-      <p class="meta">If the project’s database password was reset, update it here. Containeria keeps it in your Keychain.</p>
+      <p class="meta">If the project’s database password was reset, update it here. Contena keeps it in your Keychain.</p>
       <div class="row" style="margin-top:6px"><button class="btn btn-brand" data-act="db-retry" data-arg="${c.id}">${icon('refresh')}Try again</button><button class="btn" data-act="db-edit-conn" data-arg="${c.id}">${icon('pencil')}Edit connection</button><button class="btn btn-ghost" data-copy="FATAL: password authentication failed for user &quot;postgres&quot; (SQLSTATE 28P01)">${icon('copy')}Copy error</button></div></div>`;
   }
   App.act('db-retry', (el, cid) => { S.failing.delete(cid); S.connecting = cid; App.rerender(); });
@@ -1397,7 +1397,7 @@
         <span class="meta right num">Showing <span data-rds-n>${REDIS.length}</span> of ${fmt.num(c.keys)} keys · db 0 · 2.1 MB</span>
         <button class="btn btn-sm" data-rds-add>${icon('plus', 'sm')}Add key</button></div>
       <div class="rds-body"><div class="rds-list" data-rds-list></div><div class="rds-val" data-rds-val></div></div>
-      <div class="rds-cli"><div class="rds-cli-log mono-sm selectable" data-rds-log>${S.redisLog.join('')}</div><div class="rds-cli-in"><span class="mono-sm brand-ink">redis.shop.containeria.local:6379&gt;</span><input class="mono" data-rds-cmd placeholder="GET stats:orders:today" aria-label="Redis command" autocomplete="off" spellcheck="false"></div></div>
+      <div class="rds-cli"><div class="rds-cli-log mono-sm selectable" data-rds-log>${S.redisLog.join('')}</div><div class="rds-cli-in"><span class="mono-sm brand-ink">redis.shop.contena.local:6379&gt;</span><input class="mono" data-rds-cmd placeholder="GET stats:orders:today" aria-label="Redis command" autocomplete="off" spellcheck="false"></div></div>
     </div>`;
   }
   function mountRedis(root) {
@@ -1469,7 +1469,7 @@
         const read = () => { ['name', 'host', 'port', 'user', 'db'].forEach((k) => { if (field(k)) v[k] = field(k).value; }); };
         const draw = () => {
           if (!eng) {
-            box.innerHTML = `<label class="field"><span class="label">Paste a connection string</span><input class="input mono" data-nc-url placeholder="postgres://user:password@host:5432/database?sslmode=require" autocomplete="off" spellcheck="false"><span class="hint">Containeria fills in the form and picks the engine for you.</span></label>
+            box.innerHTML = `<label class="field"><span class="label">Paste a connection string</span><input class="input mono" data-nc-url placeholder="postgres://user:password@host:5432/database?sslmode=require" autocomplete="off" spellcheck="false"><span class="hint">Contena fills in the form and picks the engine for you.</span></label>
               <div class="label" style="margin:18px 0 8px">Or choose an engine</div>
               <div class="nc-grid">${ENGINES.map((e) => `<button class="nc-engine" data-eng="${e.id}">${tile(e, 'tile-lg')}<span>${esc(e.name)}</span></button>`).join('')}</div>`;
             $('[data-nc-test]', el).disabled = true; $('[data-nc-save]', el).disabled = true;
@@ -1530,7 +1530,7 @@
           btn.classList.add('is-loading'); btn.innerHTML = `${icon('loader-2')}Testing…`; status.textContent = ''; out.innerHTML = '';
           setTimeout(() => {
             btn.classList.remove('is-loading'); btn.innerHTML = `${icon('plug-connected')}Test connection`;
-            const local = /localhost|127\.0\.0\.1|containeria\.local|\.sqlite|\.db$|^~|^\//.test(v.host);
+            const local = /localhost|127\.0\.0\.1|contena\.local|\.sqlite|\.db$|^~|^\//.test(v.host);
             const pass = field('pass')?.value;
             if (!local && !pass && !eng.region && !eng.file) { out.innerHTML = `<div class="banner banner-bad" style="margin-top:14px">${icon('alert-circle')}<span><b>Login failed.</b> ${esc(eng.name)} at <span class="mono-sm">${esc(v.host)}</span> answered, but rejected the empty password for <span class="mono-sm">${esc(v.user || 'user')}</span>.</span></div>`; return; }
             const ms = 18 + (hash(v.host) % 140);

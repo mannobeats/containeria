@@ -334,7 +334,7 @@ App.view('volumes', {
           <td><span class="row">${rsTiles(v.usedBy)}</span></td>
           <td><code class="mono-sm ink-3">${esc(v.mount || '—')}</code></td>
           <td class="num">${fmt.mb(v.sizeMB)}</td><td class="ink-3">${fmt.ago(v.created)}</td>
-          <td class="r"><span class="row-actions"><button class="btn btn-ghost btn-icon btn-sm" data-copy="~/Containeria/volumes/${esc(v.name)}" data-tip="Copy Finder path">${icon('folder-open')}</button><button class="btn btn-ghost btn-icon btn-sm" data-act="backup-volume" data-arg="${esc(v.name)}" data-tip="Back up to .tar">${icon('archive')}</button><button class="btn btn-ghost btn-icon btn-sm" data-menu="volume" data-id="${esc(v.name)}" data-align="end" data-tip="More">${icon('dots')}</button></span></td></tr>`).join('')}</tbody></table>
+          <td class="r"><span class="row-actions"><button class="btn btn-ghost btn-icon btn-sm" data-copy="~/Contena/volumes/${esc(v.name)}" data-tip="Copy Finder path">${icon('folder-open')}</button><button class="btn btn-ghost btn-icon btn-sm" data-act="backup-volume" data-arg="${esc(v.name)}" data-tip="Back up to .tar">${icon('archive')}</button><button class="btn btn-ghost btn-icon btn-sm" data-menu="volume" data-id="${esc(v.name)}" data-align="end" data-tip="More">${icon('dots')}</button></span></td></tr>`).join('')}</tbody></table>
         <div class="empty hide" data-rs-empty>${icon('filter-off', 'lg')}<p>No volumes match this filter.</p></div></div>`;
   },
   mount(root, ctx) { if (ctx.params[0]) mountFiles(root); else rsFilter(root); },
@@ -343,7 +343,7 @@ App.menu('volume', (el) => {
   const n = el.dataset.id;
   return [
     { label: 'Browse files', icon: 'folder', run: () => App.go('/volumes/' + encodeURIComponent(n)) },
-    { label: 'Copy Finder path', icon: 'copy', run: () => { navigator.clipboard?.writeText(`~/Containeria/volumes/${n}`).catch(() => {}); toast({ title: 'Copied', body: `~/Containeria/volumes/${n}`, ic: 'copy' }); } },
+    { label: 'Copy Finder path', icon: 'copy', run: () => { navigator.clipboard?.writeText(`~/Contena/volumes/${n}`).catch(() => {}); toast({ title: 'Copied', body: `~/Contena/volumes/${n}`, ic: 'copy' }); } },
     { sep: true },
     { label: 'Back up to .tar…', icon: 'archive', act: 'backup-volume', arg: n },
     { label: 'Clone…', icon: 'copy-plus', act: 'clone-volume', arg: n },
@@ -386,7 +386,7 @@ function volumeDetail(n) {
     meta: `<span>${fmt.mb(v.sizeMB)}</span><span>${esc(v.driver)} driver</span>${v.usedBy.length ? `<span>Mounted in ${v.usedBy.map((u) => `<a href="#/containers/${esc(u)}" data-go="/containers/${esc(u)}">${esc(u)}</a>`).join(', ')} at <code class="mono-sm">${esc(v.mount)}</code></span>` : '<span>Not attached</span>'}<span>Created ${fmt.ago(v.created)}</span>`,
     actions: `<button class="btn" data-act="backup-volume" data-arg="${esc(n)}">${icon('archive')}Back up</button><button class="btn" data-act="clone-volume" data-arg="${esc(n)}">${icon('copy-plus')}Clone</button><button class="btn btn-ghost btn-icon" data-menu="volume" data-id="${esc(n)}" data-align="end" data-tip="More">${icon('dots')}</button>`,
   })}
-  <div class="rs-fill rs-bordered">${filesPane({ ...fs, finder: `~/Containeria/volumes/${v.name}` })}</div>`;
+  <div class="rs-fill rs-bordered">${filesPane({ ...fs, finder: `~/Contena/volumes/${v.name}` })}</div>`;
 }
 
 /* ---------- networks ---------- */

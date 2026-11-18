@@ -7,7 +7,7 @@ window.DB = (() => {
     state: 'running',            // running | stopped | starting | updating
     version: '1.4.2',
     vm: 'Apple Virtualization (VZ)',
-    kernel: '6.12.8-containeria',
+    kernel: '6.12.8-contena',
     arch: 'arm64',
     rosetta: true,
     cpus: 6, cpuMax: 12,
@@ -16,8 +16,8 @@ window.DB = (() => {
     uptime: now - (3 * hour + 12 * min),
     bootSeconds: 2.1,
     returnedGB: 2.4,
-    socket: '~/.containeria/run/docker.sock',
-    domain: 'containeria.local',
+    socket: '~/.contena/run/docker.sock',
+    domain: 'contena.local',
     dockerApi: '1.47', containerd: '2.0.4', k3s: 'v1.31.4+k3s1',
   };
 
@@ -32,20 +32,20 @@ window.DB = (() => {
   // th = tile hue, mono = 2-letter face
   const C = (o) => ({ cpu: 0, memMB: 0, memLimitMB: 0, ports: [], restarts: 0, health: null, ...o });
   const containers = [
-    C({ id: '3f9a1c2b7e44', name: 'shop-web',      service: 'web',      project: 'shop', image: 'node', tag: '22-alpine', mono: 'Nx', th: 250, state: 'running', started: now - 3 * hour, cpu: 4.2, memMB: 412, ports: [{ host: 3000, ctr: 3000 }], domain: 'web.shop.containeria.local', cmd: 'npm run dev', health: 'healthy' }),
-    C({ id: '8b21de90a1f3', name: 'shop-api',      service: 'api',      project: 'shop', image: 'golang', tag: '1.24', mono: 'Go', th: 215, state: 'running', started: now - 3 * hour, cpu: 1.6, memMB: 96, ports: [{ host: 8080, ctr: 8080 }], domain: 'api.shop.containeria.local', cmd: 'air -c .air.toml', health: 'healthy' }),
-    C({ id: 'c4d81a6f0e92', name: 'shop-worker',   service: 'worker',   project: 'shop', image: 'golang', tag: '1.24', mono: 'Go', th: 215, state: 'running', started: now - 3 * hour, cpu: 0.4, memMB: 58, domain: 'worker.shop.containeria.local', cmd: './worker --queue=default' }),
-    C({ id: '1e7b55c0d3aa', name: 'shop-postgres', service: 'postgres', project: 'shop', image: 'postgres', tag: '17', mono: 'Pg', th: 240, state: 'running', started: now - 3 * hour, cpu: 0.9, memMB: 284, ports: [{ host: 5432, ctr: 5432 }], domain: 'postgres.shop.containeria.local', cmd: 'postgres', db: 'postgres', health: 'healthy', env: { POSTGRES_USER: 'shop', POSTGRES_PASSWORD: 'shop_dev_pw', POSTGRES_DB: 'shop' } }),
-    C({ id: '6a0f3e8c91b2', name: 'shop-redis',    service: 'redis',    project: 'shop', image: 'redis', tag: '7.4-alpine', mono: 'Rd', th: 25, state: 'running', started: now - 3 * hour, cpu: 0.3, memMB: 14, ports: [{ host: 6379, ctr: 6379 }], domain: 'redis.shop.containeria.local', cmd: 'redis-server', db: 'redis' }),
-    C({ id: '92cd1b7a4f60', name: 'analytics-clickhouse', service: 'clickhouse', project: 'analytics', image: 'clickhouse/clickhouse-server', tag: '25.1', mono: 'Ch', th: 95, state: 'running', started: now - 2 * hour, cpu: 6.8, memMB: 1180, ports: [{ host: 8123, ctr: 8123 }, { host: 9000, ctr: 9000 }], domain: 'clickhouse.analytics.containeria.local', cmd: '/entrypoint.sh', db: 'clickhouse', health: 'healthy' }),
-    C({ id: 'a71e0c25bd18', name: 'analytics-grafana', service: 'grafana', project: 'analytics', image: 'grafana/grafana', tag: '11.4.0', mono: 'Gf', th: 45, state: 'running', started: now - 2 * hour, cpu: 0.7, memMB: 168, ports: [{ host: 3001, ctr: 3000 }], domain: 'grafana.analytics.containeria.local', cmd: '/run.sh' }),
-    C({ id: 'f02b9e1d6c37', name: 'analytics-prometheus', service: 'prometheus', project: 'analytics', image: 'prom/prometheus', tag: 'v3.1.0', mono: 'Pr', th: 30, state: 'exited', exitCode: 0, finished: now - 5 * hour, domain: 'prometheus.analytics.containeria.local', cmd: '--config.file=/etc/prometheus.yml' }),
-    C({ id: '5d6e7f8a9b0c', name: 'auth-keycloak', service: 'keycloak', project: 'auth', image: 'quay.io/keycloak/keycloak', tag: '26.0', mono: 'Kc', th: 210, state: 'running', started: now - 47 * min, cpu: 2.1, memMB: 690, ports: [{ host: 8180, ctr: 8080 }], domain: 'keycloak.auth.containeria.local', cmd: 'start-dev', health: 'unhealthy', restarts: 2 }),
-    C({ id: '0c1d2e3f4a5b', name: 'auth-mysql',    service: 'mysql',    project: 'auth', image: 'mysql', tag: '8.4', mono: 'My', th: 230, state: 'running', started: now - 47 * min, cpu: 0.8, memMB: 402, ports: [{ host: 3306, ctr: 3306 }], domain: 'mysql.auth.containeria.local', cmd: 'mysqld', db: 'mysql', env: { MYSQL_ROOT_PASSWORD: 'root', MYSQL_DATABASE: 'keycloak' } }),
-    C({ id: 'e8f9a0b1c2d3', name: 'mailpit',       project: null, image: 'axllent/mailpit', tag: 'v1.21', mono: 'Mp', th: 160, state: 'running', started: now - 2 * day, cpu: 0.1, memMB: 22, ports: [{ host: 8025, ctr: 8025 }, { host: 1025, ctr: 1025 }], domain: 'mailpit.containeria.local', cmd: '/mailpit' }),
-    C({ id: 'b3c4d5e6f7a8', name: 'minio',         project: null, image: 'minio/minio', tag: 'RELEASE.2025-01-20', mono: 'Mn', th: 5, state: 'exited', exitCode: 0, finished: now - day, domain: 'minio.containeria.local', cmd: 'server /data --console-address :9001' }),
-    C({ id: '7a8b9c0d1e2f', name: 'payments-mock', project: null, image: 'stripe/stripe-mock', tag: 'v0.188', mono: 'St', th: 280, state: 'exited', exitCode: 1, finished: now - 4 * min, restarts: 5, domain: 'payments-mock.containeria.local', cmd: '/stripe-mock -http-port 12111', error: 'listen tcp :12111: bind: address already in use' }),
-    C({ id: '4e5f6a7b8c9d', name: 'mongo-sandbox', project: null, image: 'mongo', tag: '8.0', mono: 'Mg', th: 145, state: 'exited', exitCode: 0, finished: now - 3 * day, domain: 'mongo-sandbox.containeria.local', cmd: 'mongod', db: 'mongodb' }),
+    C({ id: '3f9a1c2b7e44', name: 'shop-web',      service: 'web',      project: 'shop', image: 'node', tag: '22-alpine', mono: 'Nx', th: 250, state: 'running', started: now - 3 * hour, cpu: 4.2, memMB: 412, ports: [{ host: 3000, ctr: 3000 }], domain: 'web.shop.contena.local', cmd: 'npm run dev', health: 'healthy' }),
+    C({ id: '8b21de90a1f3', name: 'shop-api',      service: 'api',      project: 'shop', image: 'golang', tag: '1.24', mono: 'Go', th: 215, state: 'running', started: now - 3 * hour, cpu: 1.6, memMB: 96, ports: [{ host: 8080, ctr: 8080 }], domain: 'api.shop.contena.local', cmd: 'air -c .air.toml', health: 'healthy' }),
+    C({ id: 'c4d81a6f0e92', name: 'shop-worker',   service: 'worker',   project: 'shop', image: 'golang', tag: '1.24', mono: 'Go', th: 215, state: 'running', started: now - 3 * hour, cpu: 0.4, memMB: 58, domain: 'worker.shop.contena.local', cmd: './worker --queue=default' }),
+    C({ id: '1e7b55c0d3aa', name: 'shop-postgres', service: 'postgres', project: 'shop', image: 'postgres', tag: '17', mono: 'Pg', th: 240, state: 'running', started: now - 3 * hour, cpu: 0.9, memMB: 284, ports: [{ host: 5432, ctr: 5432 }], domain: 'postgres.shop.contena.local', cmd: 'postgres', db: 'postgres', health: 'healthy', env: { POSTGRES_USER: 'shop', POSTGRES_PASSWORD: 'shop_dev_pw', POSTGRES_DB: 'shop' } }),
+    C({ id: '6a0f3e8c91b2', name: 'shop-redis',    service: 'redis',    project: 'shop', image: 'redis', tag: '7.4-alpine', mono: 'Rd', th: 25, state: 'running', started: now - 3 * hour, cpu: 0.3, memMB: 14, ports: [{ host: 6379, ctr: 6379 }], domain: 'redis.shop.contena.local', cmd: 'redis-server', db: 'redis' }),
+    C({ id: '92cd1b7a4f60', name: 'analytics-clickhouse', service: 'clickhouse', project: 'analytics', image: 'clickhouse/clickhouse-server', tag: '25.1', mono: 'Ch', th: 95, state: 'running', started: now - 2 * hour, cpu: 6.8, memMB: 1180, ports: [{ host: 8123, ctr: 8123 }, { host: 9000, ctr: 9000 }], domain: 'clickhouse.analytics.contena.local', cmd: '/entrypoint.sh', db: 'clickhouse', health: 'healthy' }),
+    C({ id: 'a71e0c25bd18', name: 'analytics-grafana', service: 'grafana', project: 'analytics', image: 'grafana/grafana', tag: '11.4.0', mono: 'Gf', th: 45, state: 'running', started: now - 2 * hour, cpu: 0.7, memMB: 168, ports: [{ host: 3001, ctr: 3000 }], domain: 'grafana.analytics.contena.local', cmd: '/run.sh' }),
+    C({ id: 'f02b9e1d6c37', name: 'analytics-prometheus', service: 'prometheus', project: 'analytics', image: 'prom/prometheus', tag: 'v3.1.0', mono: 'Pr', th: 30, state: 'exited', exitCode: 0, finished: now - 5 * hour, domain: 'prometheus.analytics.contena.local', cmd: '--config.file=/etc/prometheus.yml' }),
+    C({ id: '5d6e7f8a9b0c', name: 'auth-keycloak', service: 'keycloak', project: 'auth', image: 'quay.io/keycloak/keycloak', tag: '26.0', mono: 'Kc', th: 210, state: 'running', started: now - 47 * min, cpu: 2.1, memMB: 690, ports: [{ host: 8180, ctr: 8080 }], domain: 'keycloak.auth.contena.local', cmd: 'start-dev', health: 'unhealthy', restarts: 2 }),
+    C({ id: '0c1d2e3f4a5b', name: 'auth-mysql',    service: 'mysql',    project: 'auth', image: 'mysql', tag: '8.4', mono: 'My', th: 230, state: 'running', started: now - 47 * min, cpu: 0.8, memMB: 402, ports: [{ host: 3306, ctr: 3306 }], domain: 'mysql.auth.contena.local', cmd: 'mysqld', db: 'mysql', env: { MYSQL_ROOT_PASSWORD: 'root', MYSQL_DATABASE: 'keycloak' } }),
+    C({ id: 'e8f9a0b1c2d3', name: 'mailpit',       project: null, image: 'axllent/mailpit', tag: 'v1.21', mono: 'Mp', th: 160, state: 'running', started: now - 2 * day, cpu: 0.1, memMB: 22, ports: [{ host: 8025, ctr: 8025 }, { host: 1025, ctr: 1025 }], domain: 'mailpit.contena.local', cmd: '/mailpit' }),
+    C({ id: 'b3c4d5e6f7a8', name: 'minio',         project: null, image: 'minio/minio', tag: 'RELEASE.2025-01-20', mono: 'Mn', th: 5, state: 'exited', exitCode: 0, finished: now - day, domain: 'minio.contena.local', cmd: 'server /data --console-address :9001' }),
+    C({ id: '7a8b9c0d1e2f', name: 'payments-mock', project: null, image: 'stripe/stripe-mock', tag: 'v0.188', mono: 'St', th: 280, state: 'exited', exitCode: 1, finished: now - 4 * min, restarts: 5, domain: 'payments-mock.contena.local', cmd: '/stripe-mock -http-port 12111', error: 'listen tcp :12111: bind: address already in use' }),
+    C({ id: '4e5f6a7b8c9d', name: 'mongo-sandbox', project: null, image: 'mongo', tag: '8.0', mono: 'Mg', th: 145, state: 'exited', exitCode: 0, finished: now - 3 * day, domain: 'mongo-sandbox.contena.local', cmd: 'mongod', db: 'mongodb' }),
   ];
 
   const images = [
@@ -92,18 +92,18 @@ window.DB = (() => {
   ];
 
   const kube = {
-    enabled: true, version: 'v1.31.4+k3s1', context: 'containeria', nodes: 1,
+    enabled: true, version: 'v1.31.4+k3s1', context: 'contena', nodes: 1,
     namespaces: ['default', 'kube-system', 'shop-staging', 'monitoring'],
     pods: [
-      { name: 'storefront-7d9c8b6f5-x2klp', ns: 'shop-staging', status: 'Running', ready: '1/1', restarts: 0, age: 2 * hour, cpu: 12, memMB: 148, node: 'containeria' },
-      { name: 'storefront-7d9c8b6f5-qm4tz', ns: 'shop-staging', status: 'Running', ready: '1/1', restarts: 0, age: 2 * hour, cpu: 9, memMB: 141, node: 'containeria' },
-      { name: 'checkout-5c6b7d8e9-h7wqn', ns: 'shop-staging', status: 'CrashLoopBackOff', ready: '0/1', restarts: 14, age: 51 * min, cpu: 0, memMB: 0, node: 'containeria' },
-      { name: 'orders-db-0', ns: 'shop-staging', status: 'Running', ready: '1/1', restarts: 0, age: 6 * day, cpu: 21, memMB: 312, node: 'containeria' },
-      { name: 'prometheus-server-6f7d5c9b8-lrx2m', ns: 'monitoring', status: 'Running', ready: '2/2', restarts: 1, age: 6 * day, cpu: 34, memMB: 286, node: 'containeria' },
-      { name: 'coredns-ccb96694c-5wd2k', ns: 'kube-system', status: 'Running', ready: '1/1', restarts: 0, age: 6 * day, cpu: 3, memMB: 18, node: 'containeria' },
-      { name: 'traefik-5d45fc8cc9-mvj8p', ns: 'kube-system', status: 'Running', ready: '1/1', restarts: 0, age: 6 * day, cpu: 2, memMB: 31, node: 'containeria' },
-      { name: 'metrics-server-7bf7d58749-9n6fk', ns: 'kube-system', status: 'Running', ready: '1/1', restarts: 0, age: 6 * day, cpu: 4, memMB: 22, node: 'containeria' },
-      { name: 'migrate-orders-28915560-kq2s4', ns: 'shop-staging', status: 'Completed', ready: '0/1', restarts: 0, age: 35 * min, cpu: 0, memMB: 0, node: 'containeria' },
+      { name: 'storefront-7d9c8b6f5-x2klp', ns: 'shop-staging', status: 'Running', ready: '1/1', restarts: 0, age: 2 * hour, cpu: 12, memMB: 148, node: 'contena' },
+      { name: 'storefront-7d9c8b6f5-qm4tz', ns: 'shop-staging', status: 'Running', ready: '1/1', restarts: 0, age: 2 * hour, cpu: 9, memMB: 141, node: 'contena' },
+      { name: 'checkout-5c6b7d8e9-h7wqn', ns: 'shop-staging', status: 'CrashLoopBackOff', ready: '0/1', restarts: 14, age: 51 * min, cpu: 0, memMB: 0, node: 'contena' },
+      { name: 'orders-db-0', ns: 'shop-staging', status: 'Running', ready: '1/1', restarts: 0, age: 6 * day, cpu: 21, memMB: 312, node: 'contena' },
+      { name: 'prometheus-server-6f7d5c9b8-lrx2m', ns: 'monitoring', status: 'Running', ready: '2/2', restarts: 1, age: 6 * day, cpu: 34, memMB: 286, node: 'contena' },
+      { name: 'coredns-ccb96694c-5wd2k', ns: 'kube-system', status: 'Running', ready: '1/1', restarts: 0, age: 6 * day, cpu: 3, memMB: 18, node: 'contena' },
+      { name: 'traefik-5d45fc8cc9-mvj8p', ns: 'kube-system', status: 'Running', ready: '1/1', restarts: 0, age: 6 * day, cpu: 2, memMB: 31, node: 'contena' },
+      { name: 'metrics-server-7bf7d58749-9n6fk', ns: 'kube-system', status: 'Running', ready: '1/1', restarts: 0, age: 6 * day, cpu: 4, memMB: 22, node: 'contena' },
+      { name: 'migrate-orders-28915560-kq2s4', ns: 'shop-staging', status: 'Completed', ready: '0/1', restarts: 0, age: 35 * min, cpu: 0, memMB: 0, node: 'contena' },
     ],
     deployments: [
       { name: 'storefront', ns: 'shop-staging', ready: '2/2', upToDate: 2, available: 2, age: 6 * day, image: 'shop-web:dev' },
@@ -113,7 +113,7 @@ window.DB = (() => {
       { name: 'traefik', ns: 'kube-system', ready: '1/1', upToDate: 1, available: 1, age: 6 * day, image: 'rancher/mirrored-library-traefik:3.3.2' },
     ],
     services: [
-      { name: 'storefront', ns: 'shop-staging', type: 'LoadBalancer', clusterIP: '10.43.18.204', ports: '80:31480/TCP', external: 'storefront.k8s.containeria.local' },
+      { name: 'storefront', ns: 'shop-staging', type: 'LoadBalancer', clusterIP: '10.43.18.204', ports: '80:31480/TCP', external: 'storefront.k8s.contena.local' },
       { name: 'checkout', ns: 'shop-staging', type: 'ClusterIP', clusterIP: '10.43.92.11', ports: '8080/TCP', external: '—' },
       { name: 'orders-db', ns: 'shop-staging', type: 'ClusterIP', clusterIP: '10.43.7.140', ports: '5432/TCP', external: '—' },
       { name: 'prometheus-server', ns: 'monitoring', type: 'ClusterIP', clusterIP: '10.43.201.33', ports: '80/TCP', external: '—' },
@@ -122,9 +122,9 @@ window.DB = (() => {
   };
 
   const machines = [
-    { name: 'ubuntu-dev', distro: 'Ubuntu', version: '24.04 LTS', icon: 'brand-ubuntu', th: 35, arch: 'arm64', state: 'running', cpu: 1.2, memMB: 310, diskGB: 6.4, ip: '198.19.249.12', user: 'mannobeats', started: now - 3 * hour, domain: 'ubuntu-dev.containeria.local' },
-    { name: 'debian-ci', distro: 'Debian', version: '12 bookworm', icon: 'brand-debian', th: 350, arch: 'amd64', state: 'running', cpu: 0.4, memMB: 142, diskGB: 3.1, ip: '198.19.249.27', user: 'mannobeats', started: now - 26 * min, domain: 'debian-ci.containeria.local', rosetta: true },
-    { name: 'arch-lab', distro: 'Arch Linux', version: 'rolling', icon: 'brand-redhat', mono: 'Ar', th: 225, arch: 'arm64', state: 'stopped', cpu: 0, memMB: 0, diskGB: 2.2, ip: '—', user: 'mannobeats', domain: 'arch-lab.containeria.local' },
+    { name: 'ubuntu-dev', distro: 'Ubuntu', version: '24.04 LTS', icon: 'brand-ubuntu', th: 35, arch: 'arm64', state: 'running', cpu: 1.2, memMB: 310, diskGB: 6.4, ip: '198.19.249.12', user: 'mannobeats', started: now - 3 * hour, domain: 'ubuntu-dev.contena.local' },
+    { name: 'debian-ci', distro: 'Debian', version: '12 bookworm', icon: 'brand-debian', th: 350, arch: 'amd64', state: 'running', cpu: 0.4, memMB: 142, diskGB: 3.1, ip: '198.19.249.27', user: 'mannobeats', started: now - 26 * min, domain: 'debian-ci.contena.local', rosetta: true },
+    { name: 'arch-lab', distro: 'Arch Linux', version: 'rolling', icon: 'brand-redhat', mono: 'Ar', th: 225, arch: 'arm64', state: 'stopped', cpu: 0, memMB: 0, diskGB: 2.2, ip: '—', user: 'mannobeats', domain: 'arch-lab.contena.local' },
   ];
 
   const distros = [
@@ -141,10 +141,10 @@ window.DB = (() => {
 
   // Data browser
   const connections = [
-    { id: 'shop-pg', name: 'shop-postgres', kind: 'postgres', host: 'postgres.shop.containeria.local', port: 5432, db: 'shop', user: 'shop', from: 'container', container: 'shop-postgres', env: 'local', mono: 'Pg', th: 240, tables: 9, sizeMB: 214 },
-    { id: 'an-ch', name: 'analytics-clickhouse', kind: 'clickhouse', host: 'clickhouse.analytics.containeria.local', port: 8123, db: 'events', user: 'default', from: 'container', container: 'analytics-clickhouse', env: 'local', mono: 'Ch', th: 95, tables: 6, sizeMB: 4880 },
-    { id: 'auth-my', name: 'auth-mysql', kind: 'mysql', host: 'mysql.auth.containeria.local', port: 3306, db: 'keycloak', user: 'root', from: 'container', container: 'auth-mysql', env: 'local', mono: 'My', th: 230, tables: 92, sizeMB: 36 },
-    { id: 'shop-rd', name: 'shop-redis', kind: 'redis', host: 'redis.shop.containeria.local', port: 6379, db: '0', from: 'container', container: 'shop-redis', env: 'local', mono: 'Rd', th: 25, keys: 1284 },
+    { id: 'shop-pg', name: 'shop-postgres', kind: 'postgres', host: 'postgres.shop.contena.local', port: 5432, db: 'shop', user: 'shop', from: 'container', container: 'shop-postgres', env: 'local', mono: 'Pg', th: 240, tables: 9, sizeMB: 214 },
+    { id: 'an-ch', name: 'analytics-clickhouse', kind: 'clickhouse', host: 'clickhouse.analytics.contena.local', port: 8123, db: 'events', user: 'default', from: 'container', container: 'analytics-clickhouse', env: 'local', mono: 'Ch', th: 95, tables: 6, sizeMB: 4880 },
+    { id: 'auth-my', name: 'auth-mysql', kind: 'mysql', host: 'mysql.auth.contena.local', port: 3306, db: 'keycloak', user: 'root', from: 'container', container: 'auth-mysql', env: 'local', mono: 'My', th: 230, tables: 92, sizeMB: 36 },
+    { id: 'shop-rd', name: 'shop-redis', kind: 'redis', host: 'redis.shop.contena.local', port: 6379, db: '0', from: 'container', container: 'shop-redis', env: 'local', mono: 'Rd', th: 25, keys: 1284 },
     { id: 'billing', name: 'billing-prod', kind: 'postgres', provider: 'Neon', host: 'ep-quiet-sun-a4k2.eu-central-1.aws.neon.tech', port: 5432, db: 'billing', user: 'readonly', from: 'saved', env: 'production', readOnly: true, mono: 'Ne', th: 165, tables: 31, sizeMB: 9200 },
     { id: 'growth', name: 'growth-staging', kind: 'postgres', provider: 'Supabase', host: 'db.kpzqlxwnhvbe.supabase.co', port: 5432, db: 'postgres', user: 'postgres', from: 'saved', env: 'staging', mono: 'Sb', th: 150, tables: 18, sizeMB: 640 },
     { id: 'edge', name: 'edge-cache', kind: 'sqlite', provider: 'Turso', host: 'edge-cache-mannobeats.turso.io', db: 'main', from: 'saved', env: 'staging', mono: 'Tu', th: 185, tables: 4, sizeMB: 12 },
@@ -210,7 +210,7 @@ window.DB = (() => {
 
   const domains = [
     ...containers.filter(c => c.domain).map(c => ({ host: c.domain, target: c.name, kind: 'container', port: c.ports[0]?.ctr || null, https: true, auto: true, up: c.state === 'running' })),
-    { host: 'storefront.k8s.containeria.local', target: 'svc/storefront', kind: 'kubernetes', port: 80, https: true, auto: true, up: true },
+    { host: 'storefront.k8s.contena.local', target: 'svc/storefront', kind: 'kubernetes', port: 80, https: true, auto: true, up: true },
     ...machines.map(m => ({ host: m.domain, target: m.name, kind: 'machine', port: null, https: false, auto: true, up: m.state === 'running' })),
     { host: 'shop.test', target: 'shop-web', kind: 'custom', port: 3000, https: true, auto: false, up: true },
     { host: 'api.shop.test', target: 'shop-api', kind: 'custom', port: 8080, https: true, auto: false, up: true },

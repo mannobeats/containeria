@@ -21,7 +21,7 @@ type TileProps = {
 };
 
 /**
- * A neutral chip carrying a real brand logo, or Containeria's own icon when there is none. It is
+ * A neutral chip carrying a real brand logo, or Contena's own icon when there is none. It is
  * decorative: the name beside it is what screen readers announce.
  */
 export function Tile({

@@ -34,7 +34,7 @@ function domainRow(d) {
   const scheme = d.https ? 'https' : 'http';
   const url = `${scheme}://${d.host}`;
   const lock = d.https
-    ? sys.caTrusted ? `<span class="row gap-4" data-tip="Signed by the Containeria local certificate">${icon('lock', 'sm')}HTTPS</span>` : `<span class="row gap-4 ink-3" data-tip="Browsers warn until you trust the local certificate">${icon('lock-open', 'sm')}Untrusted</span>`
+    ? sys.caTrusted ? `<span class="row gap-4" data-tip="Signed by the Contena local certificate">${icon('lock', 'sm')}HTTPS</span>` : `<span class="row gap-4 ink-3" data-tip="Browsers warn until you trust the local certificate">${icon('lock-open', 'sm')}Untrusted</span>`
     : `<span class="row gap-4 ink-3">${icon('world', 'sm')}HTTP</span>`;
   return `<tr class="${d.up ? '' : 'is-off'}" data-ctx="domain-row" data-host="${esc(d.host)}" data-kind="${d.kind}">
     <td><span class="row"><span class="ink truncate" style="max-width:340px">${esc(d.host)}</span>${d.auto ? '' : '<span class="chip">Custom</span>'}</span></td>
@@ -58,7 +58,7 @@ App.view('domains', {
     <div class="sys-lede"><p><b class="ink num">${up} of ${DB.domains.length}</b> routes are up. Every container, service and machine gets a name under <span class="mono ink">.${esc(DB.engine.domain)}</span>, no ports to remember.</p></div>
     <div style="padding:0 20px 16px">
       ${sys.caTrusted
-        ? `<div class="banner banner-ok">${icon('shield-check')}<span class="grow"><b>HTTPS is trusted.</b> The Containeria certificate authority lives in your login keychain and expires Oct 2036.</span><button class="btn btn-sm btn-ghost" data-act="untrust-ca">Remove</button></div>`
+        ? `<div class="banner banner-ok">${icon('shield-check')}<span class="grow"><b>HTTPS is trusted.</b> The Contena certificate authority lives in your login keychain and expires Oct 2036.</span><button class="btn btn-sm btn-ghost" data-act="untrust-ca">Remove</button></div>`
         : `<div class="banner banner-warn">${icon('shield-lock')}<span class="grow"><b>Browsers will warn on https:// links.</b> Trust the local certificate authority once. It's created on this Mac and never leaves it.</span><button class="btn btn-sm" data-act="trust-ca">${icon('certificate', 'sm')}Trust certificate</button></div>`}
     </div>
     <div class="tbl-wrap"><table class="tbl sys-domains">
@@ -68,8 +68,8 @@ App.view('domains', {
     <div class="sys-settings">
       <h2 class="h-sec">Name resolution</h2>
       ${setSec('', [
-        setRow('Top-level domain', `<input class="input mono" style="width:200px" value="${esc(DB.engine.domain)}" aria-label="Top-level domain">`, 'Resolved by Containeria’s DNS on this Mac only.'),
-        setRow('Wildcard subdomains', swi(sys.wildcard, 'Wildcard subdomains', 'data-sys="wildcard"'), '<span class="mono-sm">*.web.shop.containeria.local</span> reaches the same container.'),
+        setRow('Top-level domain', `<input class="input mono" style="width:200px" value="${esc(DB.engine.domain)}" aria-label="Top-level domain">`, 'Resolved by Contena’s DNS on this Mac only.'),
+        setRow('Wildcard subdomains', swi(sys.wildcard, 'Wildcard subdomains', 'data-sys="wildcard"'), '<span class="mono-sm">*.web.shop.contena.local</span> reaches the same container.'),
         setRow('HTTPS for every domain', swi(sys.httpsAll, 'HTTPS for every domain', 'data-sys="httpsAll"'), 'Certificates are issued on the fly by the local authority.'),
         setRow('Direct container IP access', swi(sys.directIP, 'Direct container IP access', 'data-sys="directIP"'), 'Reach 172.20.0.3 from macOS without publishing ports.'),
       ].join(''))}
@@ -83,7 +83,7 @@ App.act('trust-ca', (el) => {
   el.classList.add('is-loading'); el.innerHTML = `${icon('loader-2', 'sm')}Waiting for macOS`;
   setTimeout(() => { sys.caTrusted = true; App.rerender(); toast({ title: 'Certificate trusted', body: 'https:// works in Safari, Chrome and Firefox now.', tone: 'ok' }); }, 1300);
 });
-App.act('untrust-ca', () => confirmSheet({ title: 'Remove the local certificate?', body: 'Browsers will show warnings on every https://*.containeria.local link until you trust it again.', action: 'Remove certificate', onConfirm() { sys.caTrusted = false; App.rerender(); } }));
+App.act('untrust-ca', () => confirmSheet({ title: 'Remove the local certificate?', body: 'Browsers will show warnings on every https://*.contena.local link until you trust it again.', action: 'Remove certificate', onConfirm() { sys.caTrusted = false; App.rerender(); } }));
 App.menu('domain-row', (el) => {
   const d = DB.domains.find((x) => x.host === el.dataset.host);
   if (!d) return [];
@@ -101,7 +101,7 @@ function addRoute(edit) {
   sheet({
     title: edit ? 'Edit route' : 'Add route', ic: 'route', width: 500,
     body: `<div class="col gap-16">
-      <div class="field"><span class="label">Domain</span><input class="input mono" data-f="host" placeholder="shop.test" value="${esc(edit?.host || '')}"><span class="hint">Any name works: <span class="mono-sm">.test</span>, <span class="mono-sm">.local</span> or your own. Containeria answers for it on this Mac.</span></div>
+      <div class="field"><span class="label">Domain</span><input class="input mono" data-f="host" placeholder="shop.test" value="${esc(edit?.host || '')}"><span class="hint">Any name works: <span class="mono-sm">.test</span>, <span class="mono-sm">.local</span> or your own. Contena answers for it on this Mac.</span></div>
       <div class="row gap-12" style="align-items:flex-start">
         <div class="field grow"><span class="label">Points to</span>${sel(running.map((c) => c.name), edit?.target || 'shop-web', 'data-f="target"')}</div>
         <div class="field" style="width:110px"><span class="label">Port</span><input class="input mono num" data-f="port" value="${edit?.port || 3000}" inputmode="numeric"></div>
@@ -295,7 +295,7 @@ const settingsPanes = {
   kubernetes: () => setSec('', [
     setRow('Kubernetes', swi(DB.kube.enabled, 'Kubernetes', 'data-kube'), `A single-node k3s cluster inside the engine. Uses about 380 MB when on.`),
     setRow('Version', sel(['v1.31.4+k3s1', 'v1.32.0+k3s1', 'v1.30.8+k3s1'], DB.kube.version, 'style="width:180px"')),
-    setRow('Expose services as domains', swi(true, 'Expose services'), '<span class="mono-sm">storefront.k8s.containeria.local</span>'),
+    setRow('Expose services as domains', swi(true, 'Expose services'), '<span class="mono-sm">storefront.k8s.contena.local</span>'),
     setRow('Switch kubectl to this cluster', swi(true, 'kubectl context'), `Context “${DB.kube.context}”.`),
     setRow('Use images built with docker', swi(true, 'Shared images'), 'No registry push between docker build and a pod.'),
   ].join('')) + setSec('', setRow('Reset cluster', `<button class="btn btn-sm btn-danger-ghost" data-act="sys-reset-k8s">Reset cluster…</button>`, 'Deletes every workload and namespace. Images are kept.')),
@@ -333,16 +333,16 @@ const settingsPanes = {
   ].join('')) + setSec('What’s new in 1.4', `<ul class="set-notes"><li>The engine now returns free memory to macOS within 5 seconds.</li><li>Data browser: stage edits across several tables and commit them in one transaction.</li><li>Linux machines can run amd64 distros through Rosetta.</li><li>Fixed: Compose projects with a dot in the folder name lost their domain.</li></ul>`),
 
   advanced: () => setSec('Command line tools', [
-    ...[['cx', 'Containeria CLI', false], ['docker', 'Docker CLI 27.4', true], ['docker compose', 'Compose v2.32', true], ['docker buildx', 'Buildx 0.19', true], ['kubectl', 'kubectl 1.31', true]].map(([b, l, on]) => setRow(`<span class="mono">${b}</span>`, on ? `<span class="row ink-3">${icon('circle-check', 'sm ok-ink')}Linked</span>` : `<button class="btn btn-sm" data-act="sys-install-cli">Install</button>`, `${l} · /usr/local/bin/${b.split(' ')[0]}`)),
+    ...[['cx', 'Contena CLI', false], ['docker', 'Docker CLI 27.4', true], ['docker compose', 'Compose v2.32', true], ['docker buildx', 'Buildx 0.19', true], ['kubectl', 'kubectl 1.31', true]].map(([b, l, on]) => setRow(`<span class="mono">${b}</span>`, on ? `<span class="row ink-3">${icon('circle-check', 'sm ok-ink')}Linked</span>` : `<button class="btn btn-sm" data-act="sys-install-cli">Install</button>`, `${l} · /usr/local/bin/${b.split(' ')[0]}`)),
   ].join('')) + setSec('Docker', [
-    setRow('Docker context', sel([['containeria', 'containeria (this app)'], ['desktop-linux', 'desktop-linux (Docker Desktop)'], ['colima', 'colima']], 'containeria', 'style="width:240px"')),
+    setRow('Docker context', sel([['contena', 'contena (this app)'], ['desktop-linux', 'desktop-linux (Docker Desktop)'], ['colima', 'colima']], 'contena', 'style="width:240px"')),
     setRow('Socket', `<button class="btn btn-sm" data-copy="${esc(DB.engine.socket)}">${icon('copy', 'sm')}Copy path</button>`, `<span class="mono-sm">${esc(DB.engine.socket)}</span>`),
     setRow('Import from Docker Desktop', `<button class="btn btn-sm" data-go="/welcome/migrate">Import…</button>`, `${DB.migration.app} found with ${DB.migration.containers} containers.`),
     setRow('Diagnostics', `<button class="btn btn-sm" data-act="diagnostics">Collect…</button>`, 'A zip with engine logs and configuration, for bug reports.'),
   ].join('')) + setSec('Danger zone', setRow('Reset all data', `<button class="btn btn-sm btn-danger-ghost" data-act="sys-reset-all">Reset…</button>`, `Deletes every container, image, volume, the Kubernetes cluster and Linux machines.`)),
 
-  about: () => `<div class="about">${engineMark(72)}<h2 class="h-big">Containeria</h2><p class="meta">Version ${DB.engine.version} (1420) · Free and open source under Apache-2.0</p>
-    <div class="row" style="justify-content:center;margin-top:4px"><button class="btn btn-sm" data-act="sys-open-url" data-arg="https://github.com/containeria/containeria">${icon('brand-github', 'sm')}Source code ↗</button><button class="btn btn-sm" data-act="sys-open-url" data-arg="https://containeria.dev/docs">Documentation ↗</button></div></div>`
+  about: () => `<div class="about">${engineMark(72)}<h2 class="h-big">Contena</h2><p class="meta">Version ${DB.engine.version} (1420) · Free and open source under Apache-2.0</p>
+    <div class="row" style="justify-content:center;margin-top:4px"><button class="btn btn-sm" data-act="sys-open-url" data-arg="https://github.com/contena/contena">${icon('brand-github', 'sm')}Source code ↗</button><button class="btn btn-sm" data-act="sys-open-url" data-arg="https://contena.dev/docs">Documentation ↗</button></div></div>`
     + setSec('Engine', `<dl class="kv set-kv"><dt>Engine</dt><dd class="num">${DB.engine.version}</dd><dt>Virtualization</dt><dd>${DB.engine.vm}</dd><dt>Kernel</dt><dd class="mono-sm">${DB.engine.kernel}</dd><dt>Docker API</dt><dd class="num">${DB.engine.dockerApi}</dd><dt>containerd</dt><dd class="num">${DB.engine.containerd}</dd><dt>Kubernetes</dt><dd class="mono-sm">${DB.engine.k3s}</dd></dl>`)
     + setSec('Built on', `<dl class="kv set-kv">${[['Colima', 'MIT'], ['Lima', 'Apache-2.0'], ['Docker Engine (Moby)', 'Apache-2.0'], ['containerd', 'Apache-2.0'], ['k3s', 'Apache-2.0'], ['Tauri', 'MIT / Apache-2.0'], ['Geist and Geist Mono', 'OFL-1.1'], ['Tabler Icons', 'MIT'], ['uPlot', 'MIT']].map(([n, l]) => `<dt class="ink">${n}</dt><dd class="ink-3">${l}</dd>`).join('')}</dl>`),
 };
@@ -387,10 +387,10 @@ App.view('settings', {
     }
   },
 });
-App.act('sys-check-updates', (el) => { el.classList.add('is-loading'); el.innerHTML = `${icon('loader-2', 'sm')}Checking`; setTimeout(() => { el.classList.remove('is-loading'); el.textContent = 'Check now'; toast({ title: 'Containeria is up to date', body: `Version ${DB.engine.version}`, tone: 'ok' }); }, 1200); });
+App.act('sys-check-updates', (el) => { el.classList.add('is-loading'); el.innerHTML = `${icon('loader-2', 'sm')}Checking`; setTimeout(() => { el.classList.remove('is-loading'); el.textContent = 'Check now'; toast({ title: 'Contena is up to date', body: `Version ${DB.engine.version}`, tone: 'ok' }); }, 1200); });
 App.act('sys-install-cli', (el) => { el.classList.add('is-loading'); el.innerHTML = `${icon('loader-2', 'sm')}Installing`; setTimeout(() => { el.outerHTML = `<span class="row ink-3">${icon('circle-check', 'sm ok-ink')}Linked</span>`; toast({ title: 'cx installed', body: 'Try cx ps in a new terminal', tone: 'ok' }); }, 1100); });
 App.act('sys-reset-k8s', () => confirmSheet({ title: 'Reset the Kubernetes cluster?', body: `All ${DB.kube.pods.length} pods, ${DB.kube.deployments.length} deployments, ${DB.kube.services.length} services and the shop-staging and monitoring namespaces are deleted. Images are kept.`, action: 'Reset cluster', onConfirm() { toast({ title: 'Cluster reset', body: 'A fresh cluster is starting', ic: 'cx-kube' }); } }));
-App.act('sys-reset-all', () => confirmSheet({ title: 'Reset all Containeria data?', body: `This deletes ${DB.containers.length} containers, ${DB.images.length} images, ${DB.volumes.length} volumes (${fmt.mb(volTotal())} of data), the Kubernetes cluster and ${DB.machines.length} Linux machines. Database connections and settings are kept. It can’t be undone.`, action: 'Delete everything', onConfirm() { toast({ title: 'Reset started', body: 'The engine restarts with an empty disk', ic: 'refresh' }); } }));
+App.act('sys-reset-all', () => confirmSheet({ title: 'Reset all Contena data?', body: `This deletes ${DB.containers.length} containers, ${DB.images.length} images, ${DB.volumes.length} volumes (${fmt.mb(volTotal())} of data), the Kubernetes cluster and ${DB.machines.length} Linux machines. Database connections and settings are kept. It can’t be undone.`, action: 'Delete everything', onConfirm() { toast({ title: 'Reset started', body: 'The engine restarts with an empty disk', ic: 'refresh' }); } }));
 
 /* ======================================================================
    First launch
@@ -400,7 +400,7 @@ const wzNames = { welcome: 'Welcome', resources: 'Resources', migrate: 'Import',
 const wz = { imported: false, importing: false };
 App.view('welcome', {
   title: 'Welcome', always: true, flush: true,
-  crumbs: () => `<b>Set up Containeria</b>`,
+  crumbs: () => `<b>Set up Contena</b>`,
   tools: () => `<button class="btn btn-ghost btn-sm" data-go="/containers">Skip setup</button>`,
   render(ctx) {
     const step = WZ.includes(ctx.params[0]) ? ctx.params[0] : 'welcome';
@@ -409,7 +409,7 @@ App.view('welcome', {
     const steps = `<ol class="wz-steps">${WZ.map((s, k) => `<li class="${k < i ? 'is-done' : k === i ? 'is-now' : ''}">${k < i ? icon('check', 'sm') : ''}${wzNames[s]}</li>`).join('')}</ol>`;
     const m = DB.migration;
     const body = {
-      welcome: `<div class="wz-hero">${engineMark(72)}<h1 class="h-big">Containers, Kubernetes and Linux on your Mac</h1><p>Containeria runs them in one small virtual machine that gives memory back to macOS when it’s idle. It works with the docker CLI, Compose and every tool that expects them.</p></div>
+      welcome: `<div class="wz-hero">${engineMark(72)}<h1 class="h-big">Containers, Kubernetes and Linux on your Mac</h1><p>Contena runs them in one small virtual machine that gives memory back to macOS when it’s idle. It works with the docker CLI, Compose and every tool that expects them.</p></div>
         <div class="wz-foot wz-foot-center"><button class="btn btn-lg btn-brand" data-go="/welcome/resources">Get started</button></div>`,
       resources: `<h1 class="h-big">How much can the engine use?</h1><p class="wz-lede">These are ceilings. The engine starts small and only grows when containers need it.</p>
         <div class="set-mac">${icon('device-laptop')}<span>This Mac: <b class="ink">Apple M3 Pro</b>, 12 cores, 36 GB memory</span></div>
@@ -428,13 +428,13 @@ App.view('welcome', {
           <div class="set-group wz-pick">${[['containers', `${m.containers} containers`, 'Recreated with the same names, ports and Compose projects.', 'cx-container'], ['images', `${m.images} images`, 'Copied locally, no registry pulls.', 'cx-image'], ['volumes', `${m.volumes} volumes`, 'Data is copied. The originals are kept.', 'cx-volume']].map(([k, l, h, ic]) => `<label class="set-row"><span class="row gap-12">${icon(ic, 'lg ink-3')}<span class="set-row-text"><span class="ink">${l}</span><span class="hint">${h}</span></span></span><input type="checkbox" class="check" checked data-mig="${k}" aria-label="${l}"></label>`).join('')}</div>
           <p class="set-note">${m.sizeGB} GB in total. Docker Desktop is paused during the copy and not modified.</p>
           ${nav('resources', '', '', `<button class="btn btn-lg" data-go="/welcome/cli">Skip</button><button class="btn btn-lg btn-brand" data-act="wz-import">Import ${m.sizeGB} GB</button>`)}`,
-      cli: `<h1 class="h-big">Use it from the terminal</h1><p class="wz-lede">The tools you already use point at Containeria. Switch back any time in Settings.</p>
-        <div class="set-group wz-pick">${[['docker', 'Points to Docker Desktop now', true], ['docker compose', 'Compose v2.32', true], ['docker buildx', 'Buildx 0.19', true], ['kubectl', 'For the built-in cluster', true], ['cx', 'Containeria CLI: cx ps, cx shell, cx open', true]].map(([b, h, on]) => `<label class="set-row"><span class="set-row-text"><span class="mono ink">${b}</span><span class="hint">${h}</span></span><input type="checkbox" class="check" ${on ? 'checked' : ''} aria-label="${b}"></label>`).join('')}</div>
+      cli: `<h1 class="h-big">Use it from the terminal</h1><p class="wz-lede">The tools you already use point at Contena. Switch back any time in Settings.</p>
+        <div class="set-group wz-pick">${[['docker', 'Points to Docker Desktop now', true], ['docker compose', 'Compose v2.32', true], ['docker buildx', 'Buildx 0.19', true], ['kubectl', 'For the built-in cluster', true], ['cx', 'Contena CLI: cx ps, cx shell, cx open', true]].map(([b, h, on]) => `<label class="set-row"><span class="set-row-text"><span class="mono ink">${b}</span><span class="hint">${h}</span></span><input type="checkbox" class="check" ${on ? 'checked' : ''} aria-label="${b}"></label>`).join('')}</div>
         <p class="set-note">${icon('lock', 'sm')} macOS asks for your password once to link them in /usr/local/bin.</p>
         ${nav('migrate', 'done', 'Install tools')}`,
       done: `<div class="wz-hero">${icon('circle-check', 'wz-check')}<h1 class="h-big">You’re set</h1><p>The engine is running. Find any container, table or setting from the palette.</p>
         <div class="wz-try"><span class="kbd">⌘</span><span class="kbd">K</span></div><p class="meta">Press it now to start</p></div>
-        <div class="wz-foot wz-foot-center"><button class="btn btn-lg" data-go="/containers">Open Containeria</button></div>`,
+        <div class="wz-foot wz-foot-center"><button class="btn btn-lg" data-go="/containers">Open Contena</button></div>`,
     }[step];
     return `<div class="wz">${steps}<div class="wz-body enter" data-step="${step}">${body}</div></div>`;
   },
@@ -553,7 +553,7 @@ App.act('run-container', (el0, preset) => {
         const sc = t.closest('[data-secret]'); if (sc) { const v = sc.previousElementSibling; const on = v.type !== 'password'; v.type = on ? 'password' : 'text'; sc.classList.toggle('is-on', on); sc.innerHTML = icon(on ? 'lock' : 'lock-open'); sc.dataset.tip = on ? 'Secret: hidden in the UI and logs' : 'Mark as secret'; }
         const use = t.closest('[data-use]'); if (use) { use.closest('.run-conflict').previousElementSibling.querySelector('[data-host-port]').value = use.dataset.use; checkPorts(); }
         const pf = t.closest('[data-pick-folder]'); if (pf) { $('span', pf).textContent = '~/Code/site'; pf.dataset.tip = '~/Code/site'; }
-        if (t.closest('[data-add-envfile]')) { add('env', envRow('API_URL', 'http://api.shop.containeria.local') + envRow('STRIPE_KEY', 'sk_test_51Qx…', true)); toast({ title: 'Imported 2 variables from .env', ic: 'file-text', ms: 1800 }); }
+        if (t.closest('[data-add-envfile]')) { add('env', envRow('API_URL', 'http://api.shop.contena.local') + envRow('STRIPE_KEY', 'sk_test_51Qx…', true)); toast({ title: 'Imported 2 variables from .env', ic: 'file-text', ms: 1800 }); }
         if (t.closest('[data-copy-cmd]')) { const cmd = `docker run -d --name ${name.value || name.placeholder} ${$$('[data-port]', el).map((r) => `-p ${$('[data-host-port]', r).value}:${$('[data-ctr-port]', r).value}`).join(' ')} ${img.value || '<image>'}`.replace(/\s+/g, ' '); navigator.clipboard?.writeText(cmd).catch(() => {}); toast({ title: 'Copied', body: cmd, ic: 'copy' }); }
       });
       const run = () => {
@@ -621,7 +621,7 @@ App.act('diagnostics', () => sheet({
         p = Math.min(1, p + 0.07);
         $('[data-diag-bar]', el).style.transform = `scaleX(${p})`; $('[data-diag-pct]', el).textContent = Math.round(p * 100) + '%';
         $('[data-diag-step]', el).textContent = steps[Math.min(3, Math.floor(p * 4))];
-        if (p >= 1) { clearInterval(id); close(); toast({ title: 'Saved containeria-diagnostics-2026-10-17.zip', body: 'In your Downloads folder · 4.8 MB', tone: 'ok', actionLabel: 'Show in Finder', ms: 6000 }); }
+        if (p >= 1) { clearInterval(id); close(); toast({ title: 'Saved contena-diagnostics-2026-10-17.zip', body: 'In your Downloads folder · 4.8 MB', tone: 'ok', actionLabel: 'Show in Finder', ms: 6000 }); }
       }, 120);
     };
   },

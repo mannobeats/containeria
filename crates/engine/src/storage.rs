@@ -14,7 +14,7 @@ use crate::error::{Error, Result};
 use crate::home::Home;
 
 /// The folder made inside the one the user picks.
-const FOLDER_NAME: &str = "Containeria";
+const FOLDER_NAME: &str = "Contena";
 
 /// Formats that hold sparse disk images.
 const SUPPORTED_FORMATS: [&str; 2] = ["apfs", "hfs"];

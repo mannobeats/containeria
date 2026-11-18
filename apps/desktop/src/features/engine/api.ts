@@ -16,7 +16,7 @@ export function useEngineStatus() {
   });
 }
 
-/** True while containers can be listed: Containeria's own engine or one set in the environment. */
+/** True while containers can be listed: Contena's own engine or one set in the environment. */
 export function isServing(phase: EnginePhase | undefined): boolean {
   return phase === "running" || phase === "external";
 }
@@ -25,7 +25,7 @@ type Control = "start" | "stop" | "restart";
 
 /**
  * Whether `control` makes sense in `phase`, wherever the engine is offered: the engine can't start
- * when it's missing or while a start or stop runs, and only Containeria's own engine can stop or
+ * when it's missing or while a start or stop runs, and only Contena's own engine can stop or
  * restart, running or asleep.
  */
 export function canControl(control: Control, phase: EnginePhase | undefined): boolean {
