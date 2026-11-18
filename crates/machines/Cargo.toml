@@ -1,6 +1,6 @@
 [package]
 name = "containeria-machines"
-description = "Linux machines: Incus system containers and VMs in the machines profile."
+description = "Linux machines: long-lived distributions run as containers in Containeria's engine."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -10,21 +10,20 @@ authors.workspace = true
 publish.workspace = true
 
 [dependencies]
-bytes.workspace = true
+containeria-proto.workspace = true
+bollard.workspace = true
 futures.workspace = true
-http.workspace = true
-http-body-util.workspace = true
-hyper.workspace = true
-hyper-util.workspace = true
+jiff.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 specta.workspace = true
 specta-typescript.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
-tokio-tungstenite.workspace = true
 tokio-util = { workspace = true, features = ["io"] }
-tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true

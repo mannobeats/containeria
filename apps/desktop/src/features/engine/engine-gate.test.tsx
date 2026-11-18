@@ -27,7 +27,7 @@ describe("EngineGate", () => {
       engineStatus: () => {
         attempts += 1;
         if (attempts === 1) {
-          throw { kind: "engine", message: "`colima list` failed: no output" };
+          throw { kind: "engine", message: "The home folder could not be found." };
         }
         return engineFixture();
       },
@@ -40,7 +40,7 @@ describe("EngineGate", () => {
     expect(
       await screen.findByRole("heading", { name: "Containeria couldn't check the engine" }),
     ).toBeDefined();
-    expect(screen.getByText("`colima list` failed: no output")).toBeDefined();
+    expect(screen.getByText("The home folder could not be found.")).toBeDefined();
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("Page content")).toBeDefined();
     await waitFor(() =>

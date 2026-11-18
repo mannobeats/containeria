@@ -6,58 +6,46 @@ import { toast } from "sonner";
 
 import { useToastedMutation } from "@/app/use-toasted-mutation";
 import { copyText } from "@/lib/clipboard";
-import {
-  type CreateMachine,
-  commands,
-  events,
-  type LogLine,
-  type MachineAction,
-  type MachineFile,
-} from "@/lib/ipc/bindings";
+import { type CreateMachine, commands, events, type MachineAction } from "@/lib/ipc/bindings";
+import type { OpenShell } from "@/lib/ipc/connect-shell";
 import { errorMessage } from "@/lib/ipc/errors";
 import { useTauriEvent } from "@/lib/ipc/use-tauri-event";
 
-import { type MachineList, withCpu } from "./model";
+import { type MachineFile, type MachineList, withCpu } from "./model";
 
 const machineKeys = {
   all: ["machines"],
-  status: ["machines", "status"],
   list: ["machines", "list"],
   distros: ["machines", "distros"],
   files: (name: string, path: string) => ["machines", "files", name, path],
   snapshots: (name: string) => ["machines", "snapshots", name],
 } as const;
 
-/** The machines VM's phase. */
-export function useMachinesStatus() {
-  return useQuery({
-    queryKey: machineKeys.status,
-    queryFn: commands.machinesStatus,
-    refetchInterval: 15_000,
-  });
-}
-
 /**
- * Every machine, polled every three seconds while shown so usage stays live. While the machines VM
- * is off, the ones it had, stopped; starting one starts the VM. Everything about machines refetches
- * when Rust says they changed; each page calls this once, so that listener is registered once.
+ * Every machine, polled every three seconds while shown so usage stays live. Everything about
+ * machines refetches when Rust says they changed; each page calls this once, so that listener is
+ * registered once.
  */
 export function useMachines() {
   const client = useQueryClient();
   useTauriEvent(events.machinesChanged, () => {
     client.invalidateQueries({ queryKey: machineKeys.all }).catch(() => undefined);
   });
-  const { data: status } = useMachinesStatus();
   return useQuery({
     queryKey: machineKeys.list,
     queryFn: async () => {
       const machines = await commands.machinesList();
       return withCpu(client.getQueryData<MachineList>(machineKeys.list), machines, Date.now());
     },
-    enabled: status?.phase === "running" || status?.phase === "stopped",
-    refetchInterval: status?.phase === "running" ? 3000 : false,
+    refetchInterval: 3000,
   });
 }
+
+/** A login shell in the machine as its user, for `connectShell`. */
+export const machineShell =
+  (name: string): OpenShell =>
+  (cols, rows, channel) =>
+    commands.machineShell(name, cols, rows, channel);
 
 export function useDistros() {
   return useQuery({
@@ -70,7 +58,13 @@ export function useDistros() {
 export function useMachineFiles(name: string, path: string) {
   return useQuery({
     queryKey: machineKeys.files(name, path),
-    queryFn: () => commands.machineFiles(name, path),
+    queryFn: async (): Promise<MachineFile[]> => {
+      const entries = await commands.machineFiles(name, path);
+      return entries.map((entry) => ({
+        ...entry,
+        path: `${path.replace(/\/$/, "")}/${entry.name}`,
+      }));
+    },
   });
 }
 
@@ -113,24 +107,6 @@ export function useDownloadFile(name: string) {
       }
     },
     onError: (error) => toast.error("Not saved", { description: errorMessage(error) }),
-  });
-}
-
-type Control = "start" | "stop";
-
-/** Starts or stops the machines VM, passing Colima's progress lines to `onLine`. */
-export function useMachinesControl(onLine: (line: LogLine) => void) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (control: Control) => {
-      const progress = new Channel<LogLine>(onLine);
-      return control === "start"
-        ? commands.machinesStart(progress)
-        : commands.machinesStop(progress);
-    },
-    onError: (error) =>
-      toast.error("Linux machines didn't respond", { description: errorMessage(error) }),
-    onSettled: () => client.invalidateQueries({ queryKey: machineKeys.all }),
   });
 }
 

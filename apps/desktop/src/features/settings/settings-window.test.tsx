@@ -22,20 +22,16 @@ function renderSection(section: SettingsPane, phase: EnginePhase = "running") {
     engineStatus: () =>
       engineFixture({
         phase,
-        instance: {
-          status: "running",
-          arch: "aarch64",
+        vm: {
           cpus: 4,
-          memoryBytes: 8 * 1024 ** 3,
-          diskBytes: 0,
-          address: null,
+          memory: { ceilingBytes: 8 * 1024 ** 3, allowedBytes: 1024 ** 3, usedBytes: 1024 ** 3 },
+          kernel: "6.18.63",
         },
       }),
     preferencesGet: () => preferencesFixture(),
     hostInfo: () => ({ chip: "Apple M1 Max", cores: 10, memoryBytes: 32 * 1024 ** 3 }),
     about: () => ({
       appVersion: "0.1.0",
-      colimaVersion: "0.10.3",
       engine: {
         serverVersion: "29.1.0",
         kernelVersion: "6.8.0",
@@ -142,17 +138,13 @@ describe("SettingsWindow", () => {
   it("saves engine changes and offers a restart", async () => {
     const calls = renderSection("engine");
     expect(await screen.findByText("Apple M1 Max")).toBeDefined();
-    expect(screen.getByRole("combobox", { name: "Virtualization" })).toHaveProperty(
-      "disabled",
-      true,
-    );
-    await userEvent.click(screen.getByRole("switch", { name: "UDP ports" }));
-    expect(screen.getByText("Not saved: UDP ports on")).toBeDefined();
+    await userEvent.click(screen.getByRole("switch", { name: "Sleep when nothing runs" }));
+    expect(screen.getByText("Not saved: sleep when idle off")).toBeDefined();
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(calls).toContainEqual({
         command: "engineSaveConfig",
-        args: { config: { ...engineFixture().config, udpPorts: true } },
+        args: { config: { ...engineFixture().config, sleepWhenIdle: false } },
       }),
     );
     await userEvent.click(await screen.findByRole("button", { name: "Restart engine" }));
@@ -196,8 +188,7 @@ describe("SettingsWindow", () => {
 
   it("shows the versions it runs", async () => {
     renderSection("about");
-    expect(await screen.findByText("0.10.3")).toBeDefined();
-    expect(screen.getByText("29.1.0")).toBeDefined();
+    expect(await screen.findByText("29.1.0")).toBeDefined();
     expect(screen.getByText(/Version 0\.1\.0/)).toBeDefined();
   });
 });

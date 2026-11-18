@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import type { CreateMachine, Distro, MachineKind } from "@/lib/ipc/bindings";
+import type { CreateMachine, Distro } from "@/lib/ipc/bindings";
 
 import { nameProblem, suggestName } from "./model";
 
@@ -12,7 +12,6 @@ export function useNewMachineForm(distros: Distro[], taken: string[]) {
   const [distroId, setDistroId] = useState(distros[0]?.id ?? "ubuntu");
   const [release, setRelease] = useState<string | null>(null);
   const [name, setName] = useState<string | null>(null);
-  const [kind, setKind] = useState<MachineKind>("container");
   const [cpus, setCpus] = useState("2");
   const [memoryGib, setMemoryGib] = useState("4");
   const [mountHome, setMountHome] = useState(true);
@@ -21,7 +20,6 @@ export function useNewMachineForm(distros: Distro[], taken: string[]) {
     setDistroId(distros[0]?.id ?? "ubuntu");
     setRelease(null);
     setName(null);
-    setKind("container");
     setCpus("2");
     setMemoryGib("4");
     setMountHome(true);
@@ -31,7 +29,6 @@ export function useNewMachineForm(distros: Distro[], taken: string[]) {
     name: name ?? suggestName(distroId, taken),
     distro: distroId,
     release: release ?? distro?.releases[0]?.alias ?? "",
-    kind,
     cpus: Number(cpus),
     memoryGib: Number(memoryGib),
     mountHome,
@@ -46,7 +43,6 @@ export function useNewMachineForm(distros: Distro[], taken: string[]) {
     },
     setRelease,
     setName,
-    setKind,
     cpus,
     setCpus,
     memoryGib,

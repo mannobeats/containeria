@@ -12,15 +12,14 @@ import { Menu } from "@/ui/menu";
 import { TabPanel, Tabs } from "@/ui/tabs";
 import { Tile } from "@/ui/tile";
 
-import { useMachineAction, useMachines, useMachinesStatus } from "./api";
+import { useMachineAction, useMachines } from "./api";
 import { MachineDialogs } from "./machine-dialogs";
 import { MachineFiles } from "./machine-files";
 import { type MachineDialog, machineMenu } from "./machine-menu";
 import { MachineOverview } from "./machine-overview";
 import { MachineSnapshots } from "./machine-snapshots";
 import { MachineTerminal } from "./machine-terminal";
-import { MachinesIntro } from "./machines-intro";
-import { isRunning, kindLabel, type ListedMachine, stateLabel } from "./model";
+import { isRunning, type ListedMachine, stateLabel } from "./model";
 
 const route = getRouteApi("/machines/$name");
 
@@ -67,7 +66,6 @@ function Header({
           <span>
             {machine.distro} {machine.release}
           </span>
-          <span>{kindLabel(machine)}</span>
           <span>{stateLabel(machine)}</span>
           {machine.ipv4 ? (
             <span className="font-mono text-mono-12 select-text">{machine.ipv4}</span>
@@ -117,9 +115,9 @@ function StoppedPane({ machine, what }: { machine: Machine; what: string }) {
 
 type Navigation = { tab: Tab; onTab: (tab: Tab) => void; onLeave: () => void };
 
-type DetailProps = Navigation & { machine: ListedMachine; taken: string[]; vmRunning: boolean };
+type DetailProps = Navigation & { machine: ListedMachine; taken: string[] };
 
-function Detail({ machine, taken, vmRunning, tab, onTab: show, onLeave }: DetailProps) {
+function Detail({ machine, taken, tab, onTab: show, onLeave }: DetailProps) {
   const action = useMachineAction();
   const [dialog, setDialog] = useState<MachineDialog | null>(null);
   const running = isRunning(machine);
@@ -142,17 +140,13 @@ function Detail({ machine, taken, vmRunning, tab, onTab: show, onLeave }: Detail
         </TabPanel>
         <TabPanel value="files" className="flex flex-col">
           {running ? (
-            <MachineFiles name={machine.name} />
+            <MachineFiles name={machine.name} user={machine.user} />
           ) : (
             <StoppedPane machine={machine} what="files" />
           )}
         </TabPanel>
         <TabPanel value="snapshots" className="flex flex-col">
-          {vmRunning ? (
-            <MachineSnapshots name={machine.name} onTake={() => setDialog("snapshot")} />
-          ) : (
-            <StoppedPane machine={machine} what="snapshots" />
-          )}
+          <MachineSnapshots name={machine.name} onTake={() => setDialog("snapshot")} />
         </TabPanel>
       </Tabs>
       <MachineDialogs
@@ -168,10 +162,8 @@ function Detail({ machine, taken, vmRunning, tab, onTab: show, onLeave }: Detail
 
 /** One machine: its header, then overview, terminal, files and snapshots tabs. */
 export function MachineView({ name, tab, onTab, onLeave }: Navigation & { name: string }) {
-  const { data: status } = useMachinesStatus();
   const { data: list } = useMachines();
   const machine = list?.machines.find((candidate) => candidate.name === name);
-  const vmShown = status?.phase === "running" || status?.phase === "stopped";
   const crumbs = (
     <>
       <ParentCrumb to="/machines" label="Linux machines" />
@@ -180,11 +172,9 @@ export function MachineView({ name, tab, onTab, onLeave }: Navigation & { name: 
   );
   return (
     <Page crumbs={crumbs} flush>
-      {status && !vmShown ? <MachinesIntro phase={status.phase} onNew={onLeave} /> : null}
-      {machine && vmShown ? (
+      {machine ? (
         <Detail
           machine={machine}
-          vmRunning={status?.phase === "running"}
           taken={list?.machines.map((candidate) => candidate.name) ?? []}
           tab={tab}
           onTab={onTab}

@@ -16,7 +16,7 @@ import { ContextMenu, Menu } from "@/ui/menu";
 import { Tile } from "@/ui/tile";
 
 import { type MachineDialog, machineMenu } from "./machine-menu";
-import { isRunning, kindLabel, type ListedMachine, stateLabel } from "./model";
+import { isRunning, type ListedMachine, stateLabel } from "./model";
 
 type MachineCardProps = {
   machine: ListedMachine;
@@ -36,8 +36,8 @@ function Details({ machine }: { machine: ListedMachine }) {
     >
       <dt>State</dt>
       <dd>{stateLabel(machine)}</dd>
-      <dt>Kind</dt>
-      <dd>{kindLabel(machine)}</dd>
+      <dt>User</dt>
+      <dd>{machine.user}</dd>
       <dt>IP</dt>
       <dd className="font-mono text-mono-12 select-text">{machine.ipv4 ?? "—"}</dd>
       {running ? (

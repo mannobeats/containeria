@@ -9,7 +9,6 @@ import { useState } from "react";
 
 import { copyText } from "@/lib/clipboard";
 import { formatBytes } from "@/lib/format";
-import type { MachineFile } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
 import { pathSteps } from "@/lib/paths";
 import { Button } from "@/ui/button";
@@ -17,6 +16,7 @@ import { EmptyState } from "@/ui/empty-state";
 import { IconAction } from "@/ui/icon-action";
 import { ContextMenu, type MenuEntry } from "@/ui/menu";
 import { useDownloadFile, useMachineFiles, useUploadFile } from "./api";
+import type { MachineFile } from "./model";
 
 function Row({
   machine,
@@ -57,7 +57,7 @@ function Row({
           </span>
         )}
         <span className="text-right text-12 text-ink-3 tabular">
-          {folder ? "" : formatBytes(entry.sizeBytes)}
+          {folder ? "" : formatBytes(entry.size)}
         </span>
         {folder ? null : (
           <span className="opacity-0 transition-opacity group-hover/file:opacity-100 group-focus-within/file:opacity-100">
@@ -92,11 +92,12 @@ function Crumbs({ path, onOpen }: { path: string; onOpen: (path: string) => void
 }
 
 /** The shell logs in as root, so browsing starts in root's home. */
-const HOME = "/root";
+/** Where a user's own files are: the folder a shell opens in. */
+const homeOf = (user: string) => (user === "root" ? "/root" : `/home/${user}`);
 
 /** Browse a running machine's files, download them to the Mac and upload into the open folder. */
-export function MachineFiles({ name }: { name: string }) {
-  const [path, setPath] = useState(HOME);
+export function MachineFiles({ name, user }: { name: string; user: string }) {
+  const [path, setPath] = useState(() => homeOf(user));
   const { data: entries, error, refetch } = useMachineFiles(name, path);
   const upload = useUploadFile(name);
   const uploadHere = () => upload.mutate(path);

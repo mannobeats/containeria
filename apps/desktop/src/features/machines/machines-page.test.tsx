@@ -2,10 +2,10 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Distro, EnginePhase, Machine } from "@/lib/ipc/bindings";
+import type { Distro, Machine } from "@/lib/ipc/bindings";
 import { mockCommands, renderWithApp } from "@/test/harness";
 
-import { distrosFixture, machineFixture, machinesStatusFixture } from "./fixtures";
+import { distrosFixture, machineFixture } from "./fixtures";
 import { MachinesPage } from "./machines-page";
 import { useNewMachineSheet } from "./new-machine-store";
 
@@ -16,17 +16,12 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({
 
 beforeEach(() => useNewMachineSheet.setState({ open: false }));
 
-function setup(
-  phase: EnginePhase = "running",
-  machines: Machine[] = [machineFixture()],
-  supportsVms = false,
-  distros: Distro[] = distrosFixture,
-) {
+function setup(machines: Machine[] = [machineFixture()], distros: Distro[] = distrosFixture) {
   const calls = mockCommands({
-    machinesStatus: () => machinesStatusFixture({ phase, supportsVms }),
     machinesList: () => machines,
     machineDistros: () => distros,
-    machineShellCommand: () => "INCUS_CONF='/c' 'incus' exec containeria:ubuntu-dev -- su -l",
+    machineShellCommand: () =>
+      "DOCKER_HOST='unix:///s' 'docker' exec -it 'containeria-machine-ubuntu-dev' su - 'ada'",
   });
   renderWithApp(<MachinesPage />);
   return calls;
@@ -42,7 +37,7 @@ const arch = machineFixture({
 
 describe("MachinesPage", () => {
   it("shows each machine as a card with its state and usage", async () => {
-    setup("running", [machineFixture(), arch]);
+    setup([machineFixture(), arch]);
     expect(await screen.findByText("ubuntu-dev")).toBeDefined();
     expect(screen.getByText(/running, using/).textContent).toContain("1 of 2 machines");
     expect(screen.getAllByText(/310 MB/)).toHaveLength(2);
@@ -50,7 +45,7 @@ describe("MachinesPage", () => {
   });
 
   it("stops and starts machines from their cards", async () => {
-    const calls = setup("running", [machineFixture(), arch]);
+    const calls = setup([machineFixture(), arch]);
     await userEvent.click(await screen.findByRole("button", { name: "Stop" }));
     await userEvent.click(screen.getByRole("button", { name: "Start" }));
     await waitFor(() =>
@@ -63,40 +58,11 @@ describe("MachinesPage", () => {
     );
   });
 
-  it("explains the machines VM before the first machine", async () => {
-    setup("notCreated", []);
+  it("says what a machine is before the first one", async () => {
+    setup([]);
     expect(await screen.findByRole("heading", { name: "No Linux machines yet" })).toBeDefined();
     await userEvent.click(screen.getByRole("button", { name: "New machine" }));
     expect(await screen.findByRole("dialog", { name: "New Linux machine" })).toBeDefined();
-  });
-
-  it("keeps listing machines while their VM is off and starts one on request", async () => {
-    const calls = setup("stopped", [arch]);
-    expect(await screen.findByText("arch-lab")).toBeDefined();
-    expect(screen.queryByRole("button", { name: "Import…" })).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: "Start" }));
-    await waitFor(() =>
-      expect(calls).toContainEqual({
-        command: "machineAct",
-        args: { name: "arch-lab", action: "start" },
-      }),
-    );
-  });
-
-  it("offers a fresh start when the machines VM broke", async () => {
-    const calls = setup("broken", []);
-    await userEvent.click(await screen.findByRole("button", { name: "Start Linux machines" }));
-    await waitFor(() => expect(calls.map((call) => call.command)).toContain("machinesStart"));
-  });
-
-  it("says how to install Colima when it's missing", async () => {
-    setup("missing", []);
-    expect(await screen.findByText("brew install colima")).toBeDefined();
-  });
-
-  it("shows progress while the machines VM starts", async () => {
-    setup("starting", []);
-    expect(await screen.findByRole("progressbar", { name: "Machines progress" })).toBeDefined();
   });
 
   it("asks before deleting a machine", async () => {
@@ -118,7 +84,7 @@ describe("machine menu", () => {
   }
 
   it("clones a machine under a free name", async () => {
-    const calls = setup("running", [machineFixture(), machineFixture({ name: "ubuntu-dev-copy" })]);
+    const calls = setup([machineFixture(), machineFixture({ name: "ubuntu-dev-copy" })]);
     await choose("Clone…");
     const sheet = await screen.findByRole("dialog", { name: "Clone ubuntu-dev" });
     expect(within(sheet).getByLabelText("Name")).toHaveProperty("value", "ubuntu-dev-copy-2");
@@ -160,7 +126,7 @@ describe("machine menu", () => {
       expect(calls).toContainEqual(
         expect.objectContaining({
           args: expect.objectContaining({
-            text: "INCUS_CONF='/c' 'incus' exec containeria:ubuntu-dev -- su -l",
+            text: "DOCKER_HOST='unix:///s' 'docker' exec -it 'containeria-machine-ubuntu-dev' su - 'ada'",
           }),
         }),
       ),
@@ -184,18 +150,17 @@ describe("machine menu", () => {
 
 describe("NewMachineSheet", () => {
   async function openSheet(
-    supportsVms: boolean,
     machines: Machine[] = [machineFixture({ name: "ubuntu" })],
     distros: Distro[] = distrosFixture,
   ) {
-    const calls = setup("running", machines, supportsVms, distros);
+    const calls = setup(machines, distros);
     const [newButton] = await screen.findAllByRole("button", { name: /New machine/ });
     await userEvent.click(newButton as HTMLElement);
     return { calls, sheet: await screen.findByRole("dialog", { name: "New Linux machine" }) };
   }
 
   it("suggests a free name and creates the machine", async () => {
-    const { calls, sheet } = await openSheet(false);
+    const { calls, sheet } = await openSheet();
     expect(within(sheet).getByLabelText("Name")).toHaveProperty("value", "ubuntu-2");
     await userEvent.click(within(sheet).getByRole("radio", { name: /Debian/ }));
     expect(within(sheet).getByLabelText("Name")).toHaveProperty("value", "debian");
@@ -207,7 +172,6 @@ describe("NewMachineSheet", () => {
         name: "debian",
         distro: "debian",
         release: "13",
-        kind: "container",
         cpus: 2,
         memoryGib: 8,
         mountHome: false,
@@ -216,7 +180,7 @@ describe("NewMachineSheet", () => {
   });
 
   it("starts from a fresh form after creating a machine", async () => {
-    const { calls, sheet } = await openSheet(false);
+    const { calls, sheet } = await openSheet();
     const name = within(sheet).getByLabelText("Name");
     await userEvent.clear(name);
     await userEvent.type(name, "dev");
@@ -229,15 +193,15 @@ describe("NewMachineSheet", () => {
   });
 
   it("can't create without a distribution to pick", async () => {
-    const { sheet } = await openSheet(false, undefined, []);
+    const { sheet } = await openSheet(undefined, []);
     expect(within(sheet).getByRole("button", { name: "Create machine" })).toHaveProperty(
       "disabled",
       true,
     );
   });
 
-  it("refuses a name Incus wouldn't take", async () => {
-    const { sheet } = await openSheet(false);
+  it("refuses a name that isn't a host name", async () => {
+    const { sheet } = await openSheet();
     const name = within(sheet).getByLabelText("Name");
     await userEvent.clear(name);
     await userEvent.type(name, "Dev Box");
@@ -248,17 +212,5 @@ describe("NewMachineSheet", () => {
       "disabled",
       true,
     );
-  });
-
-  it("offers full VMs only on Macs that can nest them", async () => {
-    const { sheet } = await openSheet(true);
-    await userEvent.click(within(sheet).getByRole("radio", { name: "Full VM" }));
-    expect(within(sheet).getByText(/runs its own kernel/)).toBeDefined();
-  });
-
-  it("explains why full VMs are missing", async () => {
-    const { sheet } = await openSheet(false);
-    expect(within(sheet).queryByRole("radio", { name: "Full VM" })).toBeNull();
-    expect(within(sheet).getByText(/M3 or newer/)).toBeDefined();
   });
 });

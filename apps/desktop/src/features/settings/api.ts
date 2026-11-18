@@ -98,11 +98,11 @@ export function useInstallTools() {
   });
 }
 
-/** Deletes the engine, and every Linux machine with `machines`; everything shown is stale after. */
+/** Deletes everything in the engine; everything shown is stale after. */
 export function useResetEngine() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (machines: boolean) => commands.engineReset(machines),
+    mutationFn: () => commands.engineReset(),
     onSuccess: () =>
       toast.success("The engine was reset", { description: "Start it to create a fresh one." }),
     onError: (error) =>

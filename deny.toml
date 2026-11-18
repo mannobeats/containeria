@@ -9,6 +9,9 @@ ignore = [
   # `paste` is a compile-time proc-macro pulled in by specta; unmaintained, no known vulnerability.
   # Remove once specta 2.0 replaces it (tracked upstream in specta-rs/specta).
   { id = "RUSTSEC-2024-0436", reason = "proc-macro used only at compile time by specta" },
+  # `chrono` is marked unmaintained, with no vulnerability reported. bollard's and sqlx's types
+  # are made of it, so it stays until they move to another date library.
+  { id = "RUSTSEC-2026-0543", reason = "no known vulnerability; bollard and sqlx require it" },
 ]
 
 [licenses]

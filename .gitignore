@@ -12,3 +12,6 @@ coverage/
 .claude/scheduled_tasks.lock
 apps/desktop/src-tauri/resources/tools/*
 !apps/desktop/src-tauri/resources/tools/README.md
+apps/desktop/src-tauri/resources/engine/*
+!apps/desktop/src-tauri/resources/engine/README.md
+vmm/.build/

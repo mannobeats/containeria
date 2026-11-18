@@ -186,6 +186,7 @@ mod tests {
                 .iter()
                 .map(|&(container, host)| Port { container, host, protocol: PortProtocol::Tcp })
                 .collect(),
+            address: None,
             created_at: 0,
         }
     }

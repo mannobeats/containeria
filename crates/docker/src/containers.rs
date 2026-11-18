@@ -1,5 +1,6 @@
 use std::cmp::Reverse;
 use std::collections::HashMap;
+use std::net::IpAddr;
 
 use bollard::models::{
     ContainerSummary as RawSummary, ContainerSummaryStateEnum, PortSummaryTypeEnum,
@@ -91,6 +92,10 @@ pub struct ContainerSummary {
     /// `namespace/name` when Kubernetes runs this container for a pod.
     pub pod: Option<String>,
     pub ports: Vec<Port>,
+    /// Where the container answers inside the engine, on the first of its networks that gave it
+    /// an address. For this program's own use: the UI isn't sent it.
+    #[serde(skip)]
+    pub address: Option<IpAddr>,
     #[specta(type = specta_typescript::Number)]
     pub created_at: i64,
 }
@@ -116,6 +121,12 @@ impl From<RawSummary> for ContainerSummary {
                 .zip(labels.remove(POD_NAME))
                 .map(|(namespace, name)| format!("{namespace}/{name}")),
             ports: dedupe_ports(raw.ports.unwrap_or_default()),
+            address: raw
+                .network_settings
+                .and_then(|settings| settings.networks)
+                .into_iter()
+                .flat_map(HashMap::into_values)
+                .find_map(|network| network.ip_address?.parse().ok()),
             created_at: raw.created.unwrap_or_default(),
         }
     }

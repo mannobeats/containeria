@@ -1,10 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Channel } from "@tauri-apps/api/core";
 import { toast } from "sonner";
-import { create } from "zustand";
 
 import { queryKeys } from "@/app/query-keys";
-import { commands, type EngineConfig, type EnginePhase, type LogLine } from "@/lib/ipc/bindings";
+import { commands, type EngineConfig, type EnginePhase } from "@/lib/ipc/bindings";
 import { errorMessage } from "@/lib/ipc/errors";
 
 /** A root shell in the engine's VM, for `connectShell`. */
@@ -23,41 +21,20 @@ export function isServing(phase: EnginePhase | undefined): boolean {
   return phase === "running" || phase === "external";
 }
 
-type NumberedLine = LogLine & { id: number };
-
-type BootLog = {
-  lines: NumberedLine[];
-  next: number;
-  push: (line: LogLine) => void;
-  clear: () => void;
-};
-
-/** Colima's progress lines for the current start or stop, shown while it runs. */
-export const useBootLog = create<BootLog>((set) => ({
-  lines: [],
-  next: 0,
-  push: (line) =>
-    set((state) => ({
-      lines: [...state.lines.slice(-200), { ...line, id: state.next }],
-      next: state.next + 1,
-    })),
-  clear: () => set({ lines: [] }),
-}));
-
 type Control = "start" | "stop" | "restart";
 
 /**
- * Whether `control` makes sense in `phase`, wherever the engine is offered: Colima can't start when
- * it's missing or while a start or stop runs, and only Containeria's own running engine can stop or
- * restart.
+ * Whether `control` makes sense in `phase`, wherever the engine is offered: the engine can't start
+ * when it's missing or while a start or stop runs, and only Containeria's own engine can stop or
+ * restart, running or asleep.
  */
 export function canControl(control: Control, phase: EnginePhase | undefined): boolean {
   return control === "start"
     ? phase === "stopped" || phase === "notCreated" || phase === "broken"
-    : phase === "running";
+    : phase === "running" || phase === "asleep";
 }
 
-const run: Record<Control, (progress: Channel<LogLine>) => Promise<null>> = {
+const run: Record<Control, () => Promise<null>> = {
   start: commands.engineStart,
   stop: commands.engineStop,
   restart: commands.engineRestart,
@@ -71,13 +48,10 @@ const done: Record<Control, string> = {
 
 export function useEngineControl() {
   const client = useQueryClient();
-  const push = useBootLog((state) => state.push);
-  const clear = useBootLog((state) => state.clear);
   return useMutation({
     mutationFn: async (control: Control) => {
-      clear();
       const started = performance.now();
-      await run[control](new Channel<LogLine>(push));
+      await run[control]();
       return { control, seconds: (performance.now() - started) / 1000 };
     },
     onSuccess: ({ control, seconds }) => {

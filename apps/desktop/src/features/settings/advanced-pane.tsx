@@ -2,7 +2,6 @@ import { useId, useState } from "react";
 
 import type { CliTool } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
-import { Checkbox } from "@/ui/checkbox";
 import { Chip } from "@/ui/chip";
 import { Field, Input } from "@/ui/field";
 import { Sheet } from "@/ui/sheet";
@@ -54,14 +53,13 @@ function CommandLineTools() {
 function ResetSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const id = useId();
   const [typed, setTyped] = useState("");
-  const [machines, setMachines] = useState(false);
   const reset = useResetEngine();
   return (
     <Sheet
       open={open}
       onOpenChange={(next) => (next ? undefined : onClose())}
       title="Reset the engine?"
-      description="Every image, container, volume and the Kubernetes cluster are deleted. Settings stay, and the next start creates a fresh engine."
+      description="Every image, container, volume, Linux machine and the Kubernetes cluster are deleted. Settings stay, and the next start creates a fresh engine."
       footer={
         <>
           <Button onClick={onClose}>Cancel</Button>
@@ -69,32 +67,22 @@ function ResetSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
             variant="danger"
             disabled={typed !== "reset"}
             loading={reset.isPending}
-            onClick={() => reset.mutate(machines, { onSuccess: onClose })}
+            onClick={() => reset.mutate(undefined, { onSuccess: onClose })}
           >
             Reset Engine
           </Button>
         </>
       }
     >
-      <div className="flex flex-col gap-3">
-        <span className="flex items-center gap-2 text-13 text-ink">
-          <Checkbox
-            checked={machines}
-            onCheckedChange={setMachines}
-            label="Also delete every Linux machine"
-          />
-          Also delete every Linux machine
-        </span>
-        <Field label='Type "reset" to confirm' htmlFor={id}>
-          <Input
-            id={id}
-            value={typed}
-            autoComplete="off"
-            spellCheck={false}
-            onChange={(event) => setTyped(event.target.value)}
-          />
-        </Field>
-      </div>
+      <Field label='Type "reset" to confirm' htmlFor={id}>
+        <Input
+          id={id}
+          value={typed}
+          autoComplete="off"
+          spellCheck={false}
+          onChange={(event) => setTyped(event.target.value)}
+        />
+      </Field>
     </Sheet>
   );
 }

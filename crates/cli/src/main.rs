@@ -11,7 +11,7 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 use containeria_docker::{ContainerAction, ContainerSummary, Docker, LogStream};
-use containeria_engine::{Colima, Home, InstanceStatus, Profile};
+use containeria_engine::{Engine, Home};
 use futures::StreamExt;
 
 type Result<T = (), E = Box<dyn Error>> = std::result::Result<T, E>;
@@ -134,26 +134,13 @@ async fn open(name: &str) -> Result {
 }
 
 async fn engine(action: EngineAction) -> Result {
-    let colima = Colima::locate(home()?, None)?;
-    let progress = |line: containeria_engine::LogLine| {
-        let _ = writeln!(io::stderr(), "{}", line.message);
-    };
+    let engine = Engine::locate(home()?, None);
     match action {
-        EngineAction::Start => colima.start(Profile::Containers, progress).await?,
-        EngineAction::Stop => colima.stop(Profile::Containers, progress).await?,
+        EngineAction::Start => engine.start().await?,
+        EngineAction::Stop => engine.stop().await?,
         EngineAction::Status => {
-            let line = match colima.instance(Profile::Containers).await? {
-                None => "not set up yet".to_owned(),
-                Some(instance) if instance.status == InstanceStatus::Running => {
-                    format!(
-                        "running · {} CPUs · {} GiB",
-                        instance.cpus,
-                        instance.memory_bytes / (1 << 30)
-                    )
-                }
-                Some(instance) => format!("{:?}", instance.status).to_lowercase(),
-            };
-            writeln!(io::stdout(), "{line}")?;
+            let status = engine.status().await;
+            writeln!(io::stdout(), "{}", output::engine(&status, engine.created()))?;
         }
     }
     Ok(())
@@ -210,6 +197,7 @@ mod tests {
             service: None,
             pod: None,
             ports: Vec::new(),
+            address: None,
             created_at: 0,
         }
     }

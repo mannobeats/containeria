@@ -52,6 +52,39 @@ fn state(container: &ContainerSummary) -> &'static str {
 }
 
 /// `cx ps`: one line per container, Kubernetes pods left out.
+/// One line saying what the engine is doing, with the size of its VM while that runs.
+pub(crate) fn engine(status: &containeria_engine::Status, created: bool) -> String {
+    use containeria_engine::{ClusterState, Phase};
+    let phase = match status.phase {
+        Phase::Stopped if !created => "not set up yet",
+        Phase::Stopped => "stopped",
+        Phase::Starting => "starting",
+        Phase::Running => "running",
+        Phase::Asleep => "asleep: nothing runs, and the next docker command wakes it",
+        Phase::Stopping => "stopping",
+        Phase::Failed => "failed",
+    };
+    let mut parts = vec![phase.to_owned()];
+    if let Some(vm) = &status.vm {
+        let tenths = vm.memory.used_bytes.saturating_mul(10) >> 30;
+        parts.push(format!("{} CPUs", vm.cpus));
+        parts.push(format!(
+            "{}.{} of {} GiB in use",
+            tenths / 10,
+            tenths % 10,
+            vm.memory.ceiling_bytes >> 30
+        ));
+    }
+    if status.kubernetes == ClusterState::Running {
+        parts.push("Kubernetes on".to_owned());
+    }
+    let line = parts.join(" · ");
+    match &status.problem {
+        Some(problem) => format!("{line}: {problem}"),
+        None => line,
+    }
+}
+
 pub(crate) fn containers(list: &[ContainerSummary], tld: &str) -> String {
     let rows: Vec<Vec<String>> = list
         .iter()
@@ -104,6 +137,43 @@ pub(crate) fn open_url(
 mod tests {
     use super::*;
 
+    fn status(phase: containeria_engine::Phase) -> containeria_engine::Status {
+        containeria_engine::Status { phase, ..containeria_engine::Status::stopped() }
+    }
+
+    #[test]
+    fn an_engine_never_started_is_not_set_up_yet() {
+        let stopped = status(containeria_engine::Phase::Stopped);
+        assert_eq!(engine(&stopped, false), "not set up yet");
+        assert_eq!(engine(&stopped, true), "stopped");
+    }
+
+    #[test]
+    fn a_running_engine_says_what_its_vm_uses() {
+        let mut running = status(containeria_engine::Phase::Running);
+        running.vm = Some(containeria_engine::Vm {
+            cpus: 8,
+            memory: containeria_engine::MemoryUse {
+                ceiling_bytes: 8 << 30,
+                allowed_bytes: 2 << 30,
+                used_bytes: 3 << 29,
+            },
+            kernel: "6.18.63".to_owned(),
+        });
+        running.kubernetes = containeria_engine::ClusterState::Running;
+        assert_eq!(
+            engine(&running, true),
+            "running · 8 CPUs · 1.5 of 8 GiB in use · Kubernetes on"
+        );
+    }
+
+    #[test]
+    fn a_failed_engine_says_why() {
+        let mut failed = status(containeria_engine::Phase::Failed);
+        failed.problem = Some("The VM helper wasn't found.".to_owned());
+        assert_eq!(engine(&failed, true), "failed: The VM helper wasn't found.");
+    }
+
     fn container(name: &str, project: Option<&str>, ports: Vec<Port>) -> ContainerSummary {
         ContainerSummary {
             id: name.to_owned(),
@@ -115,6 +185,7 @@ mod tests {
             service: project.map(|_| "web".to_owned()),
             pod: None,
             ports,
+            address: None,
             created_at: 0,
         }
     }

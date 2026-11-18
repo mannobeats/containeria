@@ -1,0 +1,15 @@
+#!/bin/sh
+# Run by the DHCP client when the Mac's network gives the guest an address, renews it or takes it
+# back. Sets the address and the route out, and notes the network's resolvers for the agent's
+# own, which is the one /etc/resolv.conf names (see crates/agent/src/mac.rs).
+case "$1" in
+  bound | renew)
+    ip addr replace "$ip/${mask:-24}" dev "$interface"
+    [ -n "$router" ] && ip route replace default via "${router%% *}" dev "$interface"
+    for server in $dns; do echo "nameserver $server"; done > /run/resolvers.new
+    mv /run/resolvers.new /run/resolvers
+    ;;
+  deconfig)
+    ip addr flush dev "$interface"
+    ;;
+esac

@@ -1,4 +1,4 @@
-import { IconPlayerPlay, IconRefresh } from "@tabler/icons-react";
+import { IconPlayerPlay } from "@tabler/icons-react";
 
 import { openSettings } from "@/features/settings/api";
 import type { EnginePhase } from "@/lib/ipc/bindings";
@@ -7,45 +7,36 @@ import { Button } from "@/ui/button";
 import { EmptyState } from "@/ui/empty-state";
 import { Progress } from "@/ui/progress";
 
-import { useBootLog, useEngineControl } from "./api";
+import { useEngineControl, useEngineStatus } from "./api";
 
 type Idle = "notCreated" | "stopped" | "broken";
 
-const IDLE: Record<
-  Idle,
-  { title: string; body: string; action: string; control: "start" | "restart" }
-> = {
+const IDLE: Record<Idle, { title: string; body: string; action: string }> = {
   notCreated: {
     title: "Set up the engine",
-    body: "Containeria creates a small Linux VM for Docker. The first start downloads its disk image and takes about a minute.",
+    body: "Containeria runs Docker in a small Linux VM of its own. It starts in about a second.",
     action: "Create engine",
-    control: "start",
   },
   stopped: {
     title: "The engine is stopped",
     body: "Containers, Kubernetes and Linux machines run inside it. Your data is kept while it's off.",
     action: "Start engine",
-    control: "start",
   },
   broken: {
-    title: "The engine needs a restart",
-    body: "Colima reports the VM as broken. A restart usually brings it back; your volumes and images are kept.",
-    action: "Restart engine",
-    control: "restart",
+    title: "The engine stopped unexpectedly",
+    body: "Its VM stopped or didn't start. Starting it again usually brings it back; your volumes and images are kept.",
+    action: "Start engine",
   },
 };
-
-function LastLine() {
-  const line = useBootLog((state) => state.lines.at(-1));
-  return <p className="m-0 mt-0.5 h-5 truncate text-12 text-ink-3">{line?.message ?? ""}</p>;
-}
 
 const art = <AppMark size={48} />;
 
 /** Shown in place of a view that needs the engine while it isn't running. */
 export function EngineOff({ phase }: { phase: EnginePhase | undefined }) {
   const control = useEngineControl();
-  if (phase === "starting" || phase === "stopping" || control.isPending) {
+  const { data: status } = useEngineStatus();
+  // Asleep with a window showing means the engine is already waking for it.
+  if (phase === "starting" || phase === "stopping" || phase === "asleep" || control.isPending) {
     return (
       <EmptyState
         art={art}
@@ -54,16 +45,14 @@ export function EngineOff({ phase }: { phase: EnginePhase | undefined }) {
       >
         <p className="m-0">Booting the Linux VM and Docker.</p>
         <Progress label="Engine progress" className="mx-auto mt-2 w-60" />
-        <LastLine />
       </EmptyState>
     );
   }
   if (phase === "missing") {
     return (
-      <EmptyState art={art} title="Colima isn't installed" className="h-full">
-        Containeria runs its engine with Colima. Release builds include it; for a development build
-        install it with{" "}
-        <code className="font-mono text-mono-13 select-text">brew install colima</code>.
+      <EmptyState art={art} title="The engine isn't in this build" className="h-full">
+        Release builds include Containeria's engine. For a development build, make it with{" "}
+        <code className="font-mono text-mono-13 select-text">scripts/build-engine.sh</code>.
       </EmptyState>
     );
   }
@@ -75,8 +64,8 @@ export function EngineOff({ phase }: { phase: EnginePhase | undefined }) {
       className="h-full"
       actions={
         <>
-          <Button variant="brand" size="lg" onClick={() => control.mutate(idle.control)}>
-            {idle.control === "restart" ? <IconRefresh /> : <IconPlayerPlay />}
+          <Button variant="brand" size="lg" onClick={() => control.mutate("start")}>
+            <IconPlayerPlay />
             {idle.action}
           </Button>
           <Button size="lg" onClick={() => openSettings("engine")}>
@@ -86,6 +75,9 @@ export function EngineOff({ phase }: { phase: EnginePhase | undefined }) {
       }
     >
       {idle.body}
+      {phase === "broken" && status?.problem ? (
+        <p className="m-0 mt-2 text-12 text-ink-3 select-text">{status.problem}</p>
+      ) : null}
     </EmptyState>
   );
 }

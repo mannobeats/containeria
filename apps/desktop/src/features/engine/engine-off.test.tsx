@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import type { EnginePhase } from "@/lib/ipc/bindings";
+import { engineFixture } from "@/test/fixtures";
 import { mockCommands, renderWithApp } from "@/test/harness";
 import { Toaster } from "@/ui/toaster";
 
@@ -18,7 +19,7 @@ describe("EngineOff", () => {
   it.each([
     ["stopped", "The engine is stopped", "Start engine", "engineStart"],
     ["notCreated", "Set up the engine", "Create engine", "engineStart"],
-    ["broken", "The engine needs a restart", "Restart engine", "engineRestart"],
+    ["broken", "The engine stopped unexpectedly", "Start engine", "engineStart"],
   ] as const)(
     "offers the next step when the engine is %s",
     async (phase, title, action, command) => {
@@ -46,14 +47,28 @@ describe("EngineOff", () => {
     expect(screen.getByText("The Settings window is gone")).toBeDefined();
   });
 
+  it("says why the engine stopped, in its own words", async () => {
+    mockCommands({
+      engineStatus: () =>
+        engineFixture({ phase: "broken", problem: "The VM helper wasn't found." }),
+    });
+    renderWithApp(<EngineOff phase="broken" />);
+    expect(await screen.findByText("The VM helper wasn't found.")).toBeDefined();
+  });
+
+  it("shows a sleeping engine as starting, since showing it wakes it", async () => {
+    renderPhase("asleep");
+    expect(await screen.findByRole("heading", { name: "Starting the engine" })).toBeDefined();
+  });
+
   it("shows progress while the engine starts", async () => {
     renderPhase("starting");
     expect(await screen.findByRole("heading", { name: "Starting the engine" })).toBeDefined();
     expect(screen.getByRole("progressbar", { name: "Engine progress" })).toBeDefined();
   });
 
-  it("explains how to get Colima when it's missing", async () => {
+  it("says how to build the engine when a development build lacks it", async () => {
     renderPhase("missing");
-    expect(await screen.findByText("brew install colima")).toBeDefined();
+    expect(await screen.findByText("scripts/build-engine.sh")).toBeDefined();
   });
 });

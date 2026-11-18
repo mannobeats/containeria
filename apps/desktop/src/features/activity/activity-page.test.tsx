@@ -50,7 +50,7 @@ describe("ActivityPage", () => {
   it("shows memory in use, the charts and what uses it most", async () => {
     renderActivity("running");
     expect(await screen.findByText("in use of 8 GB")).toBeDefined();
-    expect(screen.getByText(/Apple Virtualization keeps memory/)).toBeDefined();
+    expect(screen.getByText(/gives all of it back when nothing runs/)).toBeDefined();
     expect(
       await screen.findByRole("figure", { name: "Engine memory over time by project" }),
     ).toBeDefined();

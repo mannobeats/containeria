@@ -1,10 +1,9 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useId, useState } from "react";
 
-import type { Distro, MachineKind } from "@/lib/ipc/bindings";
+import type { Distro } from "@/lib/ipc/bindings";
 import { Button } from "@/ui/button";
 import { Field, Input } from "@/ui/field";
-import { Segmented } from "@/ui/segmented";
 import { Select } from "@/ui/select";
 import { Sheet } from "@/ui/sheet";
 import { Switch } from "@/ui/switch";
@@ -20,31 +19,6 @@ const CPUS = ["1", "2", "4", "8"].map((value) => ({
 const MEMORY = ["1", "2", "4", "8", "16"].map((value) => ({ value, label: `${value} GB` }));
 
 type Form = ReturnType<typeof useNewMachineForm>;
-
-const KINDS: { value: MachineKind; label: string }[] = [
-  { value: "container", label: "System container" },
-  { value: "vm", label: "Full VM" },
-];
-
-function KindField({ form, supportsVms }: { form: Form; supportsVms: boolean }) {
-  if (!supportsVms) {
-    return (
-      <p className="m-0 text-12 text-ink-3">
-        This machine is a system container, which boots in about a second. Full VMs need nested
-        virtualization: an M3 or newer Mac on macOS 15.
-      </p>
-    );
-  }
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Segmented label="Kind" value={form.request.kind} onChange={form.setKind} options={KINDS} />
-      <p className="m-0 text-12 text-ink-3">
-        A system container boots in about a second. A full VM runs its own kernel, for
-        Docker-in-Linux or kernel modules.
-      </p>
-    </div>
-  );
-}
 
 function Options({ form, distro }: { form: Form; distro: Distro }) {
   const ids = useId();
@@ -107,11 +81,10 @@ function Options({ form, distro }: { form: Form; distro: Distro }) {
 type NewMachineSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  supportsVms: boolean;
   taken: string[];
 };
 
-export function NewMachineSheet({ open, onOpenChange, supportsVms, taken }: NewMachineSheetProps) {
+export function NewMachineSheet({ open, onOpenChange, taken }: NewMachineSheetProps) {
   const { data: distros = [] } = useDistros();
   const navigate = useNavigate();
   const [step, setStep] = useState("");
@@ -157,7 +130,6 @@ export function NewMachineSheet({ open, onOpenChange, supportsVms, taken }: NewM
       <div className="flex flex-col gap-4">
         <DistroPicker distros={distros} value={form.request.distro} onChange={form.pickDistro} />
         {form.distro ? <Options form={form} distro={form.distro} /> : null}
-        <KindField form={form} supportsVms={supportsVms} />
         <div className="flex items-center gap-2.5 text-13 text-ink">
           <Switch
             checked={form.request.mountHome}

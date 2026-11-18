@@ -57,8 +57,8 @@ pub(crate) enum MoveEvent {
     },
 }
 
-/// Stops the VMs, moves their disks into `folder` (back to the default with none), and starts
-/// again whatever was running.
+/// Stops the engine, moves its data into `folder` (back to the default with none), and starts
+/// it again if it was running.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn storage_move(
@@ -74,10 +74,8 @@ pub(crate) async fn storage_move(
         ));
     }
     let guard = MoveGuard::take()?;
-    let engine_ran = running(state.engine.status().await.ok().map(|status| status.phase))?;
-    let machines_ran = running(state.machines.status().await.ok().map(|status| status.phase))?;
+    let ran = running(state.engine.status().await.ok().map(|status| status.phase))?;
     Ok(state.streams.spawn(async move {
-        let ran = (engine_ran, machines_ran);
         let (moved, restarted) =
             move_and_restart(&app, folder.map(PathBuf::from), &channel, guard, ran).await;
         let state = app.state::<AppState>();
@@ -92,15 +90,15 @@ pub(crate) async fn storage_move(
     }))
 }
 
-/// Whether a VM runs now. Refused while it starts or stops, when its disks are in use but stopping
-/// it first isn't possible.
+/// Whether the engine is on now. Refused while it starts or stops, when its disk is in use but
+/// stopping it first isn't possible.
 fn running(phase: Option<EnginePhase>) -> Result<bool> {
     match phase {
         Some(EnginePhase::Starting | EnginePhase::Stopping) => Err(CommandError::new(
             ErrorKind::InvalidInput,
-            "A VM is starting or stopping. Move the data once it has finished.",
+            "The engine is starting or stopping. Move the data once it has finished.",
         )),
-        phase => Ok(phase == Some(EnginePhase::Running)),
+        phase => Ok(matches!(phase, Some(EnginePhase::Running | EnginePhase::Asleep))),
     }
 }
 
@@ -110,47 +108,22 @@ async fn move_and_restart(
     folder: Option<PathBuf>,
     channel: &Channel<MoveEvent>,
     guard: MoveGuard,
-    (engine_ran, machines_ran): (bool, bool),
+    ran: bool,
 ) -> (Result<()>, Result<()>) {
     let state = app.state::<AppState>();
     let _ = channel.send(MoveEvent::Stopping);
-    let moved = match stop(app, engine_ran, machines_ran).await {
+    let stopped = if ran { state.engine.stop(app).await } else { Ok(()) };
+    let moved = match stopped {
         Ok(()) => copy(&state, folder, channel).await,
         Err(error) => Err(error),
     };
     drop(guard);
     let _ = channel.send(MoveEvent::Starting);
-    let restarted = start(app, engine_ran, machines_ran).await;
+    let restarted = if ran { state.engine.start(app).await } else { Ok(()) };
     if let Err(error) = &restarted {
-        tracing::error!(%error, "a VM didn't start again after moving its data");
+        tracing::error!(%error, "the engine didn't start again after moving its data");
     }
     (moved, restarted)
-}
-
-async fn stop(app: &AppHandle, engine: bool, machines: bool) -> Result<()> {
-    let state = app.state::<AppState>();
-    if machines {
-        state.machines.stop(app, |_| {}).await?;
-    }
-    if engine {
-        state.engine.stop(app, |_| {}).await?;
-    }
-    Ok(())
-}
-
-/// Starts both VMs that ran before, the second even when the first fails.
-async fn start(app: &AppHandle, engine: bool, machines: bool) -> Result<()> {
-    let state = app.state::<AppState>();
-    let engine = if engine { state.engine.start(app, |_| {}).await } else { Ok(()) };
-    let machines = if machines {
-        match state.engine.config() {
-            Ok(config) => state.machines.start(app, &config, |_| {}).await,
-            Err(error) => Err(error),
-        }
-    } else {
-        Ok(())
-    };
-    engine.and(machines)
 }
 
 async fn copy(

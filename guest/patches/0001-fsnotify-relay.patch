@@ -1,0 +1,320 @@
+fsnotify: report changes made outside this kernel
+
+Files in a folder the Mac shares with the guest change without a system call in
+the guest. Two things go wrong. inotify watchers in containers never hear of
+it, so hot reload doesn't work. And FUSE goes on trusting what it cached about
+the path for up to a second: a file saved on the Mac keeps its old size in the
+container, and one saved by renaming a new file over it can't be opened at all.
+
+/proc/fs/fsnotify_relay lets the agent, which hears of those changes from the
+Mac, end that trust and raise the events the changes would have raised here.
+
+--- a/fs/notify/Kconfig
++++ b/fs/notify/Kconfig
+@@ -2,6 +2,20 @@
+ config FSNOTIFY
+ 	def_bool n
+ 
++config FSNOTIFY_RELAY
++	bool "Report changes made outside this kernel to fsnotify"
++	depends on PROC_FS && FUSE_FS=y
++	select FSNOTIFY
++	help
++	  A folder a host shares with this guest changes without any system
++	  call being made here, so inotify and fanotify watchers never hear of
++	  it. This adds /proc/fs/fsnotify_relay, where a program that learns of
++	  such changes from the host reports them. The events are raised as if
++	  the changes had been made here, and what FUSE has cached about the
++	  changed paths is no longer trusted. See fs/notify/relay.c.
++
++	  If unsure, say N.
++
+ source "fs/notify/dnotify/Kconfig"
+ source "fs/notify/inotify/Kconfig"
+ source "fs/notify/fanotify/Kconfig"
+--- a/fs/notify/Makefile
++++ b/fs/notify/Makefile
+@@ -1,6 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0
+ obj-$(CONFIG_FSNOTIFY)		+= fsnotify.o notification.o group.o mark.o \
+ 				   fdinfo.o
++obj-$(CONFIG_FSNOTIFY_RELAY)	+= relay.o
+ 
+ obj-y			+= dnotify/
+ obj-y			+= inotify/
+--- /dev/null
++++ b/fs/notify/relay.c
+@@ -0,0 +1,273 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * Reports changes made to a filesystem from outside this kernel.
++ *
++ * A folder a host shares with its guest changes without any system call being
++ * made here, so nothing that watches it with inotify or fanotify hears of it.
++ * Whoever learns of such a change from the host writes it to
++ * /proc/fs/fsnotify_relay, one change per write and nothing after the path:
++ *
++ *	<kind> <absolute path>
++ *
++ *	c	the path appeared: it was created, or something was renamed to it
++ *	m	its contents changed
++ *	a	its attributes changed
++ *	d	the path is gone: it was deleted, or renamed to something else
++ *	D	as d, for a directory
++ *	i	something changed, and nothing watches: raises no event
++ *	w	reports nothing: fails with ENODATA unless something watches
++ *		the filesystem the path is on
++ *
++ * The events raised are the ones the change would have raised had it been made
++ * here. A change that no longer shows, because the path changed again before
++ * the write, raises nothing: the later change is reported in its turn.
++ *
++ * A FUSE filesystem, which a shared folder is, trusts what it last heard about
++ * a name and its file for as long as the host said it could: after a change on
++ * the host a name can lead to a file that is gone, and a file can keep its old
++ * size. Every change reported here ends that trust for the path, so the next
++ * look at it asks the host. With "i" that is all that happens, and only for
++ * what is cached: it never asks the host anything itself, so reporting every
++ * change costs little when nothing here cares.
++ */
++
++#include <linux/capability.h>
++#include <linux/dcache.h>
++#include <linux/fs.h>
++#include <linux/fs_struct.h>
++#include <linux/fsnotify.h>
++#include <linux/init.h>
++#include <linux/limits.h>
++#include <linux/magic.h>
++#include <linux/namei.h>
++#include <linux/proc_fs.h>
++#include <linux/slab.h>
++#include <linux/string.h>
++#include <linux/uaccess.h>
++
++#include "../fuse/fuse_i.h"
++#include "../internal.h"
++
++/* Has the next look at @inode's attributes ask the host for them. */
++static void relay_distrust_inode(struct inode *inode)
++{
++	if (inode && inode->i_sb->s_magic == FUSE_SUPER_MAGIC)
++		fuse_invalidate_attr(inode);
++}
++
++/*
++ * Has the next lookup of @entry ask the host where the name leads, and the
++ * next look at its file's attributes ask for those.
++ */
++static void relay_distrust(struct dentry *entry)
++{
++	if (entry->d_sb->s_magic != FUSE_SUPER_MAGIC)
++		return;
++	fuse_invalidate_entry_cache(entry);
++	relay_distrust_inode(d_inode(entry));
++}
++
++/*
++ * The directory @pathname names, as far as the dcache knows: NULL if any part
++ * of the path is not cached. Asks no filesystem anything.
++ */
++static struct dentry *relay_cached_dir(char *pathname)
++{
++	struct dentry *child;
++	struct qstr name;
++	struct path at;
++	char *part;
++
++	get_fs_root(current->fs, &at);
++	while ((part = strsep(&pathname, "/"))) {
++		if (!*part)
++			continue;
++		name = QSTR(part);
++		child = d_hash_and_lookup(at.dentry, &name);
++		if (IS_ERR_OR_NULL(child))
++			goto uncached;
++		dput(at.dentry);
++		at.dentry = child;
++		if (!d_is_dir(child) || follow_down(&at, 0))
++			goto uncached;
++	}
++	dget(at.dentry);
++	path_put(&at);
++	return at.dentry;
++
++uncached:
++	path_put(&at);
++	return NULL;
++}
++
++/* Ends the trust in what is cached about @pathname, if anything is. */
++static int relay_forget(char *pathname)
++{
++	char *slash = strrchr(pathname, '/');
++	struct dentry *dir, *cached;
++	struct qstr name;
++
++	if (!slash[1])
++		return -EINVAL;
++	name = QSTR(slash + 1);
++	*slash = '\0';
++
++	dir = relay_cached_dir(pathname);
++	if (!dir)
++		return 0;
++	relay_distrust_inode(d_inode(dir));
++	cached = d_hash_and_lookup(dir, &name);
++	if (!IS_ERR_OR_NULL(cached)) {
++		relay_distrust(cached);
++		dput(cached);
++	}
++	dput(dir);
++	return 0;
++}
++
++static int relay_watched(const char *pathname)
++{
++	struct path path;
++	int err = kern_path(pathname, LOOKUP_FOLLOW, &path);
++
++	if (err)
++		return err;
++	if (!fsnotify_sb_has_watchers(path.dentry->d_sb))
++		err = -ENODATA;
++	path_put(&path);
++	return err;
++}
++
++static int relay_change(char kind, char *pathname)
++{
++	char *slash = strrchr(pathname, '/');
++	struct inode *dir, *known = NULL, *inode;
++	struct dentry *cached, *child;
++	struct path parent;
++	struct qstr name;
++	u32 isdir;
++	int err;
++
++	if (!slash[1])
++		return -EINVAL;
++	name = QSTR(slash + 1);
++	*slash = '\0';
++
++	err = kern_path(slash == pathname ? "/" : pathname,
++			LOOKUP_FOLLOW | LOOKUP_DIRECTORY, &parent);
++	if (err)
++		return err;
++	dir = d_inode(parent.dentry);
++
++	/*
++	 * What the name led to when it was last looked up here is what its
++	 * watchers hold on to. The lookup after it must not take that on trust.
++	 */
++	relay_distrust_inode(dir);
++	cached = d_hash_and_lookup(parent.dentry, &name);
++	if (!IS_ERR_OR_NULL(cached)) {
++		if (d_inode(cached))
++			known = igrab(d_inode(cached));
++		relay_distrust(cached);
++		dput(cached);
++	}
++	if (!fsnotify_sb_has_watchers(dir->i_sb))
++		goto out_known;
++	child = lookup_noperm_unlocked(&name, parent.dentry);
++	if (IS_ERR(child)) {
++		err = PTR_ERR(child);
++		goto out_known;
++	}
++	inode = d_inode(child);
++
++	isdir = inode && S_ISDIR(inode->i_mode) ? FS_ISDIR : 0;
++
++	/*
++	 * The name now leads elsewhere, or nowhere: its old inode is gone, and
++	 * what it leads to instead is new whatever else is said of it.
++	 */
++	if (known && known != inode) {
++		fsnotify_inoderemove(known);
++		if (inode && kind != 'c')
++			fsnotify_name(FS_CREATE | isdir, child,
++				      FSNOTIFY_EVENT_DENTRY, dir, &name, 0);
++	}
++
++	switch (kind) {
++	case 'c':
++		if (inode)
++			fsnotify_name(FS_CREATE | isdir, child,
++				      FSNOTIFY_EVENT_DENTRY, dir, &name, 0);
++		break;
++	case 'm':
++		if (!inode)
++			break;
++		fsnotify_dentry(child, FS_MODIFY);
++		if (!isdir)
++			fsnotify_dentry(child, FS_CLOSE_WRITE);
++		break;
++	case 'a':
++		if (inode)
++			fsnotify_dentry(child, FS_ATTRIB);
++		break;
++	case 'd':
++	case 'D':
++		if (inode)
++			break;
++		if (known ? S_ISDIR(known->i_mode) : kind == 'D')
++			isdir = FS_ISDIR;
++		if (known)
++			fsnotify_name(FS_DELETE | isdir, known,
++				      FSNOTIFY_EVENT_INODE, dir, &name, 0);
++		else
++			fsnotify_name(FS_DELETE | isdir, child,
++				      FSNOTIFY_EVENT_DENTRY, dir, &name, 0);
++		break;
++	}
++
++	dput(child);
++out_known:
++	iput(known);
++	path_put(&parent);
++	return err;
++}
++
++static ssize_t relay_write(struct file *file, const char __user *from,
++			   size_t count, loff_t *offset)
++{
++	char *change;
++	int err;
++
++	if (!capable(CAP_SYS_ADMIN))
++		return -EPERM;
++	if (count < 3 || count > PATH_MAX + 2)
++		return -EINVAL;
++	change = memdup_user_nul(from, count);
++	if (IS_ERR(change))
++		return PTR_ERR(change);
++
++	if (change[1] != ' ' || change[2] != '/' || !strchr("cmadDiw", change[0]))
++		err = -EINVAL;
++	else if (change[0] == 'w')
++		err = relay_watched(change + 2);
++	else if (change[0] == 'i')
++		err = relay_forget(change + 2);
++	else
++		err = relay_change(change[0], change + 2);
++
++	kfree(change);
++	return err ? err : count;
++}
++
++static const struct proc_ops relay_ops = {
++	.proc_write	= relay_write,
++	.proc_lseek	= noop_llseek,
++};
++
++static int __init relay_init(void)
++{
++	if (!proc_create("fs/fsnotify_relay", 0200, NULL, &relay_ops))
++		return -ENOMEM;
++	return 0;
++}
++fs_initcall(relay_init);

@@ -1,16 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Channel } from "@tauri-apps/api/core";
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { queryKeys } from "@/app/query-keys";
-import { isServing, useBootLog, useEngineStatus } from "@/features/engine/api";
+import { isServing, useEngineStatus } from "@/features/engine/api";
 import {
   type ConfigSummary,
   commands,
   type DeploymentSummary,
-  type LogLine,
   type PodSummary,
   type ResourceKind,
 } from "@/lib/ipc/bindings";
@@ -57,20 +55,10 @@ function useKubeAction<Args, Output>(
   });
 }
 
-function useColimaProgress() {
-  const push = useBootLog((state) => state.push);
-  const clear = useBootLog((state) => state.clear);
-  return () => {
-    clear();
-    return new Channel<LogLine>(push);
-  };
-}
-
 export function useSetKubernetes() {
   const client = useQueryClient();
-  const progress = useColimaProgress();
   return useMutation({
-    mutationFn: (enabled: boolean) => commands.kubernetesSetEnabled(enabled, progress()),
+    mutationFn: (enabled: boolean) => commands.kubernetesSetEnabled(enabled),
     onSuccess: (_, enabled) =>
       toast.success(enabled ? "Kubernetes is running" : "Kubernetes is off"),
     onError: (error) =>
@@ -85,9 +73,8 @@ export function useSetKubernetes() {
 }
 
 export function useResetCluster() {
-  const progress = useColimaProgress();
   return useKubeAction(
-    () => commands.kubernetesReset(progress()),
+    () => commands.kubernetesReset(),
     () => "Cluster reset",
   );
 }

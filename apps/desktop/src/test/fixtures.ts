@@ -31,24 +31,22 @@ export function containerFixture(overrides: Partial<ContainerSummary> = {}): Con
 export function engineFixture(overrides: Partial<EngineStatus> = {}): EngineStatus {
   return {
     phase: "running",
-    instance: null,
+    problem: null,
+    vm: null,
+    kubernetes: { state: "off" },
     config: {
       cpus: 4,
       memoryGib: 8,
       diskGib: 100,
-      vmType: "vz",
       rosetta: true,
-      kubernetes: { enabled: false, version: "v1.35.0+k3s1" },
-      fileWatchEvents: true,
-      forwardSshAgent: true,
-      udpPorts: false,
-      containerIpAccess: false,
+      sleepWhenIdle: true,
+      idleSeconds: 60,
+      kubernetes: { enabled: false, version: "v1.37.2+k3s1" },
       setDockerContext: true,
       registryMirrors: [],
       insecureRegistries: [],
     },
-    returnsMemory: false,
-    dockerSocket: "/Users/ada/.containeria/colima/containeria/docker.sock",
+    dockerSocket: "/Users/ada/.containeria/run/docker.sock",
     ...overrides,
   };
 }

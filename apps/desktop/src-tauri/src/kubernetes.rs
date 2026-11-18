@@ -70,7 +70,7 @@ impl Kubernetes {
             return Err(CommandError::new(ErrorKind::KubernetesUnavailable, "Kubernetes is off."));
         }
         // k3s runs inside the engine: without this, every reconnect is a failed request kube logs.
-        if !Self::external() && engine.docker().await.is_err() {
+        if !Self::external() && engine.watching().await.is_err() {
             return Err(CommandError::new(
                 ErrorKind::KubernetesUnavailable,
                 "Kubernetes runs inside the engine, which is stopped.",

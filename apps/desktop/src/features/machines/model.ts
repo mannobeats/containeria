@@ -1,4 +1,7 @@
-import type { Machine, MachineState } from "@/lib/ipc/bindings";
+import type { FileEntry, Machine, MachineState } from "@/lib/ipc/bindings";
+
+/** A file in a machine, with where it is. */
+export type MachineFile = FileEntry & { path: string };
 
 export const isRunning = (machine: Machine) => machine.state === "running";
 
@@ -14,11 +17,7 @@ export function stateLabel(machine: Machine): string {
   return STATE_LABELS[machine.state];
 }
 
-export function kindLabel(machine: Pick<Machine, "kind">): string {
-  return machine.kind === "vm" ? "Full VM" : "System container";
-}
-
-/** Incus writes memory limits like "4GiB"; people read "4 GB". */
+/** Memory limits come as "4GiB"; people read "4 GB". */
 export function limitLabel(limit: string | null): string | null {
   return (
     limit?.replace(
@@ -43,7 +42,7 @@ export function freeName(base: string, taken: string[]): string {
   return name;
 }
 
-/** Same rules as Incus host names, said the way a person can fix them. */
+/** The rules of host names, said the way a person can fix them. */
 export function nameProblem(name: string, taken: string[]): string | null {
   if (name === "") {
     return "Give the machine a name.";
@@ -82,7 +81,7 @@ export function snapshotName(at: Date): string {
   return `${date}-${pad(at.getHours())}${pad(at.getMinutes())}`;
 }
 
-/** Same rules as the Incus snapshot names Containeria accepts. */
+/** The snapshot names Containeria accepts. */
 export function snapshotProblem(name: string, taken: string[]): string | null {
   if (name === "") {
     return "Give the snapshot a name.";

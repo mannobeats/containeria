@@ -83,7 +83,7 @@ const welcome = createRoute({
 const machineDetail = createRoute({
   getParentRoute: () => root,
   path: "machines/$name",
-  staticData: { needsEngine: false, title: "Linux machine" },
+  staticData: { needsEngine: true, title: "Linux machine" },
   validateSearch: tabSearch,
   component: lazyRouteComponent(() =>
     import("@/features/machines/machine-page").then((module) => ({ default: module.MachinePage })),
@@ -158,14 +158,10 @@ const routeTree = root.addChildren([
       import("@/features/kubernetes/pod-page").then((module) => ({ default: module.PodPage })),
     ),
   }),
-  page(
-    "machines",
-    "Linux machines",
-    () =>
-      import("@/features/machines/machines-page").then((module) => ({
-        default: module.MachinesPage,
-      })),
-    false,
+  page("machines", "Linux machines", () =>
+    import("@/features/machines/machines-page").then((module) => ({
+      default: module.MachinesPage,
+    })),
   ),
   page(
     "data",

@@ -12,7 +12,7 @@ pub(crate) struct EngineChanged;
 #[derive(Debug, Clone, Serialize, specta::Type, tauri_specta::Event)]
 pub(crate) struct DockerChanged(pub(crate) DockerEvent);
 
-/// The machines VM or a machine changed; refetch machines.
+/// A machine was made, changed or removed; refetch machines.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
 pub(crate) struct MachinesChanged;
 

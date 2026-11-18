@@ -1,8 +1,7 @@
 import { IconDeviceLaptop } from "@tabler/icons-react";
 
 import { formatMemory, plural } from "@/lib/format";
-import type { EngineConfig, VmType } from "@/lib/ipc/bindings";
-import { Select } from "@/ui/select";
+import type { EngineConfig } from "@/lib/ipc/bindings";
 import { Slider } from "@/ui/slider";
 import { Switch } from "@/ui/switch";
 
@@ -44,7 +43,7 @@ function Resources({ config, update, savedDisk }: Edit & { savedDisk: number }) 
         <SettingsRow
           block
           label="Memory limit"
-          hint="A ceiling the engine can grow to, not memory it takes up front."
+          hint="The most the engine may use. It takes what its containers need, not this much."
         >
           <Slider
             label="Memory limit"
@@ -71,23 +70,10 @@ function Resources({ config, update, savedDisk }: Edit & { savedDisk: number }) 
   );
 }
 
-const VM_TYPES: { value: VmType; label: string }[] = [
-  { value: "vz", label: "Apple Virtualization" },
-  { value: "krunkit", label: "krunkit (libkrun)" },
-];
-
-const vmHint = (created: boolean) =>
-  `Apple Virtualization keeps Rosetta but holds on to memory it has used until the engine restarts. krunkit gives freed memory back to macOS within seconds, has no Rosetta and is still experimental.${created ? " Chosen when the engine was created; changing it means creating the engine again." : ""}`;
-
-function VirtualMachine({ config, update, created }: Edit & { created: boolean }) {
+function VirtualMachine({ config, update }: Edit) {
   const toggle = (
     label: string,
-    key:
-      | "fileWatchEvents"
-      | "forwardSshAgent"
-      | "udpPorts"
-      | "containerIpAccess"
-      | "setDockerContext",
+    key: "rosetta" | "sleepWhenIdle" | "setDockerContext",
     hint: string,
   ) => (
     <SettingsRow label={label} hint={hint}>
@@ -96,46 +82,15 @@ function VirtualMachine({ config, update, created }: Edit & { created: boolean }
   );
   return (
     <SettingsSection title="Virtual machine">
-      <SettingsRow label="Virtualization" hint={vmHint(created)}>
-        <Select
-          label="Virtualization"
-          value={config.vmType}
-          options={VM_TYPES}
-          disabled={created}
-          onChange={(vmType) => update({ vmType })}
-          className="w-[200px]"
-        />
-      </SettingsRow>
-      <SettingsRow
-        label="Run Intel images with Rosetta"
-        hint="linux/amd64 images run at near-native speed. Apple Virtualization only."
-      >
-        <Switch
-          label="Rosetta"
-          checked={config.rosetta && config.vmType === "vz"}
-          disabled={config.vmType !== "vz"}
-          onCheckedChange={(rosetta) => update({ rosetta })}
-        />
-      </SettingsRow>
       {toggle(
-        "File-watch events",
-        "fileWatchEvents",
-        "Hot reload sees changes made on your Mac. Experimental in Colima.",
+        "Run Intel images with Rosetta",
+        "rosetta",
+        "linux/amd64 images run at near-native speed.",
       )}
       {toggle(
-        "Forward your SSH agent",
-        "forwardSshAgent",
-        "Containers can use your SSH keys without copying them.",
-      )}
-      {toggle(
-        "UDP ports",
-        "udpPorts",
-        "Forward published UDP ports too. Uses Colima's experimental port forwarder.",
-      )}
-      {toggle(
-        "Reach containers by IP from the Mac",
-        "containerIpAccess",
-        "Gives the engine its own address. Asks for your password once.",
+        "Sleep when nothing runs",
+        "sleepWhenIdle",
+        "Turns the VM off a minute after the last container stops, giving all its memory back. The next docker command, or opening this window, starts it again in about a second.",
       )}
       {toggle(
         "Make docker use Containeria",
@@ -154,7 +109,7 @@ export function EnginePane() {
   return (
     <>
       <Resources config={config} update={update} savedDisk={status.config.diskGib} />
-      <VirtualMachine config={config} update={update} created={status.instance !== null} />
+      <VirtualMachine config={config} update={update} />
       <EngineChanges />
     </>
   );

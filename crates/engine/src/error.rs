@@ -4,25 +4,36 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("colima was not found; looked in {searched}")]
-    ColimaMissing { searched: String },
-
-    #[error("the home folder could not be found")]
+    #[error("The home folder could not be found.")]
     NoHomeFolder,
 
-    #[error("`colima {action}` failed: {message}")]
-    Command { action: &'static str, message: String },
+    /// A part of the engine that ships with the app isn't where it should be.
+    #[error("{what} wasn't found; looked in {searched}.")]
+    Missing { what: &'static str, searched: String },
 
-    #[error("colima printed output Containeria could not read: {0}")]
-    Parse(#[from] serde_json::Error),
+    #[error("The engine isn't running.")]
+    Stopped,
 
-    #[error("the engine settings could not be written: {0}")]
-    Config(#[from] yaml_serde::Error),
+    /// The engine said why something failed, in a sentence for the user.
+    #[error("{0}")]
+    Engine(String),
 
     /// The data can't move there; the message says why, for the user.
     #[error("{0}")]
     Storage(String),
 
+    #[error("The engine's settings could not be read: {0}")]
+    Settings(#[from] serde_json::Error),
+
     #[error(transparent)]
     Io(#[from] io::Error),
+}
+
+impl From<containeria_proto::rpc::Error> for Error {
+    fn from(error: containeria_proto::rpc::Error) -> Self {
+        match error {
+            containeria_proto::rpc::Error::Closed => Self::Stopped,
+            other => Self::Engine(other.to_string()),
+        }
+    }
 }

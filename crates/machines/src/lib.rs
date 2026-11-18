@@ -1,20 +1,18 @@
-//! Linux machines: Incus system containers and VMs running in Containeria's machines profile,
-//! reached through the Incus REST API that Colima forwards to a Unix socket on the Mac.
+//! Linux machines: a distribution that keeps running, with its own init, your user and your Mac's
+//! home folder inside. Each is a container in Containeria's engine, made from the distribution's
+//! own image, so machines share the engine's one VM with everything else.
 
-mod backup;
+mod archive;
 mod catalogue;
-mod client;
-mod exec;
-mod files;
 mod machine;
 mod name;
+mod provision;
 mod snapshot;
 
+use std::path::Path;
+
 pub use catalogue::{DISTROS, Distro, Release};
-pub use client::Incus;
-pub use exec::{Shell, ShellInput, client_config, shell_command};
-pub use files::{MachineFile, MachineFileKind};
-pub use machine::{CreateMachine, Machine, MachineAction, MachineKind, MachineState};
+pub use machine::{CreateMachine, Machine, MachineAction, MachineState, User};
 pub use name::validate_name;
 pub use snapshot::MachineSnapshot;
 
@@ -22,8 +20,8 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("Linux machines aren't running; the Incus socket at {0} doesn't answer")]
-    Unreachable(String),
+    #[error("The engine isn't running, so Linux machines aren't either.")]
+    Unreachable,
 
     #[error("{0} was not found")]
     NotFound(String),
@@ -31,18 +29,50 @@ pub enum Error {
     #[error("{0}")]
     Invalid(String),
 
-    #[error("Incus: {0}")]
-    Incus(String),
+    #[error("{0}")]
+    Engine(String),
 
     #[error("{path} couldn't be used: {source}")]
     File { path: String, source: std::io::Error },
-
-    #[error("Incus sent a reply Containeria couldn't read: {0}")]
-    Protocol(String),
 }
 
-impl From<serde_json::Error> for Error {
-    fn from(error: serde_json::Error) -> Self {
-        Self::Protocol(error.to_string())
+impl From<bollard::errors::Error> for Error {
+    fn from(error: bollard::errors::Error) -> Self {
+        use bollard::errors::Error as Docker;
+        match error {
+            Docker::DockerResponseServerError { status_code: 404, message } => {
+                Self::NotFound(message)
+            }
+            Docker::DockerResponseServerError { message, .. } => Self::Engine(message),
+            Docker::IOError { .. }
+            | Docker::HyperResponseError { .. }
+            | Docker::RequestTimeoutError => Self::Unreachable,
+            other => Self::Engine(other.to_string()),
+        }
+    }
+}
+
+/// The machines of one engine.
+#[derive(Debug, Clone)]
+pub struct Machines {
+    api: bollard::Docker,
+}
+
+impl Machines {
+    /// Setting up a distribution installs packages, which a slow mirror makes slow.
+    const TIMEOUT_SECONDS: u64 = 1800;
+
+    /// Connects to the engine's Docker socket. Doesn't touch it until the first call.
+    ///
+    /// # Errors
+    /// Fails when the socket file doesn't exist.
+    pub fn connect(socket: &Path) -> Result<Self> {
+        let api = bollard::Docker::connect_with_socket(
+            &socket.to_string_lossy(),
+            Self::TIMEOUT_SECONDS,
+            bollard::API_DEFAULT_VERSION,
+        )
+        .map_err(|_| Error::Unreachable)?;
+        Ok(Self { api })
     }
 }

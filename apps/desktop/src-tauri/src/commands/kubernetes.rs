@@ -1,6 +1,5 @@
 use std::pin::pin;
 
-use containeria_engine::LogLine;
 use containeria_kube::{Cluster, ConfigKind, Kube, KubeEvent, ResourceKind};
 use futures::StreamExt;
 use tauri::ipc::Channel;
@@ -29,23 +28,19 @@ pub(crate) async fn kubernetes_set_enabled(
     app: AppHandle,
     state: State<'_, AppState>,
     enabled: bool,
-    progress: Channel<LogLine>,
 ) -> Result<()> {
     if !enabled {
         state.kubernetes.forget().await;
     }
-    state.engine.set_kubernetes(&app, enabled, |line| drop(progress.send(line))).await
+    state.engine.set_kubernetes(&app, enabled).await
 }
 
 /// Deletes every Kubernetes object and starts a fresh cluster. Docker is untouched.
 #[tauri::command]
 #[specta::specta]
-pub(crate) async fn kubernetes_reset(
-    state: State<'_, AppState>,
-    progress: Channel<LogLine>,
-) -> Result<()> {
+pub(crate) async fn kubernetes_reset(app: AppHandle, state: State<'_, AppState>) -> Result<()> {
     state.kubernetes.forget().await;
-    state.engine.reset_kubernetes(|line| drop(progress.send(line))).await
+    state.engine.reset_kubernetes(&app).await
 }
 
 #[tauri::command]

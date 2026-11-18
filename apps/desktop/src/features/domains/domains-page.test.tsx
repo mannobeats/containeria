@@ -39,7 +39,7 @@ function status(overrides: Partial<DomainsStatus> = {}): DomainsStatus {
         container: "redis",
         port: null,
         https: true,
-        down: "notPublished",
+        down: "noPort",
       },
     ],
     ...overrides,
@@ -78,7 +78,7 @@ describe("DomainsPage", () => {
     const custom = rows.findIndex((text) => text.includes("shop.test"));
     const container = rows.findIndex((text) => text.includes("web.shop.containeria.local"));
     expect(custom).toBeLessThan(container);
-    expect(screen.getByText("Port not published")).toBeDefined();
+    expect(screen.getByText("No port to send to")).toBeDefined();
     expect(screen.getByText("HTTP 80 · HTTPS 7443 · DNS 15353")).toBeDefined();
   });
 

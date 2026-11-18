@@ -12,7 +12,7 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({ open: () => Promise.resolve("/Volu
 const GB = 1_000_000_000;
 
 const atHome: DataLocation = {
-  path: "/Users/ada/.containeria/colima/_lima",
+  path: "/Users/ada/.containeria/vm",
   isDefault: true,
   available: true,
   sizeBytes: 8.4 * GB,
@@ -35,7 +35,7 @@ function setup(at: DataLocation = atHome) {
     storageLocation: () => location,
     storageUsage: () => usage,
     storageCheck: (args) =>
-      args.folder ? `${String(args.folder)}/Containeria` : "/Users/ada/.containeria/colima/_lima",
+      args.folder ? `${String(args.folder)}/Containeria` : "/Users/ada/.containeria/vm",
     storageMove: (args) => {
       channel = args.channel;
       return 3;
@@ -90,7 +90,7 @@ describe("StoragePane", () => {
     renderWithApp(<StoragePane />);
     expect(await screen.findByText(/isn't connected/)).toBeDefined();
     await userEvent.click(screen.getByRole("button", { name: "Move Back" }));
-    expect(await screen.findByText("/Users/ada/.containeria/colima/_lima")).toBeDefined();
+    expect(await screen.findByText("/Users/ada/.containeria/vm")).toBeDefined();
     await userEvent.click(screen.getByRole("button", { name: "Move Data" }));
     await waitFor(() =>
       expect(calls).toContainEqual(

@@ -88,7 +88,7 @@ describe("TrayView", () => {
     );
   });
 
-  it("can't start an engine Colima isn't installed for", async () => {
+  it("can't start an engine this build doesn't have", async () => {
     renderTray("missing");
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Start" }).hasAttribute("disabled")).toBe(true),

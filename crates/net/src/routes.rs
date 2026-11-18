@@ -1,3 +1,5 @@
+use std::net::SocketAddr;
+
 use containeria_docker::{ContainerState, ContainerSummary, PortProtocol};
 use serde::{Deserialize, Serialize};
 
@@ -39,7 +41,7 @@ fn service_route(service: &ClusterService, tld: &str, https: bool) -> Option<Dom
         kind: RouteKind::Service,
         container: format!("{}/{}", service.namespace, service.name),
         port: Some(service.port),
-        upstream: Some(service.mac_port),
+        upstream: Some(Upstream::Published(service.mac_port)),
         https,
         down: None,
     })
@@ -51,8 +53,18 @@ fn service_route(service: &ClusterService, tld: &str, https: bool) -> Option<Dom
 pub enum RouteDown {
     /// The container is stopped or gone.
     Stopped,
-    /// The container runs but doesn't publish the port to the Mac.
-    NotPublished,
+    /// The container runs but has no port to send requests to: it neither publishes nor
+    /// exposes one.
+    NoPort,
+}
+
+/// Where the proxy sends a route's requests.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Upstream {
+    /// A port published on the Mac, on 127.0.0.1.
+    Published(u16),
+    /// The container's own address and port, inside the engine.
+    Inside(SocketAddr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
@@ -63,9 +75,8 @@ pub struct DomainRoute {
     pub container: String,
     /// The port inside the container.
     pub port: Option<u16>,
-    /// Where the proxy sends requests, on 127.0.0.1.
     #[serde(skip)]
-    pub upstream: Option<u16>,
+    pub upstream: Option<Upstream>,
     pub https: bool,
     pub down: Option<RouteDown>,
 }
@@ -77,28 +88,35 @@ pub(crate) struct RouteTable {
     routes: Vec<DomainRoute>,
 }
 
-/// Web servers usually listen on one of these; prefer them when a container publishes several.
+/// Web servers usually listen on one of these; prefer them when a container has several ports.
 const WEB_PORTS: [u16; 7] = [80, 8080, 3000, 8000, 5173, 4000, 443];
 
-fn published(container: &ContainerSummary, port: u16) -> Option<u16> {
-    container
+/// Where `port` of `container` is reached: on the Mac when the container publishes it, else at
+/// the container's own address, which needs no port published.
+fn upstream(container: &ContainerSummary, port: u16) -> Option<Upstream> {
+    let published = container
         .ports
         .iter()
         .find(|candidate| candidate.container == port && candidate.protocol == PortProtocol::Tcp)
-        .and_then(|candidate| candidate.host)
+        .and_then(|candidate| candidate.host);
+    match published {
+        Some(published) => Some(Upstream::Published(published)),
+        None => container.address.map(|address| Upstream::Inside(SocketAddr::new(address, port))),
+    }
 }
 
-fn web_port(container: &ContainerSummary) -> Option<(u16, u16)> {
-    let mut tcp: Vec<(u16, u16)> = container
+/// The port a container most likely serves the web on: one it publishes before one its image
+/// only exposes, since publishing is the user's own word, and a usual web port before others.
+fn web_port(container: &ContainerSummary) -> Option<u16> {
+    container
         .ports
         .iter()
         .filter(|port| port.protocol == PortProtocol::Tcp)
-        .filter_map(|port| port.host.map(|host| (port.container, host)))
-        .collect();
-    tcp.sort_by_key(|&(inside, _)| {
-        (WEB_PORTS.iter().position(|&web| web == inside).unwrap_or(usize::MAX), inside)
-    });
-    tcp.first().copied()
+        .min_by_key(|port| {
+            let usual = WEB_PORTS.iter().position(|&web| web == port.container);
+            (port.host.is_none(), usual.unwrap_or(usize::MAX), port.container)
+        })
+        .map(|port| port.container)
 }
 
 fn running(container: &ContainerSummary) -> bool {
@@ -112,18 +130,19 @@ fn container_route(container: &ContainerSummary, tld: &str, https: bool) -> Opti
         container.service.as_deref(),
         tld,
     )?;
-    let web = web_port(container);
-    let down = match (running(container), web) {
+    let port = web_port(container);
+    let upstream = port.and_then(|port| upstream(container, port));
+    let down = match (running(container), upstream) {
         (false, _) => Some(RouteDown::Stopped),
-        (true, None) => Some(RouteDown::NotPublished),
+        (true, None) => Some(RouteDown::NoPort),
         (true, Some(_)) => None,
     };
     Some(DomainRoute {
         host,
         kind: RouteKind::Container,
         container: container.name.clone(),
-        port: web.map(|(inside, _)| inside),
-        upstream: web.map(|(_, outside)| outside),
+        port,
+        upstream,
         https,
         down,
     })
@@ -131,10 +150,10 @@ fn container_route(container: &ContainerSummary, tld: &str, https: bool) -> Opti
 
 fn custom_route(custom: &CustomRoute, containers: &[ContainerSummary]) -> DomainRoute {
     let target = containers.iter().find(|container| container.name == custom.container);
-    let upstream = target.and_then(|container| published(container, custom.port));
+    let upstream = target.and_then(|container| upstream(container, custom.port));
     let down = match target {
         Some(container) if running(container) && upstream.is_some() => None,
-        Some(container) if running(container) => Some(RouteDown::NotPublished),
+        Some(container) if running(container) => Some(RouteDown::NoPort),
         _ => Some(RouteDown::Stopped),
     };
     DomainRoute {
@@ -225,8 +244,20 @@ mod tests {
                     protocol: PortProtocol::Tcp,
                 })
                 .collect(),
+            address: None,
             created_at: 0,
         }
+    }
+
+    /// A container that publishes nothing: its image exposes `ports`, and it has an address.
+    fn unpublished(name: &str, ports: &[u16]) -> ContainerSummary {
+        let mut container = container(name, None, &[]);
+        container.ports = ports
+            .iter()
+            .map(|&inside| Port { container: inside, host: None, protocol: PortProtocol::Tcp })
+            .collect();
+        container.address = Some("172.17.0.5".parse().unwrap());
+        container
     }
 
     fn table() -> RouteTable {
@@ -256,7 +287,7 @@ mod tests {
         let route = &table.routes()[0];
         assert_eq!(route.host, "web.shop.k8s.containeria.local");
         assert_eq!(route.kind, RouteKind::Service);
-        assert_eq!(route.upstream, Some(30080));
+        assert_eq!(route.upstream, Some(Upstream::Published(30080)));
         assert!(table.resolves("web.shop.k8s.containeria.local"));
     }
 
@@ -264,7 +295,10 @@ mod tests {
     fn routes_a_compose_service_to_its_web_port() {
         let table = table();
         let route = table.find("web.shop.containeria.local").unwrap();
-        assert_eq!((route.port, route.upstream, route.down), (Some(3000), Some(3001), None));
+        assert_eq!(
+            (route.port, route.upstream, route.down),
+            (Some(3000), Some(Upstream::Published(3001)), None)
+        );
     }
 
     #[test]
@@ -274,16 +308,49 @@ mod tests {
             table.find("assets.web.shop.containeria.local").unwrap().container,
             "shop-web-1"
         );
-        assert_eq!(table.find("v2.shop.test:443").unwrap().upstream, Some(18080));
+        assert_eq!(
+            table.find("v2.shop.test:443").unwrap().upstream,
+            Some(Upstream::Published(18080))
+        );
     }
 
     #[test]
-    fn a_container_without_published_ports_is_down_not_missing() {
+    fn a_container_with_no_port_at_all_is_down_not_missing() {
         let table = table();
-        assert_eq!(
-            table.find("redis.containeria.local").unwrap().down,
-            Some(RouteDown::NotPublished)
-        );
+        assert_eq!(table.find("redis.containeria.local").unwrap().down, Some(RouteDown::NoPort));
+    }
+
+    #[test]
+    fn a_container_that_publishes_nothing_is_reached_at_its_own_address() {
+        let containers = [unpublished("web", &[9000, 80])];
+        let table = RouteTable::build("containeria.local", &containers, &[], &[], true);
+        let route = table.find("web.containeria.local").unwrap();
+        let inside = Upstream::Inside("172.17.0.5:80".parse().unwrap());
+        assert_eq!((route.port, route.upstream, route.down), (Some(80), Some(inside), None));
+    }
+
+    #[test]
+    fn a_published_port_is_preferred_to_one_the_image_only_exposes() {
+        let mut web = unpublished("web", &[80]);
+        web.ports.push(Port { container: 9000, host: Some(19000), protocol: PortProtocol::Tcp });
+        let table = RouteTable::build("containeria.local", &[web], &[], &[], true);
+        let route = table.find("web.containeria.local").unwrap();
+        assert_eq!(route.upstream, Some(Upstream::Published(19000)));
+    }
+
+    #[test]
+    fn a_custom_route_reaches_a_port_the_container_neither_publishes_nor_exposes() {
+        let custom = [CustomRoute {
+            host: "admin.test".into(),
+            container: "web".into(),
+            port: 9100,
+            https: false,
+        }];
+        let table =
+            RouteTable::build("containeria.local", &[unpublished("web", &[])], &[], &custom, true);
+        let route = table.find("admin.test").unwrap();
+        assert_eq!(route.upstream, Some(Upstream::Inside("172.17.0.5:9100".parse().unwrap())));
+        assert_eq!(route.down, None);
     }
 
     #[test]

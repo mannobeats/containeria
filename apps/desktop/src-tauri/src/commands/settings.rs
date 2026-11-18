@@ -66,7 +66,6 @@ pub(crate) async fn host_info() -> Result<Host> {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct About {
     pub(crate) app_version: String,
-    pub(crate) colima_version: Option<String>,
     /// `None` while the engine is stopped.
     pub(crate) engine: Option<EngineInfo>,
 }
@@ -78,11 +77,7 @@ pub(crate) async fn about(app: AppHandle, state: State<'_, AppState>) -> Result<
         Ok(docker) => docker.info().await.ok(),
         Err(_) => None,
     };
-    Ok(About {
-        app_version: app.package_info().version.to_string(),
-        colima_version: state.engine.colima_version().await,
-        engine,
-    })
+    Ok(About { app_version: app.package_info().version.to_string(), engine })
 }
 
 /// Brings the main window forward, for the menu bar popover.

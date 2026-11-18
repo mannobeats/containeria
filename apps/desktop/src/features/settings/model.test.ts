@@ -17,7 +17,7 @@ describe("describeChanges", () => {
       cpus: 6,
       memoryGib: 12,
       rosetta: false,
-      vmType: "krunkit" as const,
+      sleepWhenIdle: false,
       kubernetes: { ...saved.kubernetes, enabled: true },
       registryMirrors: ["https://mirror.gcr.io"],
     };
@@ -25,8 +25,8 @@ describe("describeChanges", () => {
       "CPUs 4 → 6",
       "memory 8 → 12 GB",
       "Rosetta off",
+      "sleep when idle off",
       "Kubernetes on",
-      "virtualization krunkit",
       "registries",
     ]);
   });
@@ -34,19 +34,14 @@ describe("describeChanges", () => {
 
 describe("sizeOutOfDate", () => {
   it("compares the running VM with the saved size", () => {
-    const instance = {
-      status: "running" as const,
-      arch: "aarch64",
+    const vm = {
       cpus: 4,
-      memoryBytes: 8 * 1024 ** 3,
-      diskBytes: 0,
-      address: null,
+      memory: { ceilingBytes: 8 * 1024 ** 3, allowedBytes: 2 * 1024 ** 3, usedBytes: 1024 ** 3 },
+      kernel: "6.18.63",
     };
-    expect(sizeOutOfDate(engineFixture({ instance }))).toBe(false);
-    expect(sizeOutOfDate(engineFixture({ instance: { ...instance, cpus: 2 } }))).toBe(true);
-    expect(
-      sizeOutOfDate(engineFixture({ phase: "stopped", instance: { ...instance, cpus: 2 } })),
-    ).toBe(false);
+    expect(sizeOutOfDate(engineFixture({ vm }))).toBe(false);
+    expect(sizeOutOfDate(engineFixture({ vm: { ...vm, cpus: 2 } }))).toBe(true);
+    expect(sizeOutOfDate(engineFixture({ phase: "stopped", vm: { ...vm, cpus: 2 } }))).toBe(false);
     expect(sizeOutOfDate(undefined)).toBe(false);
   });
 });
