@@ -221,7 +221,7 @@ dependencies = [
 
 [[package]]
 name = "contena-docker"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bollard",
  "bytes",
@@ -250,9 +250,10 @@ dependencies = [
 
 [[package]]
 name = "contena-net"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "contena-docker",
+ "contena-proto",
  "hickory-proto",
  "http-body-util",
  "hyper",
@@ -266,7 +267,18 @@ dependencies = [
  "time",
  "tokio",
  "tokio-rustls",
+ "tokio-util",
  "tracing",
+]
+
+[[package]]
+name = "contena-proto"
+version = "0.1.1"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]
