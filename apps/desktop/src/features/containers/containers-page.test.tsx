@@ -2,6 +2,8 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
+import type { CliTool } from "@/lib/ipc/bindings";
+import { useUi } from "@/shell/ui-store";
 import { containerFixture, engineFixture, metricsFixture } from "@/test/fixtures";
 import { mockCommands, renderWithApp } from "@/test/harness";
 
@@ -28,8 +30,9 @@ const crashed = containerFixture({
 });
 const pod = containerFixture({ id: "pod", name: "k8s_web", pod: "default/web" });
 
-function setup() {
+function setup(tools: CliTool[] = []) {
   const calls = mockCommands({
+    cliTools: () => tools,
     engineStatus: () => engineFixture(),
     composeAct: () => 8,
     containersList: () => [shopDb, shopApi, crashed, pod],
@@ -61,6 +64,24 @@ describe("ContainersPage", () => {
     setup();
     const banner = await screen.findByRole("alert");
     expect(banner.textContent).toContain("payments-mock exited with code 1");
+  });
+
+  it("offers docker for the terminal on a Mac that has none, until it is turned down", async () => {
+    useUi.setState({ toolsDeclined: false });
+    const calls = setup([{ name: "docker", target: "/usr/local/bin/docker", state: "missing" }]);
+    expect(await screen.findByText("Your terminal doesn't have docker yet.")).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: "Install…" }));
+    await waitFor(() => expect(calls.map((call) => call.command)).toContain("cliToolsInstall"));
+    await userEvent.click(screen.getByRole("button", { name: "Not now" }));
+    expect(screen.queryByText("Your terminal doesn't have docker yet.")).toBeNull();
+    expect(useUi.getState().toolsDeclined).toBe(true);
+    useUi.setState({ toolsDeclined: false });
+  });
+
+  it("says nothing about the terminal when docker is there", async () => {
+    setup([{ name: "docker", target: "/usr/local/bin/docker", state: "other" }]);
+    await screen.findByText("shop-db-1");
+    expect(screen.queryByText(/Your terminal doesn't have/)).toBeNull();
   });
 
   it("filters by search and by state", async () => {

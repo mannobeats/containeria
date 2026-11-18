@@ -221,7 +221,7 @@ dependencies = [
 
 [[package]]
 name = "contena-docker"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "bollard",
  "bytes",
@@ -250,7 +250,7 @@ dependencies = [
 
 [[package]]
 name = "contena-net"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "contena-docker",
  "contena-proto",
@@ -273,7 +273,7 @@ dependencies = [
 
 [[package]]
 name = "contena-proto"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "serde",
  "serde_json",

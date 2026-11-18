@@ -2,7 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
-import type { Inventory, SourceStatus } from "@/lib/ipc/bindings";
+import type { CliTool, Inventory, SourceStatus } from "@/lib/ipc/bindings";
 import { engineFixture, preferencesFixture } from "@/test/fixtures";
 import { mockCommands, renderWithApp } from "@/test/harness";
 
@@ -16,8 +16,24 @@ const inventory: Inventory = {
   ],
 };
 
-function renderWelcome(sources: SourceStatus[] | (() => SourceStatus[])) {
+const docker = (state: CliTool["state"]): CliTool => ({
+  name: "docker",
+  target: "/usr/local/bin/docker",
+  state,
+});
+
+function renderWelcome(
+  sources: SourceStatus[] | (() => SourceStatus[]),
+  tools: CliTool[] = [docker("installed")],
+) {
+  // The tools are there once they were installed, as they are on a real Mac.
+  let installed = false;
   const calls = mockCommands({
+    cliTools: () => (installed ? tools.map((tool) => ({ ...tool, state: "installed" })) : tools),
+    cliToolsInstall: () => {
+      installed = true;
+      return null;
+    },
     engineStatus: () => engineFixture({ phase: "notCreated" }),
     preferencesGet: () => preferencesFixture({ onboarded: false }),
     hostInfo: () => ({ chip: "Apple M1 Max", cores: 10, memoryBytes: 32 * 1024 ** 3 }),
@@ -30,10 +46,16 @@ function renderWelcome(sources: SourceStatus[] | (() => SourceStatus[])) {
 
 const names = (calls: { command: string }[]) => calls.map((call) => call.command);
 
-async function throughEngine() {
+async function toTheTerminalStep() {
   await userEvent.click(await screen.findByRole("button", { name: "Get started" }));
   await userEvent.click(await screen.findByRole("button", { name: "Continue" }));
   await userEvent.click(await screen.findByRole("button", { name: "Create engine" }));
+  await screen.findByRole("heading", { name: "Use docker from the terminal" });
+}
+
+async function throughEngine() {
+  await toTheTerminalStep();
+  await userEvent.click(await screen.findByRole("button", { name: "Continue" }));
 }
 
 describe("WelcomePage", () => {
@@ -86,6 +108,25 @@ describe("WelcomePage", () => {
       args: { preferences: preferencesFixture({ onboarded: true }) },
     });
     expect(calls.map((call) => call.command)).toContain("plugin:autostart|enable");
+  });
+
+  it("installs docker for the terminal on a Mac that has none", async () => {
+    const { calls } = renderWelcome([], [docker("missing")]);
+    await toTheTerminalStep();
+    expect(await screen.findByText("Not in your terminal yet: docker.")).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: "Install…" }));
+    expect(await screen.findByText(/Your terminal has docker/)).toBeDefined();
+    expect(names(calls)).toContain("cliToolsInstall");
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(await screen.findByRole("heading", { name: /Bring|Copy|Import/ })).toBeDefined();
+  });
+
+  it("moves on without the tools when they are turned down", async () => {
+    const { calls } = renderWelcome([], [docker("missing")]);
+    await toTheTerminalStep();
+    await userEvent.click(await screen.findByRole("button", { name: "Not now" }));
+    await waitFor(() => expect(names(calls)).toContain("migrationSources"));
+    expect(names(calls)).not.toContain("cliToolsInstall");
   });
 
   it("explains when the app to copy from has to be opened first", async () => {

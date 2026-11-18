@@ -1573,8 +1573,13 @@ export type TimeZone =
 
 export type ToolState = 
 /**  Linked to Contena's copy. */
-"installed" | "missing" | 
-/**  Something else is there, such as Homebrew's or Docker Desktop's; Contena leaves it. */
+"installed" | 
+/**  A terminal doesn't find the tool at all. */
+"missing" | 
+/**
+ *  The user has a copy of their own, such as Homebrew's or Docker Desktop's; Contena
+ *  leaves it.
+ */
 "other";
 
 /**  One kind of thing taking space in the engine. */

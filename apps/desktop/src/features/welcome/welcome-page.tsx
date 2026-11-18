@@ -13,13 +13,15 @@ import { Kbd } from "@/ui/kbd";
 import { StepEngine } from "./step-engine";
 import { StepImport } from "./step-import";
 import { StepResources } from "./step-resources";
+import { StepTools } from "./step-tools";
 
-const STEPS = ["welcome", "resources", "engine", "import", "done"] as const;
+const STEPS = ["welcome", "resources", "engine", "tools", "import", "done"] as const;
 type Step = (typeof STEPS)[number];
 const NAMES: Record<Step, string> = {
   welcome: "Welcome",
   resources: "Resources",
   engine: "Engine",
+  tools: "Terminal",
   import: "Import",
   done: "Done",
 };
@@ -59,7 +61,8 @@ function Hero({ title, body, action }: { title: string; body: string; action: Re
 }
 
 /**
- * First launch: what Contena is, the engine's size, creating it, and bringing images over.
+ * First launch: what Contena is, the engine's size, creating it, `docker` in the terminal, and
+ * bringing images over.
  * Finishing it turns on Open at login, as Docker Desktop and OrbStack do; Settings turns it off.
  */
 export function WelcomePage() {
@@ -111,6 +114,7 @@ export function WelcomePage() {
           ) : null}
           {step === "resources" ? <StepResources onDone={next} /> : null}
           {step === "engine" ? <StepEngine onDone={next} /> : null}
+          {step === "tools" ? <StepTools onDone={next} /> : null}
           {step === "import" ? <StepImport onDone={next} /> : null}
           {step === "done" ? <Done onFinish={finish} saving={setPreferences.isPending} /> : null}
         </div>
