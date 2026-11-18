@@ -81,7 +81,8 @@ pub struct ServiceSummary {
     pub kind: String,
     pub cluster_ip: Option<String>,
     pub ports: Vec<ServicePort>,
-    /// `localhost:port` for a `LoadBalancer` service: k3s binds it in the VM and Lima forwards it.
+    /// `localhost:port` for a `LoadBalancer` service: k3s binds it in the VM and the engine
+    /// publishes it on the Mac.
     pub from_mac: Option<String>,
 }
 
@@ -223,7 +224,8 @@ impl From<&Deployment> for DeploymentSummary {
 
 impl ServiceSummary {
     /// The port on the Mac that reaches the service: a `LoadBalancer` port k3s binds in the VM,
-    /// or a `NodePort`, both forwarded by Lima. `ClusterIP` services aren't reachable from the Mac.
+    /// or a `NodePort`, both published on the Mac by the engine. `ClusterIP` services aren't
+    /// reachable from the Mac.
     #[must_use]
     pub fn mac_port(&self) -> Option<u16> {
         let mut tcp = self.ports.iter().filter(|port| port.protocol == "TCP");
@@ -400,7 +402,7 @@ mod tests {
             "metadata": {"name": "checkout-7d9f8b-x2", "namespace": "shop",
                 "creationTimestamp": "2026-10-17T10:00:00Z",
                 "ownerReferences": [{"apiVersion": "apps/v1", "kind": "ReplicaSet", "name": "checkout-7d9f8b", "uid": "u"}]},
-            "spec": {"nodeName": "colima-containeria", "containers": [{"name": "checkout", "image": "shop-checkout:dev"}]},
+            "spec": {"nodeName": "containeria", "containers": [{"name": "checkout", "image": "shop-checkout:dev"}]},
             "status": {"phase": "Running", "podIP": "10.42.0.17", "containerStatuses": [{
                 "name": "checkout", "ready": false, "restartCount": 14, "image": "shop-checkout:dev", "imageID": "",
                 "state": {"waiting": {"reason": "CrashLoopBackOff", "message": "back-off 5m0s"}}}]}

@@ -32,7 +32,6 @@ use tauri_plugin_window_state::StateFlags;
 use crate::data::DataState;
 use crate::engine::Engine;
 use crate::kubernetes::Kubernetes;
-use crate::machines::MachinesEngine;
 use crate::metrics::Sampler;
 use crate::preferences::PreferencesStore;
 use crate::shells::Shells;
@@ -90,14 +89,11 @@ pub fn run() -> tauri::Result<()> {
 }
 
 fn app_state(app: &AppHandle) -> Result<AppState, Box<dyn std::error::Error>> {
-    let tools = app.path().resource_dir().ok().map(|dir| dir.join("tools"));
     let home = Home::from_env()?;
-    let engine = Arc::new(Engine::new(tools.as_deref())?);
-    let bundled_colima = tools.map(|dir| dir.join("bin/colima"));
+    let engine = Arc::new(Engine::new(app.path().resource_dir().ok().as_deref())?);
     Ok(AppState {
         data: Arc::new(DataState::new(&home.root().join("data"))),
-        machines: MachinesEngine::new(home.clone(), bundled_colima.as_deref()),
-        domains: Arc::new(Domains::open(&home.root().join("net"))?),
+        domains: Arc::new(Domains::open(&home.root().join("net"), &home.inside_socket())?),
         kubernetes: Arc::new(Kubernetes::default()),
         metrics: Arc::new(Sampler::default()),
         preferences: PreferencesStore::open(engine.home().root()),
@@ -108,7 +104,7 @@ fn app_state(app: &AppHandle) -> Result<AppState, Box<dyn std::error::Error>> {
 }
 
 /// The long-running tasks: Docker events, metrics, Kubernetes watches, the domains service and
-/// stopping the machines VM when idle.
+/// keeping the engine awake while a window shows.
 struct Background {
     engine: Arc<Engine>,
     metrics: Arc<Sampler>,
@@ -137,8 +133,9 @@ impl Background {
         let (for_kube, handle) = (Arc::clone(&engine), app.clone());
         let for_domains = Arc::clone(&kubernetes);
         tauri::async_runtime::spawn(async move { kubernetes.watch(&for_kube, handle).await });
+        let (shown, handle) = (Arc::clone(&engine), app.clone());
+        tauri::async_runtime::spawn(async move { shown.stay_awake_while_shown(handle).await });
         tauri::async_runtime::spawn(domains::supervise(domains, engine, for_domains));
-        tauri::async_runtime::spawn(machines::stop_when_idle(app.clone()));
         tauri::async_runtime::spawn(engine::start_with_app(app.clone()));
     }
 }

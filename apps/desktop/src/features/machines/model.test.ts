@@ -5,7 +5,6 @@ import {
   cpuPercent,
   freeName,
   importName,
-  kindLabel,
   limitLabel,
   nameProblem,
   snapshotName,
@@ -16,14 +15,12 @@ import {
 } from "./model";
 
 describe("labels", () => {
-  it("names states and kinds the way people say them", () => {
+  it("names states the way people say them", () => {
     expect(stateLabel(machineFixture({ state: "frozen" }))).toBe("Paused");
     expect(stateLabel(machineFixture({ state: "busy" }))).toBe("Working…");
-    expect(kindLabel({ kind: "vm" })).toBe("Full VM");
-    expect(kindLabel({ kind: "container" })).toBe("System container");
   });
 
-  it("reads Incus memory limits", () => {
+  it("reads memory limits", () => {
     expect(limitLabel("4GiB")).toBe("4 GB");
     expect(limitLabel("512MiB")).toBe("512 MB");
     expect(limitLabel(null)).toBeNull();

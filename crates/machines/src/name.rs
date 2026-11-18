@@ -53,7 +53,7 @@ mod tests {
     }
 
     #[test]
-    fn rejects_what_incus_or_dns_would() {
+    fn rejects_what_a_host_name_cant_be() {
         for name in ["", "2dev", "Dev", "dev-", "dev_box", "dev.box", &"a".repeat(64)] {
             assert!(validate_name(name).is_err(), "{name}");
         }

@@ -14,6 +14,7 @@ fuzzing = []
 
 [dependencies]
 containeria-docker.workspace = true
+containeria-proto.workspace = true
 hickory-proto.workspace = true
 http-body-util.workspace = true
 hyper.workspace = true
@@ -27,6 +28,7 @@ thiserror.workspace = true
 time.workspace = true
 tokio.workspace = true
 tokio-rustls.workspace = true
+tokio-util.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]

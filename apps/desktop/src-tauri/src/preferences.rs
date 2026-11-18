@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{CommandError, ErrorKind, Result};
 
-/// App settings that aren't engine settings. Engine settings live in `colima.yaml`.
+/// App settings that aren't engine settings. Engine settings live in the engine's own file.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct Preferences {

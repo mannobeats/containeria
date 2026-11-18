@@ -66,8 +66,9 @@ impl From<containeria_data::Error> for CommandError {
 impl From<containeria_engine::Error> for CommandError {
     fn from(error: containeria_engine::Error) -> Self {
         let kind = match error {
-            containeria_engine::Error::ColimaMissing { .. } => ErrorKind::EngineMissing,
-            containeria_engine::Error::Command { .. } => ErrorKind::Engine,
+            containeria_engine::Error::Missing { .. } => ErrorKind::EngineMissing,
+            containeria_engine::Error::Stopped => ErrorKind::EngineStopped,
+            containeria_engine::Error::Engine(_) => ErrorKind::Engine,
             containeria_engine::Error::Storage(_) => ErrorKind::InvalidInput,
             _ => ErrorKind::Internal,
         };
@@ -103,14 +104,11 @@ impl From<containeria_net::Error> for CommandError {
 impl From<containeria_machines::Error> for CommandError {
     fn from(error: containeria_machines::Error) -> Self {
         let kind = match error {
-            containeria_machines::Error::Unreachable(_) => ErrorKind::EngineStopped,
+            containeria_machines::Error::Unreachable => ErrorKind::EngineStopped,
             containeria_machines::Error::NotFound(_) => ErrorKind::NotFound,
-            containeria_machines::Error::Invalid(_) | containeria_machines::Error::Incus(_) => {
-                ErrorKind::Engine
-            }
-            containeria_machines::Error::Protocol(_) | containeria_machines::Error::File { .. } => {
-                ErrorKind::Internal
-            }
+            containeria_machines::Error::Invalid(_) => ErrorKind::InvalidInput,
+            containeria_machines::Error::Engine(_) => ErrorKind::Engine,
+            containeria_machines::Error::File { .. } => ErrorKind::Internal,
         };
         Self::new(kind, error.to_string())
     }

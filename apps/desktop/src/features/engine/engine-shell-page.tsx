@@ -22,7 +22,10 @@ function EngineTerminal({ onReconnect }: { onReconnect: () => void }) {
           size="sm"
           className="ml-auto"
           onClick={() =>
-            copyText("Command", "COLIMA_HOME=~/.containeria/colima colima ssh -p containeria")
+            copyText(
+              "Command",
+              "docker run -it --rm --privileged --pid=host busybox nsenter -t 1 -m -u -i -n -p sh",
+            )
           }
         >
           <IconCopy />
@@ -38,7 +41,7 @@ function EngineTerminal({ onReconnect }: { onReconnect: () => void }) {
   );
 }
 
-/** A terminal in the VM itself, for what `colima ssh` is used for. */
+/** A terminal in the VM itself, outside every container. */
 export function EngineShellPage() {
   const [session, setSession] = useState(0);
   return (

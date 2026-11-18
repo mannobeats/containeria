@@ -1,0 +1,5 @@
+NAME="Containeria"
+ID=containeria
+ID_LIKE=alpine
+PRETTY_NAME="Containeria Engine"
+HOME_URL="https://github.com/mannobeats/containeria"

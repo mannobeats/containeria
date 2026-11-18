@@ -13,9 +13,10 @@ pnpm dev
 | Variable | Effect |
 |---|---|
 | `CONTAINERIA_DOCKER_SOCKET` | Use this Docker socket instead of starting Containeria's engine. |
-| `CONTAINERIA_KUBE_CONTEXT` | Use this kubeconfig context instead of Colima's `colima-containeria`, and treat Kubernetes as on. |
+| `CONTAINERIA_KUBE_CONTEXT` | Use this kubeconfig context instead of the engine's `containeria`, and treat Kubernetes as on. |
 | `CONTAINERIA_HOME` | Where engine state lives. Default `~/.containeria`. |
-| `CONTAINERIA_COLIMA` | Path to a Colima binary to use instead of the bundled or installed one. |
+| `CONTAINERIA_ENGINE` | Path to a `containeria-engine` to run instead of the bundled one. |
+| `CONTAINERIA_VMM`, `CONTAINERIA_GUEST` | For the engine: the VM helper and the folder with the guest's `Image` and `rootfs.erofs`, instead of the ones beside it. |
 | `RUST_LOG` | Rust log filter, for example `info` or `containeria_app=debug`. |
 
 Cargo never deletes a build it has replaced, so `target/` keeps growing with every dependency or

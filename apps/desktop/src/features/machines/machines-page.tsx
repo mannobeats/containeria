@@ -2,20 +2,14 @@ import { IconFileImport, IconPlus } from "@tabler/icons-react";
 import { useState } from "react";
 
 import { formatMemory, plural } from "@/lib/format";
-import type { EnginePhase, Machine } from "@/lib/ipc/bindings";
+import type { Machine } from "@/lib/ipc/bindings";
 import { Crumb, Page } from "@/shell/page";
 import { Button } from "@/ui/button";
 import { Skeleton } from "@/ui/progress";
 
 import { PromptSheet } from "@/ui/prompt-sheet";
 
-import {
-  pickExport,
-  useImportMachine,
-  useMachineAction,
-  useMachines,
-  useMachinesStatus,
-} from "./api";
+import { pickExport, useImportMachine, useMachineAction, useMachines } from "./api";
 import { MachineCard } from "./machine-card";
 import { MachineDialogs } from "./machine-dialogs";
 import type { MachineDialog } from "./machine-menu";
@@ -84,23 +78,6 @@ function MachineGrid({ list, onNew }: { list: MachineList | undefined; onNew: ()
   );
 }
 
-const listsMachines = (phase: EnginePhase | undefined) =>
-  phase === "running" || phase === "stopped";
-
-/** Running or stopped with at least one machine, or the intro for the machines VM's phase. */
-function introPhase(
-  phase: EnginePhase | undefined,
-  list: MachineList | undefined,
-): EnginePhase | null {
-  if (phase === undefined) {
-    return null;
-  }
-  if (!listsMachines(phase)) {
-    return phase;
-  }
-  return list?.machines.length === 0 ? "notCreated" : null;
-}
-
 /** Import… from the header: pick an exported `.tar.gz`, then name the new machine. */
 function ImportButton({ taken }: { taken: string[] }) {
   const [source, setSource] = useState<string | null>(null);
@@ -135,34 +112,30 @@ function ImportButton({ taken }: { taken: string[] }) {
 }
 
 export function MachinesPage() {
-  const { data: status } = useMachinesStatus();
   const { data: list } = useMachines();
   const creating = useNewMachineSheet((state) => state.open);
   const setCreating = useNewMachineSheet((state) => state.setOpen);
-  const intro = introPhase(status?.phase, list);
-  const showGrid = listsMachines(status?.phase) && intro === null;
+  const none = list?.machines.length === 0;
   const taken = list?.machines.map((machine) => machine.name) ?? [];
-  const tools = listsMachines(status?.phase) ? (
+  const tools = (
     <>
-      {status?.phase === "running" ? <ImportButton taken={taken} /> : null}
-      {showGrid ? (
+      <ImportButton taken={taken} />
+      {none ? null : (
         <Button variant="brand" onClick={() => setCreating(true)}>
           <IconPlus />
           New machine
         </Button>
-      ) : null}
+      )}
     </>
-  ) : null;
+  );
   return (
     <Page crumbs={<Crumb>Linux machines</Crumb>} tools={tools}>
-      {intro ? <MachinesIntro phase={intro} onNew={() => setCreating(true)} /> : null}
-      {showGrid ? <MachineGrid list={list} onNew={() => setCreating(true)} /> : null}
-      <NewMachineSheet
-        open={creating}
-        onOpenChange={setCreating}
-        supportsVms={status?.supportsVms ?? false}
-        taken={taken}
-      />
+      {none ? (
+        <MachinesIntro onNew={() => setCreating(true)} />
+      ) : (
+        <MachineGrid list={list} onNew={() => setCreating(true)} />
+      )}
+      <NewMachineSheet open={creating} onOpenChange={setCreating} taken={taken} />
     </Page>
   );
 }

@@ -10,12 +10,15 @@ export const commands = {
 	/**  Stops a stream the UI no longer shows, and closes the terminal it fed, if any. */
 	streamCancel: (id: number) => __TAURI_INVOKE<null>("stream_cancel", { id }),
 	engineStatus: () => __TAURI_INVOKE<EngineStatus>("engine_status"),
-	engineStart: (progress: Channel<LogLine>) => __TAURI_INVOKE<null>("engine_start", { progress }),
-	engineStop: (progress: Channel<LogLine>) => __TAURI_INVOKE<null>("engine_stop", { progress }),
-	engineRestart: (progress: Channel<LogLine>) => __TAURI_INVOKE<null>("engine_restart", { progress }),
+	engineStart: () => __TAURI_INVOKE<null>("engine_start"),
+	engineStop: () => __TAURI_INVOKE<null>("engine_stop"),
+	engineRestart: () => __TAURI_INVOKE<null>("engine_restart"),
 	engineSaveConfig: (config: EngineConfig) => __TAURI_INVOKE<null>("engine_save_config", { config }),
-	/**  Deletes the engine's VM, and with `machines` the Linux machines VM too. Settings stay. */
-	engineReset: (machines: boolean) => __TAURI_INVOKE<null>("engine_reset", { machines }),
+	/**
+	 *  Deletes the engine's data: every image, container, volume, Linux machine and the Kubernetes
+	 *  cluster. Settings stay.
+	 */
+	engineReset: () => __TAURI_INVOKE<null>("engine_reset"),
 	/**  The last sample, so a view can draw before the next `MetricsUpdated` event. */
 	metricsLatest: () => __TAURI_INVOKE<{
 	sampledAtMs: number | null,
@@ -60,8 +63,8 @@ export const commands = {
 	/**  The folder the data would move to inside `folder` (the default with none), or why it can't. */
 	storageCheck: (folder: string | null) => __TAURI_INVOKE<string>("storage_check", { folder }),
 	/**
-	 *  Stops the VMs, moves their disks into `folder` (back to the default with none), and starts
-	 *  again whatever was running.
+	 *  Stops the engine, moves its data into `folder` (back to the default with none), and starts
+	 *  it again if it was running.
 	 */
 	storageMove: (folder: string | null, channel: Channel<MoveEvent>) => __TAURI_INVOKE<number>("storage_move", { folder, channel }),
 	/**  Where the engine's disk space goes. */
@@ -106,7 +109,7 @@ export const commands = {
 	 *  Output streams into `channel`; type with `shell_input`, resize with `shell_resize`.
 	 */
 	containerShell: (id: string, debug: boolean, cols: number, rows: number, channel: Channel<ShellEvent>) => __TAURI_INVOKE<number>("container_shell", { id, debug, cols, rows, channel }),
-	/**  Opens a root shell in the engine's Linux VM, as `colima ssh` does. */
+	/**  Opens a root shell in the engine's Linux VM. */
 	engineShell: (cols: number, rows: number, channel: Channel<ShellEvent>) => __TAURI_INVOKE<number>("engine_shell", { cols, rows, channel }),
 	/**  Types into an open terminal. */
 	shellInput: (stream: number, text: string) => __TAURI_INVOKE<null>("shell_input", { stream, text }),
@@ -134,31 +137,29 @@ export const commands = {
 	/**  Adds the local certificate authority to the login keychain; macOS asks the user to confirm. */
 	domainsTrustCa: () => __TAURI_INVOKE<null>("domains_trust_ca"),
 	domainsUntrustCa: () => __TAURI_INVOKE<null>("domains_untrust_ca"),
-	machinesStatus: () => __TAURI_INVOKE<MachinesStatus>("machines_status"),
-	machinesStart: (progress: Channel<LogLine>) => __TAURI_INVOKE<null>("machines_start", { progress }),
-	machinesStop: (progress: Channel<LogLine>) => __TAURI_INVOKE<null>("machines_stop", { progress }),
 	machinesList: () => __TAURI_INVOKE<Machine[]>("machines_list"),
 	machineGet: (name: string) => __TAURI_INVOKE<Machine>("machine_get", { name }),
 	machineDistros: () => __TAURI_INVOKE<Distro[]>("machine_distros"),
 	/**
-	 *  Creates a machine, first setting up and starting the machines VM if this is the first one.
-	 *  `progress` gets sentences for the sheet: the VM booting, then the image download.
+	 *  Creates a machine and starts it. `progress` gets sentences for the sheet: the first machine
+	 *  of a release pulls its image and sets it up, which takes about a minute.
 	 */
 	machineCreate: (request: CreateMachine, progress: Channel<string>) => __TAURI_INVOKE<null>("machine_create", { request, progress }),
 	machineAct: (name: string, action: MachineAction) => __TAURI_INVOKE<null>("machine_act", { name, action }),
 	machineDelete: (name: string) => __TAURI_INVOKE<null>("machine_delete", { name }),
-	machineFiles: (name: string, path: string) => __TAURI_INVOKE<MachineFile[]>("machine_files", { name, path }),
-	/**  Copies a file out of the machine to `destination`, a path the user picked on the Mac. */
+	machineFiles: (name: string, path: string) => __TAURI_INVOKE<FileEntry[]>("machine_files", { name, path }),
+	/**
+	 *  Copies a file or folder out of the machine to `destination`, a path the user picked on the
+	 *  Mac.
+	 */
 	machineFileDownload: (name: string, path: string, destination: string) => __TAURI_INVOKE<null>("machine_file_download", { name, path, destination }),
 	/**  Copies `source`, a file the user picked on the Mac, into `directory` in the machine. */
 	machineFileUpload: (name: string, source: string, directory: string) => __TAURI_INVOKE<null>("machine_file_upload", { name, source, directory }),
 	/**
-	 *  Opens a root login shell and streams its output into `output` until it exits or is cancelled
-	 *  with `stream_cancel`. Returns the id `machine_shell_input` and `machine_shell_resize` take.
+	 *  Opens a login shell in the machine as its user. Output streams into `channel`; type with
+	 *  `shell_input`, resize with `shell_resize`.
 	 */
-	machineShell: (name: string, cols: number, rows: number, output: Channel<string>) => __TAURI_INVOKE<number>("machine_shell", { name, cols, rows, output }),
-	machineShellInput: (id: number, data: string) => __TAURI_INVOKE<null>("machine_shell_input", { id, data }),
-	machineShellResize: (id: number, cols: number, rows: number) => __TAURI_INVOKE<null>("machine_shell_resize", { id, cols, rows }),
+	machineShell: (name: string, cols: number, rows: number, channel: Channel<ShellEvent>) => __TAURI_INVOKE<number>("machine_shell", { name, cols, rows, channel }),
 	machineSnapshots: (name: string) => __TAURI_INVOKE<MachineSnapshot[]>("machine_snapshots", { name }),
 	machineSnapshotCreate: (name: string, snapshot: string) => __TAURI_INVOKE<null>("machine_snapshot_create", { name, snapshot }),
 	/**  Puts the machine back as it was in `snapshot`; everything since is lost. */
@@ -166,13 +167,13 @@ export const commands = {
 	machineSnapshotDelete: (name: string, snapshot: string) => __TAURI_INVOKE<null>("machine_snapshot_delete", { name, snapshot }),
 	/**  Copies the machine to a new, stopped machine named `to`. */
 	machineClone: (name: string, to: string) => __TAURI_INVOKE<null>("machine_clone", { name, to }),
-	/**  Writes the machine to `destination`, a `.tar.gz` path the user picked on the Mac. */
+	/**  Writes the machine's disk to `destination`, a `.tar` path the user picked on the Mac. */
 	machineExport: (name: string, destination: string) => __TAURI_INVOKE<null>("machine_export", { name, destination }),
-	/**  Creates a stopped machine named `name` from `source`, a `.tar.gz` that `machine_export` wrote. */
+	/**  Creates a stopped machine named `name` from `source`, an archive `machine_export` wrote. */
 	machineImport: (source: string, name: string) => __TAURI_INVOKE<null>("machine_import", { source, name }),
-	/**  The command that opens the machine's root shell from a Mac terminal. */
+	/**  The command that opens the machine's login shell from a Mac terminal. */
 	machineShellCommand: (name: string) => __TAURI_INVOKE<string>("machine_shell_command", { name }),
-	/**  Opens the machine's root shell in a Terminal window. */
+	/**  Opens the machine's login shell in a Terminal window. */
 	machineOpenTerminal: (name: string) => __TAURI_INVOKE<null>("machine_open_terminal", { name }),
 	imagesList: () => __TAURI_INVOKE<ImageSummary[]>("images_list"),
 	imageDetail: (id: string) => __TAURI_INVOKE<ImageDetail>("image_detail", { id }),
@@ -229,9 +230,9 @@ export const commands = {
 	networkDisconnect: (network: string, container: string) => __TAURI_INVOKE<null>("network_disconnect", { network, container }),
 	kubernetesCluster: () => __TAURI_INVOKE<Cluster>("kubernetes_cluster"),
 	/**  Turns Kubernetes on or off now and for every later start. */
-	kubernetesSetEnabled: (enabled: boolean, progress: Channel<LogLine>) => __TAURI_INVOKE<null>("kubernetes_set_enabled", { enabled, progress }),
+	kubernetesSetEnabled: (enabled: boolean) => __TAURI_INVOKE<null>("kubernetes_set_enabled", { enabled }),
 	/**  Deletes every Kubernetes object and starts a fresh cluster. Docker is untouched. */
-	kubernetesReset: (progress: Channel<LogLine>) => __TAURI_INVOKE<null>("kubernetes_reset", { progress }),
+	kubernetesReset: () => __TAURI_INVOKE<null>("kubernetes_reset"),
 	kubernetesDeletePod: (namespace: string, name: string) => __TAURI_INVOKE<null>("kubernetes_delete_pod", { namespace, name }),
 	kubernetesDeleteDeployment: (namespace: string, name: string) => __TAURI_INVOKE<null>("kubernetes_delete_deployment", { namespace, name }),
 	kubernetesRestartDeployment: (namespace: string, name: string) => __TAURI_INVOKE<null>("kubernetes_restart_deployment", { namespace, name }),
@@ -322,7 +323,6 @@ export const events = {
 /* Types */
 export type About = {
 	appVersion: string,
-	colimaVersion: string | null,
 	/**  `None` while the engine is stopped. */
 	engine: EngineInfo | null,
 };
@@ -438,6 +438,13 @@ export type Cluster = {
 	ingresses: IngressSummary[],
 	config: ConfigSummary[],
 };
+
+/**  The Kubernetes cluster inside the engine. */
+export type ClusterState = { state: "off" } | 
+/**  k3s is starting; the first time, it is fetched and pulls its own images first. */
+{ state: "starting" } | { state: "running" } | 
+/**  It didn't start, and why. Turning Kubernetes on again retries. */
+{ state: "failed"; problem: string };
 
 export type Column = {
 	name: string,
@@ -612,7 +619,6 @@ export type CreateMachine = {
 	name: string,
 	distro: string,
 	release: string,
-	kind: MachineKind,
 	cpus: number,
 	memoryGib: number,
 	mountHome: boolean,
@@ -675,7 +681,7 @@ export type DiskUsage = {
 };
 
 export type Distro = {
-	/**  The images server's name for it, also the hint for its logo. */
+	/**  Short name, also the hint for its logo. */
 	id: string,
 	name: string,
 	/**  Newest first; the first is the default. */
@@ -729,18 +735,20 @@ export type Engine = "postgres" | "mysql" | "mariadb" | "sqlite" | "clickhouse" 
 /**  The engine started, stopped or changed settings; refetch its status. */
 export type EngineChanged = null;
 
-/**  The settings people change. Everything else in `colima.yaml` is Containeria's choice. */
+/**  The settings people change. Saved as JSON and read by the engine each time its VM starts. */
 export type EngineConfig = {
 	cpus: number,
+	/**  The most memory the VM may use. It takes what its containers need, not this much. */
 	memoryGib: number,
+	/**  The most disk the VM may use. The file on the Mac holds only what is stored. */
 	diskGib: number,
-	vmType: VmType,
+	/**  Run Intel images through Rosetta. */
 	rosetta: boolean,
+	/**  Turn the VM off while nothing runs in it; the next `docker` command turns it back on. */
+	sleepWhenIdle: boolean,
+	/**  How long nothing must run, and nobody talk to Docker, before the VM turns off. */
+	idleSeconds: number,
 	kubernetes: Kubernetes,
-	fileWatchEvents: boolean,
-	forwardSshAgent: boolean,
-	udpPorts: boolean,
-	containerIpAccess: boolean,
 	setDockerContext: boolean,
 	/**  Pull-through mirrors for Docker Hub, tried in order. */
 	registryMirrors: string[],
@@ -758,18 +766,22 @@ export type EngineInfo = {
 };
 
 export type EnginePhase = 
-/**  Colima isn't installed or bundled. */
+/**  The engine isn't in the app bundle, as in a development build made without it. */
 "missing" | 
-/**  Colima is there but the engine was never created. */
-"notCreated" | "stopped" | "starting" | "running" | "stopping" | "broken" | 
+/**  The engine was never started: it has no data disk yet. */
+"notCreated" | "stopped" | "starting" | "running" | 
+/**  On, with its VM off because nothing runs in it. Showing a window wakes it. */
+"asleep" | "stopping" | "broken" | 
 /**  `CONTAINERIA_DOCKER_SOCKET` points at another Docker engine. */
 "external";
 
 export type EngineStatus = {
 	phase: EnginePhase,
-	instance: Instance | null,
+	/**  Why the engine is `Broken`, in its own words. */
+	problem: string | null,
+	vm: Vm | null,
+	kubernetes: ClusterState,
 	config: EngineConfig,
-	returnsMemory: boolean,
 	dockerSocket: string,
 };
 
@@ -993,18 +1005,6 @@ export type IngressSummary = {
 	routes: IngressRoute[],
 };
 
-/**  One line of `colima list --json`. */
-export type Instance = {
-	status: InstanceStatus,
-	arch: string,
-	cpus: number,
-	memoryBytes: number,
-	diskBytes: number,
-	address: string | null,
-};
-
-export type InstanceStatus = "running" | "stopped" | "broken" | "unknown";
-
 /**  What another engine has. */
 export type Inventory = {
 	images: string[],
@@ -1031,6 +1031,7 @@ export type KubeEvent = {
 
 export type Kubernetes = {
 	enabled: boolean,
+	/**  An exact k3s release. The engine fetches it the first time it runs it. */
 	version: string,
 };
 
@@ -1060,22 +1061,15 @@ export type LogEntry = {
 	message: string,
 };
 
-export type LogLevel = "info" | "warning" | "error";
-
-/**  One progress line from Colima's logrus output, for the boot overlay. */
-export type LogLine = {
-	level: LogLevel,
-	message: string,
-};
-
 export type LogStream = "stdout" | "stderr";
 
 export type Machine = {
 	name: string,
-	/**  As the image names it: "Ubuntu", "Debian", "Archlinux". */
+	/**  The distribution's short name: "ubuntu", "debian". */
 	distro: string,
 	release: string,
-	kind: MachineKind,
+	/**  Who a shell opens as. */
+	user: string,
 	state: MachineState,
 	ipv4: string | null,
 	memoryBytes: number,
@@ -1091,21 +1085,6 @@ export type Machine = {
 
 export type MachineAction = "start" | "stop" | "restart";
 
-export type MachineFile = {
-	name: string,
-	path: string,
-	kind: MachineFileKind,
-	sizeBytes: number,
-};
-
-export type MachineFileKind = "file" | "directory" | "symlink";
-
-export type MachineKind = 
-/**  A system container: shares the engine's kernel, boots in about a second. */
-"container" | 
-/**  A full VM with its own kernel. Needs nested virtualization (M3 or newer). */
-"vm";
-
 /**  A saved state of a machine's disk that it can go back to. */
 export type MachineSnapshot = {
 	name: string,
@@ -1114,14 +1093,16 @@ export type MachineSnapshot = {
 
 export type MachineState = "running" | "stopped" | "frozen" | "error" | "busy";
 
-/**  The machines VM or a machine changed; refetch machines. */
+/**  A machine was made, changed or removed; refetch machines. */
 export type MachinesChanged = null;
 
-export type MachinesStatus = {
-	phase: EnginePhase,
-	instance: Instance | null,
-	/**  Full VMs need nested virtualization: an M3 or newer Mac on macOS 15 or newer. */
-	supportsVms: boolean,
+export type MemoryUse = {
+	/**  The most the VM may ever use, from the settings. */
+	ceilingBytes: number,
+	/**  What the VM may use right now: what its work holds plus room to grow. */
+	allowedBytes: number,
+	/**  What containers and the system inside hold, without file cache. */
+	usedBytes: number,
 };
 
 /**  A menu bar command the main window carries out, such as opening a sheet. */
@@ -1298,7 +1279,7 @@ export type PortMapping = {
 
 export type PortProtocol = "tcp" | "udp" | "sctp";
 
-/**  App settings that aren't engine settings. Engine settings live in `colima.yaml`. */
+/**  App settings that aren't engine settings. Engine settings live in the engine's own file. */
 export type Preferences = {
 	/**  Closing the window hides it; the app stays in the menu bar. */
 	keepRunningInMenuBar: boolean,
@@ -1366,7 +1347,7 @@ export type RedisKeyPage = {
 /**  A key's value, shaped for display: text, field pairs, or a list of members. */
 export type RedisValue = { kind: "text"; value: string } | { kind: "pairs"; pairs: ([string, Value])[] } | { kind: "items"; items: string[]; truncated: boolean } | { kind: "missing" };
 
-/**  A release of a distribution, as aliased on images.linuxcontainers.org (`ubuntu/24.04`). */
+/**  A release of a distribution, by the tag of its image. */
 export type Release = {
 	alias: string,
 	label: string,
@@ -1393,8 +1374,11 @@ export type ResultColumn = {
 export type RouteDown = 
 /**  The container is stopped or gone. */
 "stopped" | 
-/**  The container runs but doesn't publish the port to the Mac. */
-"notPublished";
+/**
+ *  The container runs but has no port to send requests to: it neither publishes nor
+ *  exposes one.
+ */
+"noPort";
 
 export type RouteKind = "container" | "custom" | 
 /**  A Kubernetes service reachable from the Mac. */
@@ -1486,7 +1470,10 @@ export type ServiceSummary = {
 	kind: string,
 	clusterIp: string | null,
 	ports: ServicePort[],
-	/**  `localhost:port` for a `LoadBalancer` service: k3s binds it in the VM and Lima forwards it. */
+	/**
+	 *  `localhost:port` for a `LoadBalancer` service: k3s binds it in the VM and the engine
+	 *  publishes it on the Mac.
+	 */
 	fromMac: string | null,
 };
 
@@ -1611,11 +1598,13 @@ JsonDocument;
 /**  How the grid aligns, edits and filters a column. */
 export type ValueKind = "number" | "text" | "bool" | "json" | "time" | "binary" | "other";
 
-/**
- *  Apple Virtualization keeps Rosetta; krunkit gives freed memory back to macOS. The choice is
- *  fixed when the engine is created.
- */
-export type VmType = "vz" | "krunkit";
+/**  The VM as it was started. Settings saved since apply at its next start. */
+export type Vm = {
+	cpus: number,
+	memory: MemoryUse,
+	/**  The guest's Linux release. */
+	kernel: string,
+};
 
 /**  One entry of a folder inside a volume. */
 export type VolumeFile = {

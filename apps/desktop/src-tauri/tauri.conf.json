@@ -61,7 +61,8 @@
       "signingIdentity": "-"
     },
     "resources": {
-      "resources/tools/": "tools/"
+      "resources/tools/": "tools/",
+      "resources/engine/": "engine/"
     }
   }
 }

@@ -69,6 +69,19 @@ impl Docker {
     /// Fails when the container isn't running. A container without `/bin/sh` fails when the
     /// shell starts; the debug shell is the way in then.
     pub async fn shell(&self, id: &str, cols: u16, rows: u16) -> Result<Shell> {
+        self.exec_shell(id, SHELL.to_vec(), cols, rows).await
+    }
+
+    /// A login shell as `user` in a container that holds a whole system, as a Linux machine
+    /// does: their own shell, home folder and environment.
+    ///
+    /// # Errors
+    /// Fails when the container isn't running.
+    pub async fn login_shell(&self, id: &str, user: &str, cols: u16, rows: u16) -> Result<Shell> {
+        self.exec_shell(id, vec!["su", "-", user], cols, rows).await
+    }
+
+    async fn exec_shell(&self, id: &str, cmd: Vec<&str>, cols: u16, rows: u16) -> Result<Shell> {
         let exec = self
             .api
             .create_exec(
@@ -79,7 +92,7 @@ impl Docker {
                     attach_stderr: Some(true),
                     tty: Some(true),
                     env: Some(vec!["TERM=xterm-256color"]),
-                    cmd: Some(SHELL.to_vec()),
+                    cmd: Some(cmd),
                     ..CreateExecOptions::default()
                 },
             )
@@ -114,8 +127,8 @@ impl Docker {
         self.sidecar_shell(&name, host, vec!["sh".to_owned()], cols, rows).await
     }
 
-    /// A root shell in the engine's Linux VM itself, for what `colima ssh` is used for: the VM's
-    /// processes, mounts and network, entered from a privileged busybox. Removes itself on exit.
+    /// A root shell in the engine's Linux VM itself: the VM's processes, mounts and network,
+    /// entered from a privileged busybox. Removes itself on exit.
     ///
     /// # Errors
     /// Fails when the engine refuses a privileged container or busybox can't be pulled.

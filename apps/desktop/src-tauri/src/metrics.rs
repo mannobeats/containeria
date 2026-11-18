@@ -124,7 +124,7 @@ impl Sampler {
         let mut previous = HashMap::new();
         let mut alerts = Alerts::default();
         loop {
-            let metrics = match engine.docker().await {
+            let metrics = match engine.watching().await {
                 Ok(docker) => sample(&docker, &engine, &mut previous).await,
                 Err(_) => None,
             };
@@ -246,6 +246,7 @@ mod tests {
             service: None,
             pod: pod.map(str::to_owned),
             ports: Vec::new(),
+            address: None,
             created_at: 0,
         }
     }

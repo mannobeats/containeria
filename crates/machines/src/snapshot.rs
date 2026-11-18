@@ -1,10 +1,22 @@
-use http::Method;
-use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use std::collections::HashMap;
 
-use crate::client::Incus;
+use bollard::query_parameters::{
+    InspectContainerOptions, ListImagesOptionsBuilder, RemoveImageOptionsBuilder,
+    RenameContainerOptionsBuilder, StartContainerOptions,
+};
+use serde::Serialize;
+
+use crate::machine::{Shape, USER, container, mounted_home};
 use crate::name::{validate_name, validate_snapshot_name};
-use crate::{Error, MachineState, Result};
+use crate::{Error, Machines, Result};
+
+/// Snapshots are images in this repository, tagged with the machine's name, a dot and the
+/// snapshot's. A machine's name has no dot, so the first one divides them. Labels wouldn't do:
+/// a machine restored from a snapshot inherits the image's, and so would every copy of it.
+const SNAPSHOTS: &str = "containeria/machine-snapshot";
+/// The image a machine's container was made from when that isn't a distribution's shared one: a
+/// clone's source, an imported disk.
+const OWN_IMAGE: &str = "containeria/machine-image";
 
 /// A saved state of a machine's disk that it can go back to.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, specta::Type)]
@@ -14,90 +26,135 @@ pub struct MachineSnapshot {
     pub created_at: String,
 }
 
-#[derive(Debug, Deserialize)]
-struct RawSnapshot {
-    name: String,
-    #[serde(default)]
-    created_at: String,
-}
-
-impl From<RawSnapshot> for MachineSnapshot {
-    fn from(raw: RawSnapshot) -> Self {
-        Self { name: raw.name, created_at: raw.created_at }
-    }
-}
-
-fn snapshots_path(machine: &str, snapshot: &str) -> Result<String> {
+fn reference(machine: &str, snapshot: &str) -> Result<String> {
     validate_name(machine)?;
     validate_snapshot_name(snapshot)?;
-    Ok(format!("/1.0/instances/{machine}/snapshots/{snapshot}"))
+    Ok(format!("{SNAPSHOTS}:{machine}.{snapshot}"))
 }
 
-/// A standalone copy of `from` named `to`, without `from`'s snapshots.
-fn copy_body(from: &str, to: &str) -> Result<Value> {
-    validate_name(from)?;
-    validate_name(to)?;
-    Ok(json!({
-        "name": to,
-        "source": { "type": "copy", "source": from, "instance_only": true },
-    }))
+pub(crate) fn own_image(machine: &str) -> String {
+    format!("{OWN_IMAGE}:{machine}")
 }
 
-impl Incus {
+impl Machines {
     /// The machine's snapshots, newest first.
     ///
     /// # Errors
-    /// Fails when the machine doesn't exist.
+    /// Fails when the engine can't be reached.
     pub async fn snapshots(&self, machine: &str) -> Result<Vec<MachineSnapshot>> {
         validate_name(machine)?;
-        let raw: Vec<RawSnapshot> =
-            self.get(&format!("/1.0/instances/{machine}/snapshots?recursion=1")).await?;
-        let mut snapshots: Vec<MachineSnapshot> = raw.into_iter().map(Into::into).collect();
-        snapshots.sort_by(|a, b| b.created_at.cmp(&a.created_at));
-        Ok(snapshots)
+        let of_machine = format!("{SNAPSHOTS}:{machine}.*");
+        let filters = HashMap::from([("reference", vec![of_machine.as_str()])]);
+        let options = ListImagesOptionsBuilder::new().filters(&filters).build();
+        let mut images = self.api.list_images(Some(options)).await?;
+        images.sort_by_key(|image| std::cmp::Reverse(image.created));
+        let prefix = format!("{SNAPSHOTS}:{machine}.");
+        Ok(images
+            .into_iter()
+            .filter_map(|image| {
+                let created = jiff::Timestamp::from_second(image.created).ok()?;
+                let name = image.repo_tags.iter().find_map(|tag| tag.strip_prefix(&prefix))?;
+                Some(MachineSnapshot { name: name.to_owned(), created_at: created.to_string() })
+            })
+            .collect())
     }
 
-    /// Saves the disk as it is now. A running machine keeps running.
+    /// Saves the disk as it is now. A running machine pauses for the moment it takes.
     ///
     /// # Errors
-    /// Fails on a bad name, a name already taken, or when Incus refuses.
+    /// Fails when the machine doesn't exist or the name is taken or invalid.
     pub async fn snapshot(&self, machine: &str, snapshot: &str) -> Result<()> {
-        snapshots_path(machine, snapshot)?;
-        let body = json!({ "name": snapshot, "stateful": false });
-        self.run(Method::POST, &format!("/1.0/instances/{machine}/snapshots"), Some(&body)).await
-    }
-
-    /// Puts the disk back as it was in the snapshot; everything since is lost. Incus stops a
-    /// running machine for the restore and starts it again.
-    ///
-    /// # Errors
-    /// Fails when the snapshot doesn't exist or Incus refuses.
-    pub async fn restore(&self, machine: &str, snapshot: &str) -> Result<()> {
-        snapshots_path(machine, snapshot)?;
-        let body = json!({ "restore": snapshot });
-        self.run(Method::PUT, &format!("/1.0/instances/{machine}"), Some(&body)).await
-    }
-
-    /// # Errors
-    /// Fails when the snapshot doesn't exist or Incus refuses.
-    pub async fn delete_snapshot(&self, machine: &str, snapshot: &str) -> Result<()> {
-        self.run(Method::DELETE, &snapshots_path(machine, snapshot)?, None).await
-    }
-
-    /// Copies a machine to a new, stopped machine named `to`. A running system container is
-    /// copied as it is on disk at that moment.
-    ///
-    /// # Errors
-    /// Fails on a bad or taken name, or when Incus can't copy the machine while it runs.
-    pub async fn copy(&self, from: &str, to: &str) -> Result<()> {
-        let body = copy_body(from, to)?;
-        let running = self.machine(from).await?.state != MachineState::Stopped;
-        match self.run(Method::POST, "/1.0/instances", Some(&body)).await {
-            Err(Error::Incus(reason)) if running => {
-                Err(Error::Incus(format!("{reason}. Stop {from} and clone it again.")))
-            }
-            copied => copied,
+        let reference = reference(machine, snapshot)?;
+        if self.api.inspect_image(&reference).await.is_ok() {
+            return Err(Error::Invalid(format!("A snapshot named {snapshot} already exists.")));
         }
+        self.commit(&container(machine), &reference).await
+    }
+
+    /// Puts the disk back as it was in the snapshot; everything since is lost. A running machine
+    /// restarts. The machine as it was stays until the restored one exists.
+    ///
+    /// # Errors
+    /// Fails when the machine or the snapshot doesn't exist.
+    pub async fn restore(&self, machine: &str, snapshot: &str) -> Result<()> {
+        let reference = reference(machine, snapshot)?;
+        self.api.inspect_image(&reference).await?;
+        let (shape, running) = self.shape_of(machine).await?;
+        let (name, aside) = (container(machine), format!("{}-replaced", container(machine)));
+        let _ = self.remove(&aside).await;
+        let options = RenameContainerOptionsBuilder::new().name(&aside).build();
+        self.api.rename_container(&name, options).await?;
+        if let Err(error) = self.create_container(&shape, &reference).await {
+            let options = RenameContainerOptionsBuilder::new().name(&name).build();
+            self.api.rename_container(&aside, options).await?;
+            return Err(error);
+        }
+        self.remove(&aside).await?;
+        if running {
+            self.api.start_container(&name, None::<StartContainerOptions>).await?;
+        }
+        Ok(())
+    }
+
+    /// # Errors
+    /// Fails when the snapshot doesn't exist.
+    pub async fn delete_snapshot(&self, machine: &str, snapshot: &str) -> Result<()> {
+        // Forced: a machine restored from the snapshot still uses the image, which then stays
+        // without its name until that machine goes.
+        let options = RemoveImageOptionsBuilder::new().force(true).build();
+        self.api.remove_image(&reference(machine, snapshot)?, Some(options), None).await?;
+        Ok(())
+    }
+
+    /// A stopped copy of `from` named `to`, as `from` is on disk right now, without its snapshots.
+    ///
+    /// # Errors
+    /// Fails when `from` doesn't exist or `to` is taken or invalid.
+    pub async fn copy(&self, from: &str, to: &str) -> Result<()> {
+        validate_name(to)?;
+        if self.api.inspect_container(&container(to), None::<InspectContainerOptions>).await.is_ok()
+        {
+            return Err(Error::Invalid(format!("A machine named {to} already exists.")));
+        }
+        let (shape, _) = self.shape_of(from).await?;
+        let image = own_image(to);
+        self.commit(&container(from), &image).await?;
+        self.create_container(&Shape { name: to.to_owned(), ..shape }, &image).await
+    }
+
+    /// Removes the image only `machine` was made from, if it has one.
+    pub(crate) async fn forget_image(&self, machine: &str) {
+        let options = RemoveImageOptionsBuilder::new().force(true).build();
+        let _ = self.api.remove_image(&own_image(machine), Some(options), None).await;
+    }
+
+    /// How a machine's container was made, and whether it runs.
+    pub(crate) async fn shape_of(&self, machine: &str) -> Result<(Shape, bool)> {
+        validate_name(machine)?;
+        let inspect = self
+            .api
+            .inspect_container(&container(machine), None::<InspectContainerOptions>)
+            .await?;
+        let running = inspect.state.and_then(|state| state.running).unwrap_or(false);
+        let config = inspect.config.unwrap_or_default();
+        let host = inspect.host_config.unwrap_or_default();
+        let labels = config.labels.unwrap_or_default();
+        let label = |key: &str| labels.get(key).cloned().unwrap_or_default();
+        let shape = Shape {
+            name: machine.to_owned(),
+            distro: label("dev.containeria.machine.distro"),
+            release: label("dev.containeria.machine.release"),
+            user: label(USER),
+            init: config
+                .cmd
+                .and_then(|cmd| cmd.into_iter().next())
+                .unwrap_or_else(|| "/sbin/init".to_owned()),
+            stop_signal: config.stop_signal.unwrap_or_else(|| "SIGTERM".to_owned()),
+            cpus: u16::try_from(host.nano_cpus.unwrap_or(0) / 1_000_000_000).unwrap_or(0).max(1),
+            memory_gib: u16::try_from(host.memory.unwrap_or(0) >> 30).unwrap_or(0).max(1),
+            home: mounted_home(host.binds),
+        };
+        Ok((shape, running))
     }
 }
 
@@ -106,34 +163,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn reads_incus_snapshots() {
-        let raw = r#"[{"name":"before-upgrade","created_at":"2026-10-17T15:55:32.198972101Z",
-            "stateful":false,"size":0,"expires_at":"0001-01-01T00:00:00Z","config":{}}]"#;
-        let raw: Vec<RawSnapshot> = serde_json::from_str(raw).unwrap();
-        let snapshots: Vec<MachineSnapshot> = raw.into_iter().map(Into::into).collect();
-        assert_eq!(snapshots[0].name, "before-upgrade");
-        assert_eq!(snapshots[0].created_at, "2026-10-17T15:55:32.198972101Z");
-        let sent = serde_json::to_value(&snapshots[0]).unwrap();
-        assert_eq!(sent["createdAt"], "2026-10-17T15:55:32.198972101Z");
+    fn a_snapshot_is_an_image_named_after_its_machine() {
+        assert_eq!(
+            reference("dev", "before-upgrade").unwrap(),
+            "containeria/machine-snapshot:dev.before-upgrade"
+        );
     }
 
     #[test]
-    fn copies_without_the_snapshots() {
-        let body = copy_body("ubuntu", "ubuntu-copy").unwrap();
-        assert_eq!(body["name"], "ubuntu-copy");
-        assert_eq!(
-            body["source"],
-            json!({ "type": "copy", "source": "ubuntu", "instance_only": true })
-        );
-        assert!(copy_body("ubuntu", "Ubuntu Copy").is_err());
-    }
-
-    #[test]
-    fn builds_snapshot_paths_only_from_valid_names() {
-        assert_eq!(
-            snapshots_path("dev", "2026-10-17-1530").unwrap(),
-            "/1.0/instances/dev/snapshots/2026-10-17-1530"
-        );
-        assert!(snapshots_path("dev", "../dev").is_err());
+    fn refuses_names_that_are_not_names() {
+        assert!(reference("Dev", "ok").is_err());
+        assert!(reference("dev", "has space").is_err());
+        assert!(reference("dev", "").is_err());
     }
 }

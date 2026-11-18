@@ -12,8 +12,8 @@ import { SettingsSection } from "./settings-section";
 const SOURCE = "https://github.com/mannobeats/containeria";
 
 const BUILT_ON: [string, string][] = [
-  ["Colima", "MIT"],
-  ["Lima", "Apache-2.0"],
+  ["Linux kernel", "GPL-2.0"],
+  ["Alpine Linux", "MIT and others"],
   ["Docker Engine (Moby)", "Apache-2.0"],
   ["k3s", "Apache-2.0"],
   ["Tauri", "MIT / Apache-2.0"],
@@ -51,10 +51,6 @@ export function AboutPane() {
         <Kv
           className="px-3.5 py-0.5"
           rows={[
-            {
-              label: "Colima",
-              value: about?.colimaVersion ?? <span className="text-ink-3">Not found</span>,
-            },
             { label: "Docker Engine", value: engine ? engine.serverVersion : notRunning },
             {
               label: "Kernel",

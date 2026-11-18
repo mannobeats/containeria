@@ -1,6 +1,5 @@
 import { IconPower } from "@tabler/icons-react";
 
-import { useBootLog } from "@/features/engine/api";
 import { Button } from "@/ui/button";
 import { EmptyState } from "@/ui/empty-state";
 import { Progress } from "@/ui/progress";
@@ -33,7 +32,6 @@ export function KubernetesOff() {
 
 /** `canTurnOff` offers a way out when k3s never comes up: the cluster header isn't shown yet. */
 export function KubernetesStarting({ canTurnOff = false }: { canTurnOff?: boolean }) {
-  const line = useBootLog((state) => state.lines.at(-1));
   const turnOff = useSetKubernetes();
   return (
     <EmptyState
@@ -49,10 +47,9 @@ export function KubernetesStarting({ canTurnOff = false }: { canTurnOff?: boolea
       }
     >
       <p className="m-0">
-        k3s is starting inside the engine. The first start downloads its images.
+        k3s is starting inside the engine. The first start downloads it and its images.
       </p>
       <Progress label="Kubernetes progress" className="mx-auto mt-2 w-60" />
-      <p className="m-0 mt-0.5 h-5 truncate text-12 text-ink-3">{line?.message ?? ""}</p>
     </EmptyState>
   );
 }

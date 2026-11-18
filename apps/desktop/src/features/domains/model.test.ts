@@ -51,7 +51,7 @@ describe("routeState", () => {
   it("names why a route is down", () => {
     expect(routeState(route())).toBe("Up");
     expect(routeState(route({ down: "stopped" }))).toBe("Stopped");
-    expect(routeState(route({ down: "notPublished" }))).toBe("Port not published");
+    expect(routeState(route({ down: "noPort" }))).toBe("No port to send to");
   });
 });
 

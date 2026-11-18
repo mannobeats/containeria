@@ -1,11 +1,11 @@
-import type { Distro, Machine, MachinesStatus } from "@/lib/ipc/bindings";
+import type { Distro, Machine } from "@/lib/ipc/bindings";
 
 export function machineFixture(overrides: Partial<Machine> = {}): Machine {
   return {
     name: "ubuntu-dev",
-    distro: "Ubuntu",
+    distro: "ubuntu",
     release: "24.04",
-    kind: "container",
+    user: "ada",
     state: "running",
     ipv4: "10.214.83.12",
     memoryBytes: 310 * 1024 ** 2,
@@ -19,10 +19,6 @@ export function machineFixture(overrides: Partial<Machine> = {}): Machine {
   };
 }
 
-export function machinesStatusFixture(overrides: Partial<MachinesStatus> = {}): MachinesStatus {
-  return { phase: "running", instance: null, supportsVms: false, ...overrides };
-}
-
 export const distrosFixture: Distro[] = [
   {
     id: "ubuntu",
@@ -33,5 +29,5 @@ export const distrosFixture: Distro[] = [
     ],
   },
   { id: "debian", name: "Debian", releases: [{ alias: "13", label: "13 trixie" }] },
-  { id: "archlinux", name: "Arch Linux", releases: [{ alias: "current", label: "rolling" }] },
+  { id: "alpine", name: "Alpine", releases: [{ alias: "3.24", label: "3.24" }] },
 ];

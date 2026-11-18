@@ -66,6 +66,7 @@ mod tests {
                     protocol: PortProtocol::Tcp,
                 })
                 .collect(),
+            address: None,
             created_at: 0,
         }
     }

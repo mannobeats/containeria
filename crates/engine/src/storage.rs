@@ -1,9 +1,7 @@
-//! Where the engine keeps its virtual disks, and moving them somewhere else.
+//! Where the engine keeps its data disk, and moving it somewhere else.
 //!
-//! Lima keeps every VM disk under `LIMA_HOME`, which Colima sets to `<COLIMA_HOME>/_lima`. Moving
-//! the data moves that folder and leaves a symbolic link in its place, so every path Colima and
-//! Lima wrote down keeps working. Lima resolves the link, which puts its Unix sockets on the new
-//! drive: the new path has to stay short enough for them.
+//! The disk lives in [`Home::vm`]. Moving the data moves that folder and leaves a symbolic link
+//! in its place, so the engine finds it where it always did.
 
 use std::fs::{self, File};
 use std::io::{self, Read, Seek, SeekFrom, Write};
@@ -13,17 +11,12 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 
 use crate::error::{Error, Result};
-use crate::home::{Home, Profile};
+use crate::home::Home;
 
 /// The folder made inside the one the user picks.
 const FOLDER_NAME: &str = "Containeria";
 
-/// macOS limits a Unix socket path to 104 bytes. Lima puts `ssh.sock` and `ha.sock` inside each
-/// instance folder; this leaves room for the longest instance name and a socket file name.
-const MAX_SOCKET_PATH: usize = 103;
-const SOCKET_FILE_ROOM: usize = 12;
-
-/// Formats that hold symbolic links, Unix sockets and sparse disk images.
+/// Formats that hold sparse disk images.
 const SUPPORTED_FORMATS: [&str; 2] = ["apfs", "hfs"];
 
 const COPY_CHUNK: usize = 4 * 1024 * 1024;
@@ -51,18 +44,10 @@ pub struct MoveProgress {
     pub total_bytes: u64,
 }
 
-impl Home {
-    /// `LIMA_HOME` as Colima sets it: the VM disks, or a link to where they were moved.
-    #[must_use]
-    pub fn lima(&self) -> PathBuf {
-        self.colima().join("_lima")
-    }
-}
-
 /// Where the data is now.
 #[must_use]
 pub fn location(home: &Home) -> DataLocation {
-    let link = home.lima();
+    let link = home.vm();
     let is_default = !link.is_symlink();
     let target = if is_default { link.clone() } else { fs::read_link(&link).unwrap_or(link) };
     let available = target.is_dir() || is_default;
@@ -77,25 +62,18 @@ pub fn location(home: &Home) -> DataLocation {
 /// Fails with a sentence for the user when the folder can't take the data.
 pub fn destination(home: &Home, folder: Option<&Path>) -> Result<PathBuf> {
     let Some(folder) = folder else {
-        let current = fs::canonicalize(home.lima()).unwrap_or_else(|_| home.lima());
-        check_space(&home.colima(), &current)?;
-        return Ok(home.lima());
+        let current = fs::canonicalize(home.vm()).unwrap_or_else(|_| home.vm());
+        check_space(home.root(), &current)?;
+        return Ok(home.vm());
     };
     if !folder.is_dir() {
         return Err(Error::Storage(format!("{} isn't a folder.", folder.display())));
     }
     let target = folder.join(FOLDER_NAME);
-    let longest = target.as_os_str().len() + 2 + Profile::Machines.name().len() + 6;
-    if longest + SOCKET_FILE_ROOM > MAX_SOCKET_PATH {
-        return Err(Error::Storage(format!(
-            "{} is too deep for the engine's sockets. Pick a folder nearer the top of the drive.",
-            folder.display()
-        )));
-    }
     if target.exists() && fs::read_dir(&target)?.next().is_some() {
         return Err(Error::Storage(format!("{} already has files in it.", target.display())));
     }
-    let current = fs::canonicalize(home.lima()).unwrap_or_else(|_| home.lima());
+    let current = fs::canonicalize(home.vm()).unwrap_or_else(|_| home.vm());
     let folder_real = fs::canonicalize(folder)?;
     if folder_real.starts_with(&current) {
         return Err(Error::Storage("The new location can't be inside the data itself.".to_owned()));
@@ -129,7 +107,7 @@ fn check_space(folder: &Path, data: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Moves the engine's disks into `folder`, or back to the default with `None`. Both VMs must be
+/// Moves the engine's data into `folder`, or back to the default with `None`. The engine must be
 /// stopped. The data is copied before anything is removed, so a failure leaves it where it was.
 ///
 /// # Errors
@@ -139,7 +117,7 @@ pub fn move_data(
     folder: Option<&Path>,
     mut on_progress: impl FnMut(MoveProgress),
 ) -> Result<()> {
-    let link = home.lima();
+    let link = home.vm();
     let source = fs::canonicalize(&link)?;
     let picked = folder.map(|folder| folder.join(FOLDER_NAME));
     if picked
@@ -181,7 +159,6 @@ pub fn move_data(
         // The copy is in place and linked; only now does the original go.
         fs::remove_dir_all(leftover.as_deref().unwrap_or(&source))?;
     }
-    rewrite_links(&target, &source, &link)?;
     Ok(())
 }
 
@@ -214,25 +191,6 @@ fn place(link: &Path, partial: &Path, target: &Path) -> io::Result<Option<PathBu
     Ok(Some(aside))
 }
 
-/// Lima records which VM uses a disk as an absolute link. Links into the old place now point
-/// through `link`, which follows the data wherever it goes.
-fn rewrite_links(root: &Path, old_root: &Path, link: &Path) -> io::Result<()> {
-    for entry in fs::read_dir(root)? {
-        let path = entry?.path();
-        let metadata = fs::symlink_metadata(&path)?;
-        if metadata.is_dir() {
-            rewrite_links(&path, old_root, link)?;
-        } else if metadata.is_symlink() {
-            let pointed = fs::read_link(&path)?;
-            if let Ok(rest) = pointed.strip_prefix(old_root) {
-                fs::remove_file(&path)?;
-                symlink(link.join(rest), &path)?;
-            }
-        }
-    }
-    Ok(())
-}
-
 fn copy_tree(from: &Path, to: &Path, on_bytes: &mut impl FnMut(u64)) -> io::Result<()> {
     fs::create_dir_all(to)?;
     fs::set_permissions(to, fs::metadata(from)?.permissions())?;
@@ -247,7 +205,7 @@ fn copy_tree(from: &Path, to: &Path, on_bytes: &mut impl FnMut(u64)) -> io::Resu
         } else if kind.is_file() {
             copy_sparse(&source, &target, on_bytes)?;
         }
-        // Sockets and pipes belong to a running VM; a stopped one has nothing to keep in them.
+        // Anything else is not the engine's.
     }
     Ok(())
 }
@@ -343,36 +301,28 @@ fn gigabytes(bytes: u64) -> String {
 mod tests {
     use super::*;
 
-    /// Under `/tmp`: macOS's per-user temp folder is too deep for the socket check.
-    fn short_tempdir() -> tempfile::TempDir {
-        tempfile::Builder::new().tempdir_in("/tmp").unwrap()
-    }
-
     fn home_with_data() -> (tempfile::TempDir, Home) {
-        let root = short_tempdir();
+        let root = tempfile::tempdir().unwrap();
         let home = Home::at(root.path().join("home"));
-        let disks = home.lima().join("_disks/colima-containeria");
-        fs::create_dir_all(&disks).unwrap();
-        let instance = home.lima().join("colima-containeria");
-        fs::create_dir_all(&instance).unwrap();
-        let mut disk = File::create(instance.join("disk")).unwrap();
+        fs::create_dir_all(home.vm()).unwrap();
+        fs::write(home.vm().join("mac-address"), "02:00:00:00:00:01").unwrap();
+        let mut disk = File::create(home.data_disk()).unwrap();
         disk.seek(SeekFrom::Start(64 * 1024 * 1024)).unwrap();
         disk.write_all(b"data after a hole").unwrap();
         disk.set_len(128 * 1024 * 1024).unwrap();
-        symlink(&instance, disks.join("in_use_by")).unwrap();
         (root, home)
     }
 
     #[test]
-    fn moves_the_disks_and_leaves_a_link() {
+    fn moves_the_disk_and_leaves_a_link() {
         let (root, home) = home_with_data();
         let drive = root.path().join("drive");
         fs::create_dir(&drive).unwrap();
         move_data(&home, Some(&drive), |_| {}).unwrap();
         let moved = drive.join(FOLDER_NAME);
-        assert_eq!(fs::read_link(home.lima()).unwrap(), moved);
-        let disk = home.lima().join("colima-containeria/disk");
-        assert_eq!(fs::metadata(&disk).unwrap().len(), 128 * 1024 * 1024);
+        assert_eq!(fs::read_link(home.vm()).unwrap(), moved);
+        assert_eq!(fs::metadata(home.data_disk()).unwrap().len(), 128 * 1024 * 1024);
+        assert!(home.vm().join("mac-address").is_file());
         let location = location(&home);
         assert!(!location.is_default);
         assert!(location.available);
@@ -386,15 +336,15 @@ mod tests {
         fs::create_dir(&drive).unwrap();
         move_data(&home, Some(&drive), |_| {}).unwrap();
         move_data(&home, None, |_| {}).unwrap();
-        assert!(!home.lima().is_symlink());
-        assert!(home.lima().join("colima-containeria/disk").is_file());
+        assert!(!home.vm().is_symlink());
+        assert!(home.data_disk().is_file());
         assert!(!drive.join(FOLDER_NAME).exists());
         assert!(location(&home).is_default);
     }
 
     #[test]
     fn copies_only_the_data_of_a_sparse_disk() {
-        let root = short_tempdir();
+        let root = tempfile::tempdir().unwrap();
         let (from, to) = (root.path().join("from"), root.path().join("to"));
         let mut file = File::create(&from).unwrap();
         file.write_all(&vec![0; 8 * 1024 * 1024]).unwrap();
@@ -410,29 +360,9 @@ mod tests {
     }
 
     #[test]
-    fn points_disk_links_through_the_stable_path() {
-        let (root, home) = home_with_data();
-        let drive = root.path().join("drive");
-        fs::create_dir(&drive).unwrap();
-        move_data(&home, Some(&drive), |_| {}).unwrap();
-        let in_use_by = drive.join(FOLDER_NAME).join("_disks/colima-containeria/in_use_by");
-        assert!(fs::read_link(&in_use_by).unwrap().starts_with(home.lima()));
-        assert!(fs::metadata(&in_use_by).unwrap().is_dir());
-    }
-
-    #[test]
     fn says_sizes_in_gigabytes() {
         assert_eq!(gigabytes(7_412_000_000), "7.4 GB");
         assert_eq!(gigabytes(0), "0.0 GB");
-    }
-
-    #[test]
-    fn refuses_a_folder_too_deep_for_the_sockets() {
-        let (root, home) = home_with_data();
-        let deep = root.path().join("a".repeat(80));
-        fs::create_dir(&deep).unwrap();
-        let error = destination(&home, Some(&deep)).unwrap_err();
-        assert!(error.to_string().contains("too deep"));
     }
 
     #[test]

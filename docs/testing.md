@@ -1,11 +1,22 @@
 # Testing
 
 - **Rust**: unit tests in `#[cfg(test)] mod tests` beside the code. Test parsing of engine output
-  with real samples (Colima JSON, Docker stats), conversions, and decisions (ledger grouping). Tests
+  with real samples (Docker stats, `/proc` files), conversions, and decisions (ledger grouping). Tests
   must not need a running engine; anything that does goes behind `#[ignore = "needs a Docker engine"]`
   and runs with `cargo test -- --ignored` locally. The database tests in
   `crates/data/src/live_tests.rs` list the throwaway `containeria-test-*` containers they need
   and the command that removes them afterwards.
+- **The engine, end to end**: `crates/engine/tests/engine.rs` boots a real VM and drives it with
+  the `docker` command: containers, the Mac's folders, published ports, reaching the Mac by
+  name, the SSH agent, changes to the Mac's files as containers see and hear of them, sleeping
+  and waking, and that nothing written is lost over a stop. `crates/machines/tests/machines.rs` makes real
+  machines of every distribution. Both are ignored by default and need what
+  `scripts/build-engine.sh`, `scripts/build-guest.sh` and `scripts/fetch-tools.sh` build; run
+  them before changing the engine, the agent, the guest or the VM helper. A bug in any of those
+  gets a check there that fails without the fix.
+- **The agent** runs only in the guest. What it decides from text and bytes lives in its library
+  (`crates/agent/src/lib.rs`) so it is tested on the Mac; the Linux calls around it are linted for
+  Linux by `pnpm check`.
 - **TypeScript**: Vitest with happy-dom. Test `model.ts` logic and `lib/` helpers as plain
   functions; test a component with Testing Library only when it holds logic a user would notice
   breaking. Files sit next to the code as `*.test.ts(x)`.

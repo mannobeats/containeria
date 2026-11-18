@@ -111,6 +111,11 @@ pub(crate) fn last_line(stderr: &str, tool: &str) -> String {
         .map_or_else(|| format!("{tool} failed"), |line| line.trim().to_owned())
 }
 
+/// Quotes a word for `sh`, so paths with spaces or quotes survive.
+fn quote(word: &str) -> String {
+    format!("'{}'", word.replace('\'', r"'\''"))
+}
+
 /// The Docker CLI, for builds (`BuildKit` through buildx) and pushes (with the user's logins).
 #[derive(Debug, Clone)]
 pub struct DockerCli {
@@ -179,6 +184,44 @@ impl DockerCli {
         Some(Self { bin, socket: socket.to_path_buf(), config })
     }
 
+    /// The line a Mac terminal runs for a login shell as `user` in `container`, as
+    /// [`crate::Docker::login_shell`] opens inside the app.
+    #[must_use]
+    pub fn login_command(&self, container: &str, user: &str) -> String {
+        format!(
+            "DOCKER_HOST={} {} exec -it {} su - {}",
+            quote(&format!("unix://{}", self.socket.display())),
+            quote(&self.bin.to_string_lossy()),
+            quote(container),
+            quote(user),
+        )
+    }
+
+    /// Makes `name` the `docker` command's current context, pointing at this engine, so plain
+    /// `docker` in a terminal talks to it. The context is the user's own Docker configuration.
+    ///
+    /// # Errors
+    /// Fails with the CLI's last line when it refuses.
+    pub async fn select_context(&self, name: &str) -> Result<()> {
+        let host = format!("host=unix://{}", self.socket.display());
+        let mut user = Command::new(&self.bin);
+        user.args(["context", "create", name, "--docker", &host]).kill_on_drop(true);
+        if !user.output().await?.status.success() {
+            // It exists from an earlier start, perhaps with another home: point it here.
+            self.user_context(&["context", "update", name, "--docker", &host]).await?;
+        }
+        self.user_context(&["context", "use", name]).await
+    }
+
+    /// Runs `docker` on the user's own configuration, not the bundled CLI's.
+    async fn user_context(&self, args: &[&str]) -> Result<()> {
+        let output = Command::new(&self.bin).args(args).kill_on_drop(true).output().await?;
+        if output.status.success() {
+            return Ok(());
+        }
+        Err(Error::Engine(last_line(&String::from_utf8_lossy(&output.stderr), "docker")))
+    }
+
     pub(crate) fn command<I, S>(&self, args: I) -> Result<Command>
     where
         I: IntoIterator<Item = S>,
@@ -238,6 +281,19 @@ fn write_config(dir: &Path, user: Option<&Path>, plugins: &Path) -> io::Result<(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_login_command_survives_spaces_and_quotes_in_paths() {
+        let cli = DockerCli {
+            bin: PathBuf::from("/Applications/My App's/docker"),
+            socket: PathBuf::from("/Users/ada/.containeria/run/docker.sock"),
+            config: None,
+        };
+        assert_eq!(
+            cli.login_command("containeria-machine-dev", "ada"),
+            r"DOCKER_HOST='unix:///Users/ada/.containeria/run/docker.sock' '/Applications/My App'\''s/docker' exec -it 'containeria-machine-dev' su - 'ada'"
+        );
+    }
 
     #[test]
     fn builds_with_the_options_asked_for() {

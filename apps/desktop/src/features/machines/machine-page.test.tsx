@@ -2,10 +2,10 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import type { Machine } from "@/lib/ipc/bindings";
+import type { FileEntry, Machine } from "@/lib/ipc/bindings";
 import { mockCommands, renderWithApp } from "@/test/harness";
 
-import { machineFixture, machinesStatusFixture } from "./fixtures";
+import { machineFixture } from "./fixtures";
 import { MachineView } from "./machine-page";
 
 const terminal = vi.hoisted(() => ({ input: (_: string): unknown => undefined }));
@@ -46,15 +46,18 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({
 
 type Tab = "overview" | "terminal" | "files" | "snapshots";
 
-function setup(
-  tab: Tab,
-  machine: Machine = machineFixture(),
-  vm: "running" | "stopped" = "running",
-) {
+const file = (name: string, kind: FileEntry["kind"], size: number): FileEntry => ({
+  name,
+  kind,
+  size,
+  modified: 1_760_000_000,
+  permissions: kind === "directory" ? "drwxr-xr-x" : "-rw-r--r--",
+});
+
+function setup(tab: Tab, machine: Machine = machineFixture()) {
   const onTab = vi.fn();
   const onLeave = vi.fn();
   const calls = mockCommands({
-    machinesStatus: () => machinesStatusFixture({ phase: vm }),
     machinesList: () => [machine],
     machineShell: () => 7,
     machineSnapshots: () => [
@@ -62,12 +65,9 @@ function setup(
       { name: "fresh", createdAt: "2026-10-15T08:00:00Z" },
     ],
     machineFiles: ({ path }) =>
-      path === "/root"
-        ? [
-            { name: "projects", path: "/root/projects", kind: "directory", sizeBytes: 0 },
-            { name: "notes.txt", path: "/root/notes.txt", kind: "file", sizeBytes: 2048 },
-          ]
-        : [{ name: "app.py", path: "/root/projects/app.py", kind: "file", sizeBytes: 120 }],
+      path === "/home/ada"
+        ? [file("projects", "directory", 0), file("notes.txt", "file", 2048)]
+        : [file("app.py", "file", 120)],
   });
   renderWithApp(<MachineView name={machine.name} tab={tab} onTab={onTab} onLeave={onLeave} />);
   return { calls, onTab, onLeave };
@@ -94,7 +94,7 @@ describe("MachineView", () => {
     );
     terminal.input("ls\r");
     await waitFor(() =>
-      expect(calls).toContainEqual({ command: "machineShellInput", args: { id: 7, data: "ls\r" } }),
+      expect(calls).toContainEqual({ command: "shellInput", args: { stream: 7, text: "ls\r" } }),
     );
   });
 
@@ -102,14 +102,14 @@ describe("MachineView", () => {
     const { calls } = setup("files");
     await userEvent.click(await screen.findByRole("button", { name: "projects" }));
     expect(await screen.findByText("app.py")).toBeDefined();
-    await userEvent.click(screen.getByRole("button", { name: "root" }));
+    await userEvent.click(screen.getByRole("button", { name: "ada" }));
     await userEvent.click(await screen.findByRole("button", { name: "Download notes.txt" }));
     await waitFor(() =>
       expect(calls).toContainEqual({
         command: "machineFileDownload",
         args: {
           name: "ubuntu-dev",
-          path: "/root/notes.txt",
+          path: "/home/ada/notes.txt",
           destination: "/Users/ada/Downloads/os-release",
         },
       }),
@@ -123,7 +123,7 @@ describe("MachineView", () => {
     await waitFor(() =>
       expect(calls).toContainEqual({
         command: "machineFileUpload",
-        args: { name: "ubuntu-dev", source: "/Users/ada/notes.txt", directory: "/root" },
+        args: { name: "ubuntu-dev", source: "/Users/ada/notes.txt", directory: "/home/ada" },
       }),
     );
   });
@@ -150,12 +150,6 @@ describe("MachineView", () => {
         args: { name: "ubuntu-dev", action: "start" },
       }),
     );
-  });
-
-  it("asks to start the machine before showing snapshots while the VM is off", async () => {
-    const { calls } = setup("snapshots", machineFixture({ state: "stopped" }), "stopped");
-    expect(await screen.findByText("Start it to use the snapshots.")).toBeDefined();
-    expect(calls.map((call) => call.command)).not.toContain("machineSnapshots");
   });
 
   it("stops the machine from the header", async () => {
@@ -228,7 +222,7 @@ describe("MachineView", () => {
   });
 
   it("says when the machine doesn't exist", async () => {
-    mockCommands({ machinesStatus: () => machinesStatusFixture(), machinesList: () => [] });
+    mockCommands({ machinesList: () => [] });
     renderWithApp(<MachineView name="gone" tab="overview" onTab={vi.fn()} onLeave={vi.fn()} />);
     expect(await screen.findByRole("heading", { name: "gone doesn't exist" })).toBeDefined();
   });

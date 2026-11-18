@@ -9,9 +9,9 @@ function memoryNote(status: EngineStatus | undefined): string {
   if (status?.phase === "external") {
     return "Measured on the Docker engine set in CONTAINERIA_DOCKER_SOCKET.";
   }
-  return status?.returnsMemory
-    ? "krunkit hands memory nobody uses back to macOS within seconds."
-    : "Apple Virtualization keeps memory the engine has used until it restarts.";
+  return status?.config.sleepWhenIdle
+    ? "The engine takes what its containers need, and gives all of it back when nothing runs."
+    : "The engine takes what its containers need, and keeps it until it stops.";
 }
 
 type HeroProps = { ledger: Ledger | undefined; status: EngineStatus | undefined };

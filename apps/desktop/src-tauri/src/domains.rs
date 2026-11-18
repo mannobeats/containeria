@@ -21,7 +21,7 @@ pub(crate) async fn supervise(
             if let Err(error) = domains.start().await {
                 tracing::warn!(%error, "domains couldn't start");
             }
-            let containers = match engine.docker().await {
+            let containers = match engine.watching().await {
                 Ok(docker) => docker.containers().await.unwrap_or_default(),
                 Err(_) => Vec::new(),
             };

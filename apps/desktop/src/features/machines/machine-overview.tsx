@@ -5,7 +5,7 @@ import { Banner } from "@/ui/banner";
 import { Button } from "@/ui/button";
 import { Kv } from "@/ui/kv";
 
-import { isRunning, kindLabel, type ListedMachine, limitLabel, stateLabel } from "./model";
+import { isRunning, type ListedMachine, limitLabel, stateLabel } from "./model";
 
 type OverviewProps = { machine: ListedMachine; onStart: () => void };
 
@@ -47,7 +47,7 @@ export function MachineOverview({ machine, onStart }: OverviewProps) {
         <Kv
           rows={[
             { label: "Distribution", value: `${machine.distro} ${machine.release}` },
-            { label: "Kind", value: kindLabel(machine) },
+            { label: "User", value: machine.user },
             { label: "State", value: stateLabel(machine) },
             {
               label: "IP address",

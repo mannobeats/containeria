@@ -1,5 +1,4 @@
-use containeria_engine::{EngineConfig, LogLine};
-use tauri::ipc::Channel;
+use containeria_engine::EngineConfig;
 use tauri::{AppHandle, State};
 
 use crate::engine::EngineStatus;
@@ -14,33 +13,21 @@ pub(crate) async fn engine_status(state: State<'_, AppState>) -> Result<EngineSt
 
 #[tauri::command]
 #[specta::specta]
-pub(crate) async fn engine_start(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    progress: Channel<LogLine>,
-) -> Result<()> {
-    state.engine.start(&app, |line| drop(progress.send(line))).await
+pub(crate) async fn engine_start(app: AppHandle, state: State<'_, AppState>) -> Result<()> {
+    state.engine.start(&app).await
 }
 
 #[tauri::command]
 #[specta::specta]
-pub(crate) async fn engine_stop(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    progress: Channel<LogLine>,
-) -> Result<()> {
-    state.engine.stop(&app, |line| drop(progress.send(line))).await
+pub(crate) async fn engine_stop(app: AppHandle, state: State<'_, AppState>) -> Result<()> {
+    state.engine.stop(&app).await
 }
 
 #[tauri::command]
 #[specta::specta]
-pub(crate) async fn engine_restart(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    progress: Channel<LogLine>,
-) -> Result<()> {
-    state.engine.stop(&app, |line| drop(progress.send(line.clone()))).await?;
-    state.engine.start(&app, |line| drop(progress.send(line))).await
+pub(crate) async fn engine_restart(app: AppHandle, state: State<'_, AppState>) -> Result<()> {
+    state.engine.stop(&app).await?;
+    state.engine.start(&app).await
 }
 
 #[tauri::command]
@@ -52,15 +39,10 @@ pub(crate) async fn engine_save_config(
     state.engine.save_config(&config)
 }
 
-/// Deletes the engine's VM, and with `machines` the Linux machines VM too. Settings stay.
+/// Deletes the engine's data: every image, container, volume, Linux machine and the Kubernetes
+/// cluster. Settings stay.
 #[tauri::command]
 #[specta::specta]
-pub(crate) async fn engine_reset(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    machines: bool,
-) -> Result<()> {
-    let engine = state.engine.delete(&app).await;
-    let machines = if machines { state.machines.delete(&app).await } else { Ok(()) };
-    engine.and(machines)
+pub(crate) async fn engine_reset(app: AppHandle, state: State<'_, AppState>) -> Result<()> {
+    state.engine.reset(&app).await
 }

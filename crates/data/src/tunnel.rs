@@ -465,10 +465,10 @@ tU9vPvn4dC7hswdA==
         async fn auth_publickey(
             &mut self,
             user: &str,
-            key: &PublicKey,
+            key: russh::server::VerifiedPublicKey<'_>,
         ) -> std::result::Result<russh::server::Auth, Self::Error> {
             let allowed = PublicKey::from_openssh(CLIENT_PUBLIC).unwrap();
-            Ok(if user == "tunnel" && key.key_data() == allowed.key_data() {
+            Ok(if user == "tunnel" && key.public_key.key_data() == allowed.key_data() {
                 russh::server::Auth::Accept
             } else {
                 russh::server::Auth::reject()

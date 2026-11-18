@@ -21,7 +21,7 @@ const useDraftStore = create<DraftStore>((set) => ({
   markSaved: (saved) => set({ saved }),
 }));
 
-/** Engine settings being edited: the saved `colima.yaml` plus any unsaved changes. */
+/** Engine settings being edited: the saved ones plus any unsaved changes. */
 export function useEngineDraft() {
   const { data: status } = useEngineStatus();
   const draft = useDraftStore((state) => state.draft);

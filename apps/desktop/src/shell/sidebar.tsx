@@ -66,11 +66,12 @@ function Group({ label, children }: { label?: string; children: ReactNode }) {
 }
 
 const phaseLine: Record<EnginePhase, string> = {
-  missing: "Colima not found",
+  missing: "Engine not found",
   notCreated: "Not set up yet",
   stopped: "Stopped",
   starting: "Starting…",
   running: "Running",
+  asleep: "Asleep",
   stopping: "Stopping…",
   broken: "Needs attention",
   external: "Using another engine",

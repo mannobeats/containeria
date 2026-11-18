@@ -49,7 +49,7 @@ export function routeState(route: DomainRoute): string {
   if (route.down === "stopped") {
     return "Stopped";
   }
-  return route.down === "notPublished" ? "Port not published" : "Up";
+  return route.down === "noPort" ? "No port to send to" : "Up";
 }
 
 const HOST =

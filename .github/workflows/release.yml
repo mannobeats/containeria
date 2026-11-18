@@ -8,7 +8,28 @@ permissions:
   contents: read
 
 jobs:
+  # The kernel and system image the engine boots. They are Linux, so they build on Linux.
+  guest:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: 1.97.1
+          targets: aarch64-unknown-linux-musl
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Build the guest
+        run: sh scripts/build-guest.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: guest
+          path: apps/desktop/src-tauri/resources/engine/guest
+          if-no-files-found: error
+
   macos:
+    needs: guest
     runs-on: macos-15
     permissions:
       contents: write
@@ -30,6 +51,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Fetch the bundled tools
         run: sh scripts/fetch-tools.sh
+      - name: Build the engine
+        run: sh scripts/build-engine.sh
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: guest
+          path: apps/desktop/src-tauri/resources/engine/guest
       - name: Bundle cx
         run: |
           cargo build -p containeria-cli --release --target aarch64-apple-darwin

@@ -84,6 +84,8 @@ impl Drop for Running {
 /// route table, under one folder (`~/.containeria/net`).
 pub struct Domains {
     dir: PathBuf,
+    /// The engine's socket into the guest's network.
+    inside: Arc<Path>,
     settings: Mutex<Settings>,
     containers: Mutex<Vec<ContainerSummary>>,
     services: Mutex<Vec<ClusterService>>,
@@ -102,11 +104,12 @@ fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 }
 
 impl Domains {
-    /// Reads the saved settings from `dir`. Starts nothing.
+    /// Reads the saved settings from `dir`. Starts nothing. `inside` is the engine's socket into
+    /// the guest's network, which is how a container that publishes no port is reached.
     ///
     /// # Errors
     /// Fails when the settings file exists but can't be read.
-    pub fn open(dir: &Path) -> Result<Self> {
+    pub fn open(dir: &Path, inside: &Path) -> Result<Self> {
         let settings = match fs::read_to_string(dir.join("settings.json")) {
             Ok(text) => serde_json::from_str(&text)?,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => Settings::default(),
@@ -114,6 +117,7 @@ impl Domains {
         };
         let domains = Self {
             dir: dir.to_path_buf(),
+            inside: Arc::from(inside),
             settings: Mutex::new(settings),
             containers: Mutex::new(Vec::new()),
             services: Mutex::new(Vec::new()),
@@ -213,8 +217,17 @@ impl Domains {
         fs::write(self.dir.join(RUNNING_FILE), serde_json::to_string(&ports)?)?;
         let tasks = vec![
             tokio::spawn(dns::serve(socket, Arc::clone(&self.table))),
-            tokio::spawn(proxy::serve_http(http, Arc::clone(&self.table))),
-            tokio::spawn(proxy::serve_https(https, Arc::clone(&self.table), tls)),
+            tokio::spawn(proxy::serve_http(
+                http,
+                Arc::clone(&self.table),
+                Arc::clone(&self.inside),
+            )),
+            tokio::spawn(proxy::serve_https(
+                https,
+                Arc::clone(&self.table),
+                Arc::clone(&self.inside),
+                tls,
+            )),
         ];
         tracing::info!(?ports, "domains started");
         *running = Some(Running { ports, tasks });
@@ -311,7 +324,7 @@ mod tests {
     #[test]
     fn saves_custom_routes_and_reads_them_back() {
         let dir = tempfile::tempdir().unwrap();
-        let domains = Domains::open(dir.path()).unwrap();
+        let domains = Domains::open(dir.path(), Path::new("/nowhere")).unwrap();
         domains
             .add_route(
                 CustomRoute {
@@ -323,7 +336,7 @@ mod tests {
                 None,
             )
             .unwrap();
-        let reopened = Domains::open(dir.path()).unwrap();
+        let reopened = Domains::open(dir.path(), Path::new("/nowhere")).unwrap();
         let routes = reopened.table.read().unwrap().routes().to_vec();
         assert_eq!(routes[0].host, "shop.test");
         reopened.remove_route("shop.test").unwrap();
@@ -333,7 +346,7 @@ mod tests {
     #[test]
     fn renames_a_route_in_one_save() {
         let dir = tempfile::tempdir().unwrap();
-        let domains = Domains::open(dir.path()).unwrap();
+        let domains = Domains::open(dir.path(), Path::new("/nowhere")).unwrap();
         let route = |host: &str| CustomRoute {
             host: host.into(),
             container: "web".into(),
@@ -345,7 +358,7 @@ mod tests {
         domains.add_route(route("Store.Test"), Some("shop.test")).unwrap();
         // A rename that only changes case keeps the route instead of removing the name just saved.
         domains.add_route(route("BLOG.test"), Some("blog.test")).unwrap();
-        let reopened = Domains::open(dir.path()).unwrap();
+        let reopened = Domains::open(dir.path(), Path::new("/nowhere")).unwrap();
         let hosts: Vec<String> =
             lock(&reopened.settings).routes.iter().map(|route| route.host.clone()).collect();
         assert_eq!(hosts, ["store.test", "blog.test"]);
@@ -354,7 +367,7 @@ mod tests {
     #[test]
     fn refuses_a_route_with_an_invalid_host() {
         let dir = tempfile::tempdir().unwrap();
-        let domains = Domains::open(dir.path()).unwrap();
+        let domains = Domains::open(dir.path(), Path::new("/nowhere")).unwrap();
         let route = CustomRoute {
             host: "not a host".into(),
             container: "web".into(),

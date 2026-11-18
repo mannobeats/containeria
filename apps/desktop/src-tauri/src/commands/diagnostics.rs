@@ -1,7 +1,7 @@
 use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 
-use containeria_engine::{Host, Profile};
+use containeria_engine::Host;
 use flate2::Compression;
 use flate2::write::GzEncoder;
 use serde::Serialize;
@@ -13,8 +13,8 @@ use crate::state::AppState;
 /// The end of a long log is what explains a failure; the start is boot noise.
 const LOG_TAIL_BYTES: u64 = 2 * 1024 * 1024;
 
-/// Lima's logs of each VM, by file name inside the instance folder.
-const VM_LOGS: [&str; 4] = ["ha.stderr.log", "ha.stdout.log", "serialv.log", "serial.log"];
+/// The engine's own log and the guest's console, in the engine's log folder.
+const LOGS: [&str; 3] = ["engine.log", "console.log", "console.log.1"];
 
 /// What the bundle says about the Mac and the engine. Container settings are left out: their
 /// environment often holds passwords.
@@ -23,9 +23,7 @@ const VM_LOGS: [&str; 4] = ["ha.stderr.log", "ha.stdout.log", "serialv.log", "se
 struct Summary {
     app_version: String,
     host: Option<Host>,
-    colima_version: Option<String>,
     engine: Option<serde_json::Value>,
-    machines: Option<serde_json::Value>,
     docker: Option<serde_json::Value>,
     containers: Vec<ContainerLine>,
     data_location: containeria_engine::DataLocation,
@@ -52,15 +50,8 @@ async fn summary(app: &AppHandle, state: &AppState) -> Summary {
     Summary {
         app_version: app.package_info().version.to_string(),
         host: Host::detect().await.ok(),
-        colima_version: state.engine.colima_version().await,
         engine: state
             .engine
-            .status()
-            .await
-            .ok()
-            .and_then(|status| serde_json::to_value(status).ok()),
-        machines: state
-            .machines
             .status()
             .await
             .ok()
@@ -109,14 +100,8 @@ fn add(
 /// The files a bundle holds, by their name inside it.
 fn files(state: &AppState) -> Vec<(String, PathBuf)> {
     let home = state.engine.home();
-    let mut files = Vec::new();
-    for profile in [Profile::Containers, Profile::Machines] {
-        files.push((format!("colima/{}.yaml", profile.name()), home.config_file(profile)));
-        let instance = home.lima().join(format!("colima-{}", profile.name()));
-        for log in VM_LOGS {
-            files.push((format!("lima/{}/{log}", profile.name()), instance.join(log)));
-        }
-    }
+    let mut files = vec![("engine.json".to_owned(), home.config_file())];
+    files.extend(LOGS.map(|log| (format!("log/{log}"), home.logs().join(log))));
     files
 }
 

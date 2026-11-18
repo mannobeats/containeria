@@ -41,7 +41,7 @@ pub(crate) async fn container_shell(
     Ok(attach(&state, shell.output, Resizer::Container(shell.target), shell.input, channel))
 }
 
-/// Opens a root shell in the engine's Linux VM, as `colima ssh` does.
+/// Opens a root shell in the engine's Linux VM.
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn engine_shell(

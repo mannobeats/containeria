@@ -24,17 +24,11 @@ export function describeChanges(saved: EngineConfig, draft: EngineConfig): strin
   number("memory", saved.memoryGib, draft.memoryGib, " GB");
   number("disk", saved.diskGib, draft.diskGib, " GB");
   flag("Rosetta", saved.rosetta, draft.rosetta);
-  flag("file-watch events", saved.fileWatchEvents, draft.fileWatchEvents);
-  flag("SSH agent", saved.forwardSshAgent, draft.forwardSshAgent);
-  flag("UDP ports", saved.udpPorts, draft.udpPorts);
-  flag("container IP access", saved.containerIpAccess, draft.containerIpAccess);
+  flag("sleep when idle", saved.sleepWhenIdle, draft.sleepWhenIdle);
   flag("Docker context", saved.setDockerContext, draft.setDockerContext);
   flag("Kubernetes", saved.kubernetes.enabled, draft.kubernetes.enabled);
   if (saved.kubernetes.version !== draft.kubernetes.version) {
     changes.push(`Kubernetes ${draft.kubernetes.version}`);
-  }
-  if (saved.vmType !== draft.vmType) {
-    changes.push(`virtualization ${draft.vmType === "vz" ? "Apple Virtualization" : "krunkit"}`);
   }
   if (
     !(
@@ -49,13 +43,13 @@ export function describeChanges(saved: EngineConfig, draft: EngineConfig): strin
 
 /** True when the running engine's size doesn't match its saved settings yet. */
 export function sizeOutOfDate(status: EngineStatus | undefined): boolean {
-  const instance = status?.phase === "running" ? status.instance : null;
-  if (!instance) {
+  const vm = status?.phase === "running" ? status.vm : null;
+  if (!(vm && status)) {
     return false;
   }
   return (
-    instance.cpus !== status?.config.cpus ||
-    Math.round(instance.memoryBytes / GIB) !== status.config.memoryGib
+    vm.cpus !== status.config.cpus ||
+    Math.round(vm.memory.ceilingBytes / GIB) !== status.config.memoryGib
   );
 }
 
