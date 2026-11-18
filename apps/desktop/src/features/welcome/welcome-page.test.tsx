@@ -1,11 +1,11 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import type { CliTool, Inventory, SourceStatus } from "@/lib/ipc/bindings";
+import { useUi } from "@/shell/ui-store";
 import { engineFixture, preferencesFixture } from "@/test/fixtures";
 import { mockCommands, renderWithApp } from "@/test/harness";
-
 import { WelcomePage } from "./welcome-page";
 
 const inventory: Inventory = {
@@ -24,12 +24,14 @@ const docker = (state: CliTool["state"]): CliTool => ({
 
 function renderWelcome(
   sources: SourceStatus[] | (() => SourceStatus[]),
-  tools: CliTool[] = [docker("installed")],
+  tools: CliTool[] | (() => CliTool[]) = [docker("installed")],
 ) {
   // The tools are there once they were installed, as they are on a real Mac.
   let installed = false;
+  const found = () => (typeof tools === "function" ? tools() : tools);
   const calls = mockCommands({
-    cliTools: () => (installed ? tools.map((tool) => ({ ...tool, state: "installed" })) : tools),
+    cliTools: () =>
+      installed ? found().map((tool): CliTool => ({ ...tool, state: "installed" })) : found(),
     cliToolsInstall: () => {
       installed = true;
       return null;
@@ -55,10 +57,15 @@ async function toTheTerminalStep() {
 
 async function throughEngine() {
   await toTheTerminalStep();
-  await userEvent.click(await screen.findByRole("button", { name: "Continue" }));
+  // Continue waits for the look at the terminal's tools, and a click before that does nothing.
+  const proceed = await screen.findByRole<HTMLButtonElement>("button", { name: "Continue" });
+  await waitFor(() => expect(proceed.disabled).toBe(false));
+  await userEvent.click(proceed);
 }
 
 describe("WelcomePage", () => {
+  afterEach(() => useUi.setState({ toolsDeclined: false }));
+
   it("sizes the engine as picked", async () => {
     const { calls } = renderWelcome([]);
     await userEvent.click(await screen.findByRole("button", { name: "Get started" }));
@@ -127,6 +134,18 @@ describe("WelcomePage", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Not now" }));
     await waitFor(() => expect(names(calls)).toContain("migrationSources"));
     expect(names(calls)).not.toContain("cliToolsInstall");
+    // The Containers page doesn't ask again.
+    expect(useUi.getState().toolsDeclined).toBe(true);
+  });
+
+  it("lets setup go on when the terminal's tools can't be checked", async () => {
+    const { calls } = renderWelcome([], () => {
+      throw { kind: "io", message: "The app's tools are missing." };
+    });
+    await toTheTerminalStep();
+    expect(await screen.findByText(/couldn't check your terminal's tools/)).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await waitFor(() => expect(names(calls)).toContain("migrationSources"));
   });
 
   it("explains when the app to copy from has to be opened first", async () => {

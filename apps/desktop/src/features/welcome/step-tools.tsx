@@ -2,6 +2,8 @@ import { IconCircleCheck, IconTerminal2 } from "@tabler/icons-react";
 
 import { useCliTools, useInstallTools } from "@/features/settings/api";
 import { missingTools } from "@/features/settings/model";
+import { errorMessage } from "@/lib/ipc/errors";
+import { useUi } from "@/shell/ui-store";
 import { Banner } from "@/ui/banner";
 import { Button } from "@/ui/button";
 
@@ -10,9 +12,15 @@ import { Button } from "@/ui/button";
  * Docker has none, and scripts that call `docker` fail as if nothing were installed.
  */
 export function StepTools({ onDone }: { onDone: () => void }) {
-  const { data: tools } = useCliTools();
+  const { data: tools, error, isPending } = useCliTools();
   const install = useInstallTools();
+  const decline = useUi((state) => state.declineTools);
   const missing = missingTools(tools ?? []);
+  // Turning the offer down here turns it down on the Containers page too.
+  const notNow = () => {
+    decline();
+    onDone();
+  };
   return (
     <>
       <h1 className="m-0 text-24 font-semibold tracking-[-0.016em] text-ink">
@@ -23,9 +31,15 @@ export function StepTools({ onDone }: { onDone: () => void }) {
         every terminal and script find them. macOS asks for your password once, and a tool you
         already have is left alone.
       </p>
-      {tools && !missing ? (
+      {tools?.length && !missing ? (
         <Banner tone="ok" icon={<IconCircleCheck aria-hidden />}>
           Your terminal has docker and the tools around it.
+        </Banner>
+      ) : null}
+      {error ? (
+        <Banner tone="bad">
+          Contena couldn't check your terminal's tools. {errorMessage(error)} Settings has them
+          under Advanced.
         </Banner>
       ) : null}
       {missing ? (
@@ -34,7 +48,7 @@ export function StepTools({ onDone }: { onDone: () => void }) {
       <div className="mt-8 flex justify-end gap-2">
         {missing ? (
           <>
-            <Button variant="ghost" size="lg" onClick={onDone}>
+            <Button variant="ghost" size="lg" onClick={notNow}>
               Not now
             </Button>
             <Button
@@ -47,7 +61,7 @@ export function StepTools({ onDone }: { onDone: () => void }) {
             </Button>
           </>
         ) : (
-          <Button variant="brand" size="lg" disabled={!tools} onClick={onDone}>
+          <Button variant="brand" size="lg" disabled={isPending} onClick={onDone}>
             Continue
           </Button>
         )}
