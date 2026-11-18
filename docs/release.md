@@ -26,6 +26,23 @@ One-time setup, by whoever holds the Apple Developer account:
    `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` and `APPLE_TEAM_ID` as secrets of the
    repository. Run without the file, it says how to export the certificate.
 
+## Updates
+
+An installed Contena finds a release by itself and installs it (Settings → About). For that a
+release also publishes `Contena.app.tar.gz`, the notarized app as an archive signed with
+Contena's update key, and `latest.json`, which names the version and carries the signature.
+The app reads `releases/latest/download/latest.json` and accepts only an archive that the
+public key in `tauri.conf.json` (`plugins.updater.pubkey`) verifies.
+
+`scripts/setup-update-key.sh` makes the key once and stores its private half as the secrets
+`TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. The key is at
+`~/.tauri/contena.key` and its password in the login keychain as "Contena update key". **Back
+both up.** Without them no update can be sent to anyone who has the app; they would have to
+download the next version by hand.
+
+The workflow publishes the two files only when the release is also signed and notarized.
+Versions before 0.1.2 have no updater and are replaced by hand.
+
 ## What signs what
 
 - `scripts/sign-inside.sh` signs the engine, the VM helper and the bundled tools (`docker`,

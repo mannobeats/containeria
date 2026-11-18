@@ -4,11 +4,11 @@ use tauri_specta::{Builder, Commands, ErrorHandlingMode, collect_commands, colle
 use crate::commands::{
     builds, cli_tools, compose, container_detail, containers, data, diagnostics, domains, engine,
     images, kubernetes, machines, metrics, networks, run, settings, shell, storage, streams,
-    volumes, welcome,
+    updates, volumes, welcome,
 };
 use crate::events::{
     DockerChanged, EngineChanged, KubeChanged, MachinesChanged, MenuCommand, MetricsUpdated,
-    Navigate, PreferencesChanged, SettingsPaneShown,
+    Navigate, PreferencesChanged, SettingsPaneShown, UpdateAvailable,
 };
 
 /// Every command and event the UI can use. `bindings.ts` is generated from this list.
@@ -26,7 +26,8 @@ pub(crate) fn builder() -> Builder<Wry> {
             MachinesChanged,
             KubeChanged,
             SettingsPaneShown,
-            PreferencesChanged
+            PreferencesChanged,
+            UpdateAvailable,
         ])
 }
 
@@ -53,6 +54,9 @@ fn commands() -> Commands<Wry> {
         settings::about,
         cli_tools::cli_tools,
         cli_tools::cli_tools_install,
+        updates::update_check,
+        updates::update_found,
+        updates::update_install,
         diagnostics::diagnostics_collect,
         settings::window_show_main,
         settings::window_fit,

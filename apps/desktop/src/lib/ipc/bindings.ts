@@ -40,6 +40,25 @@ export const commands = {
 	 *  there from somewhere else are left alone.
 	 */
 	cliToolsInstall: () => __TAURI_INVOKE<null>("cli_tools_install"),
+	/**  Asks the release server whether a newer Contena exists. `None` when this one is the newest. */
+	updateCheck: () => __TAURI_INVOKE<{
+	version: string,
+	/**  What the release says about itself. */
+	notes: string | null,
+} | null>("update_check"),
+	/**  The update the app already knows of, from its own look in the background. */
+	updateFound: () => __TAURI_INVOKE<{
+	version: string,
+	/**  What the release says about itself. */
+	notes: string | null,
+} | null>("update_found"),
+	/**
+	 *  Installs the update found and starts Contena again as the new version. The engine stops
+	 *  first, so the new app starts the engine it brings: one from the old version would keep
+	 *  running beside an app that no longer matches it. Returns only when there was nothing to
+	 *  install or it failed.
+	 */
+	updateInstall: (progress: Channel<UpdateProgress>) => __TAURI_INVOKE<null>("update_install", { progress }),
 	/**
 	 *  Writes a `.tar.gz` of what helps someone else find a problem: versions, engine and machine
 	 *  status, container names and states, engine settings and the VMs' logs.
@@ -318,6 +337,7 @@ export const events = {
 	navigate: makeEvent<Navigate>("navigate"),
 	preferencesChanged: makeEvent<PreferencesChanged>("preferences-changed"),
 	settingsPaneShown: makeEvent<SettingsPaneShown>("settings-pane-shown"),
+	updateAvailable: makeEvent<UpdateAvailable>("update-available"),
 };
 
 /* Types */
@@ -325,6 +345,13 @@ export type About = {
 	appVersion: string,
 	/**  `None` while the engine is stopped. */
 	engine: EngineInfo | null,
+};
+
+/**  A version newer than the one running. */
+export type AppUpdate = {
+	version: string,
+	/**  What the release says about itself. */
+	notes: string | null,
 };
 
 export type Appearance = "system" | "light" | "dark";
@@ -1581,6 +1608,16 @@ export type ToolState =
  *  leaves it.
  */
 "other";
+
+/**  A newer Contena was found; offer it. */
+export type UpdateAvailable = AppUpdate;
+
+/**  How much of an update has been fetched. */
+export type UpdateProgress = {
+	downloadedBytes: number,
+	/**  `None` when the server doesn't say how large the archive is. */
+	totalBytes: number | null,
+};
 
 /**  One kind of thing taking space in the engine. */
 export type UsageGroup = {

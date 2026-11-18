@@ -9,6 +9,7 @@ use crate::tray;
 
 const SETTINGS: &str = "settings";
 const ABOUT: &str = "about";
+const UPDATES: &str = "updates";
 const ENGINE_SETTINGS: &str = "engine-settings";
 const DOCS: &str = "https://github.com/mannobeats/contena#readme";
 const ISSUES: &str = "https://github.com/mannobeats/contena/issues/new/choose";
@@ -63,6 +64,7 @@ const SECTIONS: [(&str, &str, &str); 6] = [
 pub(crate) fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     let contena = SubmenuBuilder::new(app, "Contena")
         .text(ABOUT, "About Contena")
+        .text(UPDATES, "Check for Updates…")
         .separator()
         .item(&tauri::menu::MenuItem::with_id(
             app,
@@ -140,9 +142,10 @@ pub(crate) fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
 /// the browser.
 pub(crate) fn handle(app: &AppHandle, event: &MenuEvent) {
     let id = event.id().as_ref();
-    if id == SETTINGS || id == ABOUT || id == ENGINE_SETTINGS {
+    if id == SETTINGS || id == ABOUT || id == UPDATES || id == ENGINE_SETTINGS {
         let pane = match id {
-            ABOUT => SettingsPane::About,
+            // About looks for an update each time it opens, and is where one is installed.
+            ABOUT | UPDATES => SettingsPane::About,
             ENGINE_SETTINGS => SettingsPane::Engine,
             _ => SettingsPane::General,
         };

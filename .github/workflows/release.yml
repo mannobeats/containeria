@@ -40,6 +40,9 @@ jobs:
       attestations: write
     env:
       HAS_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE != '' }}
+      # Updates are only published signed and notarized: an installed app would replace itself
+      # with whatever it is offered.
+      HAS_UPDATE_KEY: ${{ secrets.APPLE_CERTIFICATE != '' && secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -96,14 +99,25 @@ jobs:
       - name: Sign what the app carries inside it
         run: sh scripts/sign-inside.sh
       - name: Build the app and disk image
+        if: env.HAS_UPDATE_KEY != 'true'
         run: pnpm --filter @contena/desktop tauri build --target aarch64-apple-darwin --bundles app,dmg
+      - name: Build the app, the disk image and the update archive
+        if: env.HAS_UPDATE_KEY == 'true'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          pnpm --filter @contena/desktop tauri build --target aarch64-apple-darwin --bundles app,dmg \
+            --config '{"bundle":{"createUpdaterArtifacts":true}}'
       - name: Notarize the disk image
         if: env.HAS_CERTIFICATE == 'true'
         run: sh scripts/notarize.sh target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
       - name: Attest where the disk image came from
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+          subject-path: |
+            target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+            target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -112,4 +126,10 @@ jobs:
           if [ "$HAS_CERTIFICATE" != "true" ]; then
             set -- "$@" --notes "This build isn't signed with a Developer ID. Open it once, then allow it in System Settings > Privacy & Security > Open Anyway."
           fi
-          gh release create "$@" target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+          set -- "$@" target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+          if [ "$HAS_UPDATE_KEY" = "true" ]; then
+            archive=$(ls target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz)
+            sh scripts/update-manifest.sh "$GITHUB_REF_NAME" "$archive" > "$RUNNER_TEMP/latest.json"
+            set -- "$@" "$archive" "$RUNNER_TEMP/latest.json"
+          fi
+          gh release create "$@"
