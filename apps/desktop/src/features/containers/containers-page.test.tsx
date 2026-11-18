@@ -1,7 +1,9 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
+import type { CliTool } from "@/lib/ipc/bindings";
+import { useUi } from "@/shell/ui-store";
 import { containerFixture, engineFixture, metricsFixture } from "@/test/fixtures";
 import { mockCommands, renderWithApp } from "@/test/harness";
 
@@ -28,11 +30,18 @@ const crashed = containerFixture({
 });
 const pod = containerFixture({ id: "pod", name: "k8s_web", pod: "default/web" });
 
-function setup() {
+const dockerTool = (state: CliTool["state"]): CliTool => ({
+  name: "docker",
+  target: "/usr/local/bin/docker",
+  state,
+});
+
+function setup(tools: CliTool[] = [], containers = [shopDb, shopApi, crashed, pod]) {
   const calls = mockCommands({
+    cliTools: () => tools,
     engineStatus: () => engineFixture(),
     composeAct: () => 8,
-    containersList: () => [shopDb, shopApi, crashed, pod],
+    containersList: () => containers,
     metricsLatest: () =>
       metricsFixture({
         containers: [{ id: "db", cpuPercent: 1.5, memoryBytes: 64 * 1024 ** 2 }],
@@ -48,6 +57,8 @@ function setup() {
 }
 
 describe("ContainersPage", () => {
+  afterEach(() => useUi.setState({ toolsDeclined: false }));
+
   it("answers what runs and where the memory goes, and hides Kubernetes pods", async () => {
     setup();
     expect(await screen.findByText("shop-db-1")).toBeDefined();
@@ -61,6 +72,39 @@ describe("ContainersPage", () => {
     setup();
     const banner = await screen.findByRole("alert");
     expect(banner.textContent).toContain("payments-mock exited with code 1");
+  });
+
+  it("offers docker for the terminal on a Mac that has none, until it is turned down", async () => {
+    const calls = setup([dockerTool("missing")]);
+    expect(await screen.findByText("Your terminal doesn't have docker yet.")).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: "Install…" }));
+    await waitFor(() => expect(calls.map((call) => call.command)).toContain("cliToolsInstall"));
+    await userEvent.click(screen.getByRole("button", { name: "Not now" }));
+    expect(screen.queryByText("Your terminal doesn't have docker yet.")).toBeNull();
+    expect(useUi.getState().toolsDeclined).toBe(true);
+  });
+
+  it("offers docker on a Mac with no containers yet", async () => {
+    setup([dockerTool("missing")], []);
+    expect(await screen.findByText("No containers yet")).toBeDefined();
+    expect(await screen.findByText("Your terminal doesn't have docker yet.")).toBeDefined();
+  });
+
+  it("says nothing about the terminal when the user has a docker of their own", async () => {
+    const calls = setup([dockerTool("missing")]);
+    // The offer shows, so the page has the tools' states; then the state changes to the user's own.
+    await screen.findByText("Your terminal doesn't have docker yet.");
+    mockCommands({
+      cliTools: () => [dockerTool("other")],
+      engineStatus: () => engineFixture(),
+      containersList: () => [shopDb],
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Install…" }));
+    await waitFor(() =>
+      expect(screen.queryByText("Your terminal doesn't have docker yet.")).toBeNull(),
+    );
+    expect(useUi.getState().toolsDeclined).toBe(false);
+    expect(calls.map((call) => call.command)).toContain("cliTools");
   });
 
   it("filters by search and by state", async () => {

@@ -20,6 +20,7 @@ mod state;
 mod storage;
 mod streams;
 mod tray;
+mod updates;
 
 use std::sync::Arc;
 
@@ -72,12 +73,15 @@ pub fn run() -> tauri::Result<()> {
         .on_window_event(on_window_event)
         .setup(move |app| {
             ipc.mount_events(app);
+            app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
             let state = app_state(app.handle())?;
             let background = Background::from(&state);
+            let updates = Arc::clone(&state.updates);
             // Registered before any task starts: the tasks read it through the app handle.
             app.manage(state);
             app.manage(settings_window::ShownPane::default());
             background.spawn(app.handle());
+            tauri::async_runtime::spawn(updates::watch(app.handle().clone(), updates));
             tray::install(app.handle())?;
             notifications::open_on_click(app.handle());
             open_window_unless_at_login(app.handle());
@@ -100,6 +104,7 @@ fn app_state(app: &AppHandle) -> Result<AppState, Box<dyn std::error::Error>> {
         engine,
         shells: Shells::default(),
         streams: Streams::default(),
+        updates: Arc::default(),
     })
 }
 

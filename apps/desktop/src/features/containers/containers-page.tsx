@@ -28,6 +28,7 @@ import {
   matches,
 } from "./model";
 import { useRunSheet } from "./run/api";
+import { ToolsBanner } from "./tools-banner";
 
 function NoContainers() {
   const showRunSheet = useRunSheet((state) => state.show);
@@ -119,7 +120,12 @@ export function ContainersPage() {
   if (containers?.length === 0) {
     return (
       <Page crumbs={<Crumb>Containers</Crumb>}>
-        <NoContainers />
+        <div className="flex h-full flex-col pt-3">
+          <ToolsBanner />
+          <div className="min-h-0 flex-1">
+            <NoContainers />
+          </div>
+        </div>
       </Page>
     );
   }
@@ -133,6 +139,7 @@ export function ContainersPage() {
   return (
     <Page crumbs={<Crumb>Containers</Crumb>}>
       <ContainersHero containers={containers} ledger={metrics?.ledger} hot={hot} onHot={setHot} />
+      <ToolsBanner />
       <CrashBanners containers={all} />
       <Toolbar
         containers={all}

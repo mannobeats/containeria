@@ -17,5 +17,6 @@ pub(crate) mod settings;
 pub(crate) mod shell;
 pub(crate) mod storage;
 pub(crate) mod streams;
+pub(crate) mod updates;
 pub(crate) mod volumes;
 pub(crate) mod welcome;

@@ -8,14 +8,24 @@ use crate::error::{CommandError, ErrorKind, Result};
 /// Where command-line tools go so every shell finds them, as Docker Desktop installs them.
 const BIN: &str = "/usr/local/bin";
 const PLUGINS: &str = "/usr/local/lib/docker/cli-plugins";
+/// Where Homebrew puts the same tools on Apple silicon.
+const HOMEBREW_BIN: &str = "/opt/homebrew/bin";
+/// The other folder Docker always looks for plugins in, besides `PLUGINS` and the user's own.
+const PLUGINS_LIBEXEC: &str = "/usr/local/libexec/docker/cli-plugins";
+
+/// One install at a time: a second one, started from another window while the first waits for
+/// the password, would ask for it again to make the same links.
+static INSTALLING: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub(crate) enum ToolState {
     /// Linked to Contena's copy.
     Installed,
+    /// A terminal doesn't find the tool at all.
     Missing,
-    /// Something else is there, such as Homebrew's or Docker Desktop's; Contena leaves it.
+    /// The user has a copy of their own, such as Homebrew's or Docker Desktop's; Contena
+    /// leaves it.
     Other,
 }
 
@@ -55,11 +65,37 @@ fn sources(app: &AppHandle) -> Vec<(String, PathBuf, PathBuf)> {
     sources
 }
 
-fn state(source: &Path, target: &Path) -> ToolState {
+/// The folders Docker loads plugins from besides `PLUGINS`: the user's own, the second system
+/// one, and those their Docker settings name, which is how a Homebrew plugin is found.
+fn plugin_folders(home: &Path, docker_settings: &str) -> Vec<PathBuf> {
+    let settings: serde_json::Value = serde_json::from_str(docker_settings).unwrap_or_default();
+    let named = settings["cliPluginsExtraDirs"].as_array().cloned().unwrap_or_default();
+    [home.join(".docker/cli-plugins"), PathBuf::from(PLUGINS_LIBEXEC)]
+        .into_iter()
+        .chain(named.iter().filter_map(|folder| folder.as_str().map(PathBuf::from)))
+        .collect()
+}
+
+/// The other places a terminal or Docker finds the tool that goes to `target`.
+fn elsewhere(target: &Path) -> Vec<PathBuf> {
+    let Some(name) = target.file_name() else { return Vec::new() };
+    if !target.starts_with(PLUGINS) {
+        return vec![Path::new(HOMEBREW_BIN).join(name)];
+    }
+    let home = std::env::home_dir().unwrap_or_default();
+    let settings = std::fs::read_to_string(home.join(".docker/config.json")).unwrap_or_default();
+    plugin_folders(&home, &settings).into_iter().map(|folder| folder.join(name)).collect()
+}
+
+fn state(source: &Path, target: &Path, elsewhere: &[PathBuf]) -> ToolState {
     match std::fs::read_link(target) {
         Ok(linked) if linked == source => ToolState::Installed,
         Ok(_) => ToolState::Other,
-        Err(_) if target.exists() => ToolState::Other,
+        // Whatever is at the target is the user's and stays. Elsewhere only a file counts: a
+        // folder of that name runs nothing.
+        Err(_) if target.exists() || elsewhere.iter().any(|copy| copy.is_file()) => {
+            ToolState::Other
+        }
         Err(_) => ToolState::Missing,
     }
 }
@@ -71,7 +107,7 @@ pub(crate) async fn cli_tools(app: AppHandle) -> Result<Vec<CliTool>> {
     Ok(sources(&app)
         .into_iter()
         .map(|(name, source, target)| CliTool {
-            state: state(&source, &target),
+            state: state(&source, &target, &elsewhere(&target)),
             target: target.to_string_lossy().into_owned(),
             name,
         })
@@ -88,9 +124,12 @@ fn quoted(path: &Path) -> String {
 #[tauri::command]
 #[specta::specta]
 pub(crate) async fn cli_tools_install(app: AppHandle) -> Result<()> {
+    let _installing = INSTALLING.lock().await;
     let links: Vec<String> = sources(&app)
         .into_iter()
-        .filter(|(_, source, target)| state(source, target) == ToolState::Missing)
+        .filter(|(_, source, target)| {
+            state(source, target, &elsewhere(target)) == ToolState::Missing
+        })
         .map(|(_, source, target)| format!("/bin/ln -sf {} {}", quoted(&source), quoted(&target)))
         .collect();
     if links.is_empty() {
@@ -119,12 +158,52 @@ mod tests {
         let ours = dir.path().join("ours");
         std::fs::write(&ours, "").unwrap();
         let target = dir.path().join("docker");
-        assert_eq!(state(&ours, &target), ToolState::Missing);
+        assert_eq!(state(&ours, &target, &[]), ToolState::Missing);
         std::os::unix::fs::symlink(&ours, &target).unwrap();
-        assert_eq!(state(&ours, &target), ToolState::Installed);
+        assert_eq!(state(&ours, &target, &[]), ToolState::Installed);
         std::fs::remove_file(&target).unwrap();
-        std::fs::write(&target, "homebrew's").unwrap();
-        assert_eq!(state(&ours, &target), ToolState::Other);
+        std::fs::write(&target, "docker desktop's").unwrap();
+        assert_eq!(state(&ours, &target, &[]), ToolState::Other);
+    }
+
+    #[test]
+    fn a_tool_the_user_has_elsewhere_is_not_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        let ours = dir.path().join("ours");
+        std::fs::write(&ours, "").unwrap();
+        let homebrews = dir.path().join("homebrew-docker");
+        let target = dir.path().join("docker");
+        assert_eq!(state(&ours, &target, std::slice::from_ref(&homebrews)), ToolState::Missing);
+        std::fs::create_dir(&homebrews).unwrap();
+        assert_eq!(state(&ours, &target, std::slice::from_ref(&homebrews)), ToolState::Missing);
+        std::fs::remove_dir(&homebrews).unwrap();
+        std::fs::write(&homebrews, "").unwrap();
+        assert_eq!(state(&ours, &target, &[homebrews]), ToolState::Other);
+    }
+
+    #[test]
+    fn looks_for_a_users_own_docker_where_homebrew_keeps_it() {
+        assert_eq!(
+            elsewhere(Path::new("/usr/local/bin/docker")),
+            [PathBuf::from("/opt/homebrew/bin/docker")]
+        );
+    }
+
+    #[test]
+    fn a_homebrew_plugin_counts_only_when_docker_is_told_of_its_folder() {
+        let home = Path::new("/Users/ada");
+        let homebrew = PathBuf::from("/opt/homebrew/lib/docker/cli-plugins");
+        let untold = plugin_folders(home, r#"{"currentContext":"contena"}"#);
+        assert_eq!(
+            untold,
+            [
+                PathBuf::from("/Users/ada/.docker/cli-plugins"),
+                PathBuf::from("/usr/local/libexec/docker/cli-plugins")
+            ]
+        );
+        let told = r#"{"cliPluginsExtraDirs":["/opt/homebrew/lib/docker/cli-plugins"]}"#;
+        assert!(plugin_folders(home, told).contains(&homebrew));
+        assert_eq!(plugin_folders(home, "not json").len(), 2);
     }
 
     #[test]

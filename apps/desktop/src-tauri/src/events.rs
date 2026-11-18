@@ -45,6 +45,10 @@ pub(crate) enum MenuCommand {
     CollectDiagnostics,
 }
 
+/// A newer Contena was found; offer it.
+#[derive(Debug, Clone, Serialize, specta::Type, tauri_specta::Event)]
+pub(crate) struct UpdateAvailable(pub(crate) crate::updates::AppUpdate);
+
 /// Something in the Kubernetes cluster changed, or it came or went; refetch the cluster.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
 pub(crate) struct KubeChanged;

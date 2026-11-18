@@ -7,6 +7,7 @@ use crate::metrics::Sampler;
 use crate::preferences::PreferencesStore;
 use crate::shells::Shells;
 use crate::streams::Streams;
+use crate::updates::Updates;
 use contena_net::Domains;
 
 #[derive(Debug)]
@@ -19,4 +20,5 @@ pub(crate) struct AppState {
     pub(crate) streams: Streams,
     pub(crate) data: Arc<DataState>,
     pub(crate) shells: Shells,
+    pub(crate) updates: Arc<Updates>,
 }

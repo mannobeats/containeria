@@ -64,5 +64,11 @@
       "resources/tools/": "tools/",
       "resources/engine/": "engine/"
     }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhFMjkxQUYxMkI4ODZCQjMKUldTemE0Z3I4Um9wamdHM0FhN0xxSE9LTHNXajdSUURTeEVPSGlqNUJEK3NUNXo0emZCYzk0ajEK",
+      "endpoints": ["https://github.com/mannobeats/contena/releases/latest/download/latest.json"]
+    }
   }
 }

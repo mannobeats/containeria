@@ -2,9 +2,28 @@ import { describe, expect, it } from "vitest";
 
 import { engineFixture, preferencesFixture } from "@/test/fixtures";
 
-import { describeChanges, linesOf, sizeOutOfDate, withNotification } from "./model";
+import { describeChanges, linesOf, missingTools, sizeOutOfDate, withNotification } from "./model";
 
 const saved = engineFixture().config;
+
+describe("missingTools", () => {
+  const tool = (name: string, state: "installed" | "missing" | "other") => ({
+    name,
+    target: `/usr/local/bin/${name}`,
+    state,
+  });
+
+  it("names the tools no terminal finds", () => {
+    const tools = [tool("cx", "missing"), tool("docker", "missing"), tool("kubectl", "missing")];
+    expect(missingTools(tools)).toBe("cx, docker, and kubectl");
+    expect(missingTools([tool("docker", "missing"), tool("kubectl", "installed")])).toBe("docker");
+  });
+
+  it("says nothing when every tool is installed or the user's own", () => {
+    expect(missingTools([tool("docker", "other"), tool("cx", "installed")])).toBe("");
+    expect(missingTools([])).toBe("");
+  });
+});
 
 describe("describeChanges", () => {
   it("says nothing when nothing changed", () => {

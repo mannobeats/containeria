@@ -1,6 +1,7 @@
 import { IconBrandGithub } from "@tabler/icons-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
+import { UpdateSection } from "@/features/updates/update-section";
 import { collectDiagnostics } from "@/lib/diagnostics";
 import { AppMark } from "@/ui/app-mark";
 import { Button } from "@/ui/button";
@@ -45,6 +46,9 @@ export function AboutPane() {
           </Button>
         </span>
       </div>
+      <SettingsSection title="Updates">
+        <UpdateSection version={about?.appVersion} />
+      </SettingsSection>
       <SettingsSection title="Engine">
         <Kv
           className="px-3.5 py-0.5"

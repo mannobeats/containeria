@@ -1,3 +1,6 @@
+use std::sync::{Mutex, PoisonError};
+use std::time::{Duration, Instant};
+
 use tauri::image::Image;
 use tauri::tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent};
 use tauri::utils::config::WindowEffectsConfig;
@@ -14,6 +17,13 @@ const POPOVER: &str = "tray";
 const POPOVER_WIDTH: f64 = 340.0;
 /// A first guess; the popover sizes itself to its content once it renders.
 const POPOVER_HEIGHT: f64 = 320.0;
+/// A click on the icon while the popover shows takes the popover's focus as the button goes
+/// down, which hides it, and is reported as a click when the button comes up. Within this long
+/// of being hidden that way, the click is the one that closed it and must not open it again.
+const SAME_CLICK: Duration = Duration::from_millis(400);
+
+/// When the popover last hid because it lost focus.
+static DISMISSED: Mutex<Option<Instant>> = Mutex::new(None);
 
 /// The menu bar item: a template icon, the engine's memory beside it, and a popover on click.
 pub(crate) fn install(app: &AppHandle) -> tauri::Result<()> {
@@ -41,6 +51,7 @@ pub(crate) fn install(app: &AppHandle) -> tauri::Result<()> {
     let hide = popover.clone();
     popover.on_window_event(move |event| {
         if matches!(event, WindowEvent::Focused(false)) {
+            *DISMISSED.lock().unwrap_or_else(PoisonError::into_inner) = Some(Instant::now());
             let _ = hide.hide();
         }
     });
@@ -81,9 +92,19 @@ fn toggle_popover(tray: &TrayIcon, rect: Rect) {
         let _ = popover.hide();
         return;
     }
+    let dismissed = DISMISSED.lock().unwrap_or_else(PoisonError::into_inner).take();
+    if closed_by_this_click(dismissed.map(|at| at.elapsed())) {
+        return;
+    }
     let _ = place_under(&popover, rect);
     let _ = popover.show();
     let _ = popover.set_focus();
+}
+
+/// Whether the click being handled is the one that just closed the popover, given how long ago
+/// it hid for losing focus.
+fn closed_by_this_click(hidden_for: Option<Duration>) -> bool {
+    hidden_for.is_some_and(|hidden_for| hidden_for < SAME_CLICK)
 }
 
 /// Centres the popover under the icon, the way macOS places menu bar popovers.
@@ -121,6 +142,13 @@ pub(crate) fn format_memory(bytes: u64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_click_on_the_icon_closes_an_open_popover_and_stays_closed() {
+        assert!(closed_by_this_click(Some(Duration::from_millis(30))));
+        assert!(!closed_by_this_click(Some(Duration::from_secs(2))));
+        assert!(!closed_by_this_click(None));
+    }
 
     #[test]
     fn reads_like_activity_monitor() {

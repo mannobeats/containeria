@@ -15,6 +15,7 @@ import { useFailingPods } from "@/features/kubernetes/api";
 import { useMetrics } from "@/features/metrics/api";
 import { MemoryLedger } from "@/features/metrics/memory-ledger";
 import { useNetworks } from "@/features/networks/api";
+import { UpdateNotice } from "@/features/updates/update-notice";
 import { useVolumes } from "@/features/volumes/api";
 import { formatMemory, plural } from "@/lib/format";
 import type { ContainerSummary, EnginePhase, EngineStatus } from "@/lib/ipc/bindings";
@@ -272,6 +273,7 @@ export function Sidebar() {
         </Group>
       </nav>
       <div className="shrink-0 border-t-[0.5px] border-[light-dark(oklch(0_0_0/0.07),oklch(1_0_0/0.06))] px-2.5 pt-2.5 pb-3">
+        <UpdateNotice />
         <MemoryFooter />
       </div>
     </aside>

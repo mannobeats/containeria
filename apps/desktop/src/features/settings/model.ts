@@ -1,6 +1,19 @@
-import type { EngineConfig, EngineStatus, NotifyOn, Preferences } from "@/lib/ipc/bindings";
+import type {
+  CliTool,
+  EngineConfig,
+  EngineStatus,
+  NotifyOn,
+  Preferences,
+} from "@/lib/ipc/bindings";
 
 const GIB = 1024 ** 3;
+
+const listed = new Intl.ListFormat("en", { style: "long", type: "conjunction" });
+
+/** The tools no terminal finds, as a phrase: "docker, kubectl and cx". Empty when none is missing. */
+export function missingTools(tools: CliTool[]): string {
+  return listed.format(tools.filter((tool) => tool.state === "missing").map((tool) => tool.name));
+}
 
 const onOff = (on: boolean) => (on ? "on" : "off");
 
