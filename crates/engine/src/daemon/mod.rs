@@ -20,7 +20,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
-use containeria_proto::{EngineCall, Stats};
+use contena_proto::{EngineCall, Stats};
 use tokio::net::UnixListener;
 use tokio::signal::unix::{SignalKind, signal};
 use tokio::sync::{mpsc, watch};
@@ -103,7 +103,7 @@ pub(crate) struct Engine {
     memory: Mutex<Option<MemoryUse>>,
     kubernetes: Mutex<ClusterState>,
     /// Where the cluster's API answers on the Mac, while it has a port there.
-    kubernetes_port: Mutex<Option<containeria_proto::Port>>,
+    kubernetes_port: Mutex<Option<contena_proto::Port>>,
     /// Held while the cluster starts, stops or resets, so those happen one at a time.
     changing_kubernetes: tokio::sync::Mutex<()>,
 }

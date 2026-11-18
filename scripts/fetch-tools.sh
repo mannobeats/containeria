@@ -14,7 +14,7 @@ KUBECTL=1.37.1
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 tools="$root/apps/desktop/src-tauri/resources/tools"
-cache="${CONTAINERIA_TOOLS_CACHE:-$root/target/tools-cache}"
+cache="${CONTENA_TOOLS_CACHE:-$root/target/tools-cache}"
 mkdir -p "$cache" "$tools/bin" "$tools/cli-plugins"
 
 fetch() { # url sha256 file

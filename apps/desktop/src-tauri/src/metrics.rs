@@ -2,7 +2,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use containeria_docker::{ContainerState, ContainerSummary, CpuCounters, Docker};
+use contena_docker::{ContainerState, ContainerSummary, CpuCounters, Docker};
 use futures::{StreamExt, stream};
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
@@ -231,7 +231,7 @@ fn now_ms() -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use containeria_docker::ContainerState;
+    use contena_docker::ContainerState;
 
     use super::*;
 

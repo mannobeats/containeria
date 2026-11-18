@@ -93,7 +93,7 @@ function VirtualMachine({ config, update }: Edit) {
         "Turns the VM off a minute after the last container stops, giving all its memory back. The next docker command, or opening this window, starts it again in about a second.",
       )}
       {toggle(
-        "Make docker use Containeria",
+        "Make docker use Contena",
         "setDockerContext",
         "Switches the docker CLI's context to this engine when it starts.",
       )}

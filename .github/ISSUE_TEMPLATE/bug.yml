@@ -14,5 +14,5 @@ body:
   - type: input
     id: versions
     attributes:
-      label: Containeria version, macOS version and Mac model
+      label: Contena version, macOS version and Mac model
     validations: { required: true }

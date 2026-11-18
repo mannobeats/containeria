@@ -1,6 +1,6 @@
 // Linux machines: full distros running as lightweight system containers inside the engine.
 const machFace = (m, size = '') => tile({ ...m, mono: m.mono || (m.icon ? '' : m.distro.slice(0, 2)) }, size, m.state === 'running' ? '' : 'is-off');
-const sshCmd = (m) => `ssh ${m.name}@containeria`;
+const sshCmd = (m) => `ssh ${m.name}@contena`;
 
 App.view('machines', {
   title: 'Linux machines',
@@ -133,18 +133,18 @@ function machineDetail(name, tab) {
         ${on ? `<div class="rs-sec"><h2 class="h-sub">CPU <span class="meta num">${fmt.pct(m.cpu)}</span></h2><div data-mchart="cpu" class="rs-chart"></div></div><div class="rs-sec"><h2 class="h-sub">Memory <span class="meta num">${fmt.mb(m.memMB)}</span></h2><div data-mchart="mem" class="rs-chart"></div></div>` : `<div class="banner">${icon('player-stop')}<span class="grow">Stopped. It uses no CPU or memory until you start it.</span><button class="btn btn-sm" data-act="machine-start" data-arg="${esc(m.name)}">Start</button></div>`}
         <div class="rs-sec"><h2 class="h-sub">Connect</h2><div class="col gap-12" style="margin-top:8px">
           <button class="mach-ssh" data-copy="${esc(sshCmd(m))}">${icon('terminal', 'sm')}<code class="mono-sm grow">${esc(sshCmd(m))}</code>${icon('copy', 'sm')}</button>
-          <button class="mach-ssh" data-copy="containeria shell ${esc(m.name)}">${icon('terminal', 'sm')}<code class="mono-sm grow">containeria shell ${esc(m.name)}</code>${icon('copy', 'sm')}</button>
-          <pre class="code selectable"># ~/.ssh/config is set up for you\nHost ${esc(m.name)}\n  HostName ${esc(m.domain)}\n  User ${esc(m.user)}\n  IdentityFile ~/.containeria/ssh/id_ed25519</pre></div></div>
+          <button class="mach-ssh" data-copy="contena shell ${esc(m.name)}">${icon('terminal', 'sm')}<code class="mono-sm grow">contena shell ${esc(m.name)}</code>${icon('copy', 'sm')}</button>
+          <pre class="code selectable"># ~/.ssh/config is set up for you\nHost ${esc(m.name)}\n  HostName ${esc(m.domain)}\n  User ${esc(m.user)}\n  IdentityFile ~/.contena/ssh/id_ed25519</pre></div></div>
       </section>
       <aside class="rs-sec"><h2 class="h-sub">Details</h2><dl class="kv">
         <dt>Distribution</dt><dd>${esc(m.distro)} ${esc(m.version)}</dd><dt>Architecture</dt><dd>${m.arch === 'amd64' ? 'amd64 via Rosetta' : 'arm64'}</dd>
         <dt>State</dt><dd>${on ? `Up ${fmt.dur(m.started)}` : 'Stopped'}</dd><dt>IP address</dt><dd><code class="mono-sm">${esc(m.ip)}</code></dd>
         <dt>Domain</dt><dd><code class="mono-sm truncate">${esc(m.domain)}</code><button class="btn btn-ghost btn-icon btn-sm" data-copy="${esc(m.domain)}" data-tip="Copy">${icon('copy', 'sm')}</button></dd>
         <dt>User</dt><dd>${esc(m.user)} <span class="meta">sudo, no password</span></dd><dt>Disk</dt><dd class="num">${m.diskGB} GB of 64 GB</dd>
-        <dt>Mac home</dt><dd><code class="mono-sm">/Users/mannobeats</code></dd><dt>Files on Mac</dt><dd><code class="mono-sm truncate">~/Containeria/machines/${esc(m.name)}</code></dd></dl></aside>
+        <dt>Mac home</dt><dd><code class="mono-sm">/Users/mannobeats</code></dd><dt>Files on Mac</dt><dd><code class="mono-sm truncate">~/Contena/machines/${esc(m.name)}</code></dd></dl></aside>
     </div>`,
     terminal: () => on ? terminalPane({ user: m.user, host: m.name, cwd: '~', shell: 'bash', note: `${esc(m.distro)} ${esc(m.version)} · ${m.arch}${m.arch === 'amd64' ? ' via Rosetta' : ''} · Mac home mounted at /Users/mannobeats`, lines: [{ cmd: 'uname -m', out: m.arch === 'amd64' ? 'x86_64' : 'aarch64' }, { cmd: 'ls', out: '<span class="term-dir">projects</span>  <span class="term-dir">Mac</span>  setup.sh' }] }) : off('terminal'),
-    files: () => filesPane({ ...fakeFS['linux-home'], finder: `~/Containeria/machines/${m.name}` }),
+    files: () => filesPane({ ...fakeFS['linux-home'], finder: `~/Contena/machines/${m.name}` }),
     settings: () => `<div class="page" style="max-width:640px">
       <div class="field-row"><span class="label">Name</span><div class="field"><input class="input mono" value="${esc(m.name)}"><span class="hint">Changing it also changes the domain and ssh host.</span></div></div>
       <div class="field-row"><span class="label">Default user</span><div class="field"><input class="input mono" value="${esc(m.user)}"></div></div>
@@ -169,9 +169,9 @@ function engineShell() {
   const e = DB.engine;
   return `${rsHead({
     face: engineMark(36), title: 'Engine VM',
-    meta: `<span>Containeria Linux ${esc(e.version)}</span><span>Kernel ${esc(e.kernel)}</span><span>${e.cpus} CPUs · ${e.memGB} GB</span><span>Up ${fmt.dur(e.uptime)}</span>`,
+    meta: `<span>Contena Linux ${esc(e.version)}</span><span>Kernel ${esc(e.kernel)}</span><span>${e.cpus} CPUs · ${e.memGB} GB</span><span>Up ${fmt.dur(e.uptime)}</span>`,
     actions: `<button class="btn" data-act="engine-restart">${icon('refresh')}Restart engine</button><button class="btn" data-go="/settings/engine">${icon('adjustments')}Settings</button>`,
   })}
   <div style="padding:0 20px 12px"><div class="banner banner-warn">${icon('alert-triangle')}<span class="grow">This is the VM that runs Docker, Kubernetes and your machines. Changes outside <code class="mono-sm">/var/lib</code> are reset on the next engine update.</span></div></div>
-  <div class="rs-fill rs-bordered">${terminalPane({ user: 'root', host: 'containeria', cwd: '/', note: 'Engine shell · Alpine-based, read-only root', lines: [{ cmd: 'free -m', out: '              total   used   free  shared  buff/cache  available\nMem:           8192   3184   2612      14        2396       4791' }, { cmd: 'rc-status', out: ' containerd     [ started ]\n docker         [ started ]\n k3s            [ started ]\n containeria-dns [ started ]' }] })}</div>`;
+  <div class="rs-fill rs-bordered">${terminalPane({ user: 'root', host: 'contena', cwd: '/', note: 'Engine shell · Alpine-based, read-only root', lines: [{ cmd: 'free -m', out: '              total   used   free  shared  buff/cache  available\nMem:           8192   3184   2612      14        2396       4791' }, { cmd: 'rc-status', out: ' containerd     [ started ]\n docker         [ started ]\n k3s            [ started ]\n contena-dns [ started ]' }] })}</div>`;
 }

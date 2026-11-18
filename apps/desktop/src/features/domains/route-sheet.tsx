@@ -86,7 +86,7 @@ export function RouteSheet({ editing, taken, onClose, onSave }: RouteSheetProps)
           label="Domain"
           htmlFor={`${id}-host`}
           error={errors.host}
-          hint="Any name works: .test, .local or your own. Containeria answers for it on this Mac only."
+          hint="Any name works: .test, .local or your own. Contena answers for it on this Mac only."
         >
           <Input
             id={`${id}-host`}

@@ -60,7 +60,7 @@ function Running() {
     <ul className="m-0 max-h-[196px] list-none overflow-auto p-0">
       {running.map((container) => {
         const menu: MenuEntry[] = [
-          { label: "Open in Containeria", onSelect: () => openInWindow(container) },
+          { label: "Open in Contena", onSelect: () => openInWindow(container) },
           { kind: "separator" },
           {
             label: "Stop",
@@ -118,7 +118,7 @@ function Header() {
     <header className="flex items-center gap-2.5 px-3.5 pt-3 pb-2.5">
       <AppMark size={26} />
       <div className="min-w-0 flex-1">
-        <b className="block text-13 font-semibold text-ink">Containeria</b>
+        <b className="block text-13 font-semibold text-ink">Contena</b>
         <span className="block text-12 text-ink-3">
           {serving ? `Engine running · ${plural(count, "container")}` : "Engine stopped"}
         </span>
@@ -176,7 +176,7 @@ export function TrayView() {
           onClick={() => commands.windowShowMain().catch(() => undefined)}
         >
           <IconAppWindow className="text-ink-3" aria-hidden />
-          Open Containeria
+          Open Contena
         </button>
         <button
           type="button"
@@ -192,7 +192,7 @@ export function TrayView() {
           onClick={() => commands.appQuit().catch(() => undefined)}
         >
           <IconPower className="text-ink-3" aria-hidden />
-          Quit Containeria
+          Quit Contena
         </button>
       </Section>
     </div>

@@ -35,7 +35,7 @@ function CommandLineTools() {
       ))}
       <SettingsRow
         label={missing > 0 ? `${missing} not installed` : "Everything is installed"}
-        hint="cx starts, stops and tails containers from any terminal; docker and kubectl reach Containeria's engine once its context is chosen."
+        hint="cx starts, stops and tails containers from any terminal; docker and kubectl reach Contena's engine once its context is chosen."
       >
         <Button
           size="sm"

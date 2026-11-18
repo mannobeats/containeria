@@ -51,11 +51,11 @@ function ResourcesForm({ initial, onDone }: { initial: EngineConfig; onDone: () 
           />
         </SettingsRow>
         <SettingsRow
-          label="Make docker use Containeria"
+          label="Make docker use Contena"
           hint="Switches the docker CLI to this engine. Change it later in Settings."
         >
           <Switch
-            label="Make docker use Containeria"
+            label="Make docker use Contena"
             checked={config.setDockerContext}
             onCheckedChange={(setDockerContext) => update({ setDockerContext })}
           />

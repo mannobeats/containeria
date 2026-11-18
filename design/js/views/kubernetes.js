@@ -4,9 +4,9 @@ const K = () => DB.kube;
 const inNs = (x) => k8sNs === 'all' || x.ns === k8sNs;
 const podBad = (p) => p.status === 'CrashLoopBackOff' || p.status === 'Error' || p.status === 'ImagePullBackOff';
 const k8sIngress = [
-  { name: 'storefront', ns: 'shop-staging', host: 'storefront.k8s.containeria.local', path: '/', svc: 'storefront:80', tls: true, cls: 'traefik' },
-  { name: 'checkout', ns: 'shop-staging', host: 'storefront.k8s.containeria.local', path: '/checkout', svc: 'checkout:8080', tls: true, cls: 'traefik' },
-  { name: 'prometheus', ns: 'monitoring', host: 'prometheus.k8s.containeria.local', path: '/', svc: 'prometheus-server:80', tls: false, cls: 'traefik' },
+  { name: 'storefront', ns: 'shop-staging', host: 'storefront.k8s.contena.local', path: '/', svc: 'storefront:80', tls: true, cls: 'traefik' },
+  { name: 'checkout', ns: 'shop-staging', host: 'storefront.k8s.contena.local', path: '/checkout', svc: 'checkout:8080', tls: true, cls: 'traefik' },
+  { name: 'prometheus', ns: 'monitoring', host: 'prometheus.k8s.contena.local', path: '/', svc: 'prometheus-server:80', tls: false, cls: 'traefik' },
 ];
 const k8sConfig = [
   { name: 'storefront-env', ns: 'shop-staging', kind: 'ConfigMap', keys: ['API_URL', 'NEXT_PUBLIC_REGION', 'LOG_LEVEL'], age: 6 * DB.day },
@@ -103,7 +103,7 @@ function configTable() {
 App.menu('k8s-ns', () => [{ heading: 'Namespace' }, { label: 'All namespaces', checked: k8sNs === 'all', run: () => { k8sNs = 'all'; App.rerender(); } }, { sep: true }, ...K().namespaces.map((n) => ({ label: n, checked: k8sNs === n, run: () => { k8sNs = n; App.rerender(); } })), { sep: true }, { label: 'New namespace…', icon: 'plus', run: () => toast({ title: 'kubectl create namespace', ic: 'terminal-2' }) }]);
 App.menu('k8s-cluster', () => [
   { heading: `k3s ${K().version}` },
-  { label: 'Copy kubeconfig path', icon: 'copy', run: () => toast({ title: 'Copied', body: '~/.kube/config (context containeria)', ic: 'copy' }) },
+  { label: 'Copy kubeconfig path', icon: 'copy', run: () => toast({ title: 'Copied', body: '~/.kube/config (context contena)', ic: 'copy' }) },
   { label: 'Open dashboard in browser', icon: 'external-link' },
   { label: 'Kubernetes settings…', icon: 'adjustments', run: () => App.go('/settings/kubernetes') },
   { sep: true },
@@ -128,7 +128,7 @@ App.menu('k8s-deploy', (el) => [
   { sep: true },
   { label: 'Delete deployment', icon: 'trash', danger: true, run: () => confirmSheet({ title: `Delete ${el.dataset.id}?`, body: 'Its pods stop and aren’t replaced. Services pointing at it stop answering.', action: 'Delete deployment', onConfirm() { toast({ title: `Deleted ${el.dataset.id}`, tone: 'ok' }); } }) },
 ]);
-App.act('k8s-enable', () => { K().enabled = true; K().starting = true; App.rerender(); setTimeout(() => { K().starting = false; if (App.route.name === 'kubernetes') App.rerender(); toast({ title: 'Kubernetes is running', body: `k3s ${K().version} · context containeria`, tone: 'ok' }); }, 2200); });
+App.act('k8s-enable', () => { K().enabled = true; K().starting = true; App.rerender(); setTimeout(() => { K().starting = false; if (App.route.name === 'kubernetes') App.rerender(); toast({ title: 'Kubernetes is running', body: `k3s ${K().version} · context contena`, tone: 'ok' }); }, 2200); });
 App.act('k8s-restart', (el, n) => toast({ title: `Restarting ${n}`, body: 'Rolling out new pods one at a time', ic: 'rotate-clockwise' }));
 App.act('k8s-scale', (el, n) => {
   const d = K().deployments.find((x) => x.name === n), cur = +d.ready.split('/')[1];
@@ -138,7 +138,7 @@ App.act('k8s-scale', (el, n) => {
     onMount(s, close) { const r = $('[data-r]', s); r.oninput = () => { $('[data-v]', s).textContent = r.value; r.style.setProperty('--p', r.value * 10 + '%'); }; $('[data-ok]', s).onclick = () => { d.ready = `${Math.min(+r.value, cur)}/${r.value}`; close(); App.rerender(); toast({ title: `${n} scaled to ${r.value}`, tone: 'ok' }); }; } });
 });
 App.act('k8s-forward', (el, n) => sheet({ title: `Port forward ${n}`, width: 420,
-  body: `<div class="rs-opts-grid"><div class="field"><span class="label">Mac port</span><input class="input mono" value="8080" inputmode="numeric"></div><div class="field"><span class="label">Pod port</span><input class="input mono" value="8080" inputmode="numeric"></div></div><p class="meta" style="margin:10px 0 0">Services are already reachable at *.k8s.containeria.local. Forward only for pods without one.</p>`,
+  body: `<div class="rs-opts-grid"><div class="field"><span class="label">Mac port</span><input class="input mono" value="8080" inputmode="numeric"></div><div class="field"><span class="label">Pod port</span><input class="input mono" value="8080" inputmode="numeric"></div></div><p class="meta" style="margin:10px 0 0">Services are already reachable at *.k8s.contena.local. Forward only for pods without one.</p>`,
   foot: `<div class="right"><button class="btn" data-close>Cancel</button><button class="btn btn-brand" data-ok>Forward</button></div>`,
   onMount(s, close) { $('[data-ok]', s).onclick = () => { close(); toast({ title: 'localhost:8080 → ' + n, tone: 'ok' }); }; } }));
 App.act('k8s-describe', (el, n) => App.go(`/kubernetes/pod/${n}?tab=events`));
@@ -182,8 +182,8 @@ function podDetail(name, tab) {
   const bad = podBad(p), base = `/kubernetes/pod/${p.name}`;
   const app = p.name.split('-')[0];
   const events = bad
-    ? [['Warning', 'BackOff', 'Back-off restarting failed container checkout in pod', '1m'], ['Normal', 'Pulled', 'Container image "shop-checkout:dev" already present on machine', '4m'], ['Warning', 'Failed', 'Error: container exited with code 1', '4m'], ['Normal', 'Created', 'Created container checkout', '51m'], ['Normal', 'Scheduled', 'Successfully assigned shop-staging/' + p.name + ' to containeria', '51m']]
-    : [['Normal', 'Started', 'Started container ' + app, k8sAge(p.age)], ['Normal', 'Created', 'Created container ' + app, k8sAge(p.age)], ['Normal', 'Pulled', 'Container image already present on machine', k8sAge(p.age)], ['Normal', 'Scheduled', `Successfully assigned ${p.ns}/${p.name} to containeria`, k8sAge(p.age)]];
+    ? [['Warning', 'BackOff', 'Back-off restarting failed container checkout in pod', '1m'], ['Normal', 'Pulled', 'Container image "shop-checkout:dev" already present on machine', '4m'], ['Warning', 'Failed', 'Error: container exited with code 1', '4m'], ['Normal', 'Created', 'Created container checkout', '51m'], ['Normal', 'Scheduled', 'Successfully assigned shop-staging/' + p.name + ' to contena', '51m']]
+    : [['Normal', 'Started', 'Started container ' + app, k8sAge(p.age)], ['Normal', 'Created', 'Created container ' + app, k8sAge(p.age)], ['Normal', 'Pulled', 'Container image already present on machine', k8sAge(p.age)], ['Normal', 'Scheduled', `Successfully assigned ${p.ns}/${p.name} to contena`, k8sAge(p.age)]];
   const yaml = `apiVersion: v1\nkind: Pod\nmetadata:\n  name: ${p.name}\n  namespace: ${p.ns}\n  labels:\n    app: ${app}\nspec:\n  nodeName: ${p.node}\n  containers:\n    - name: ${app}\n      image: shop-${app}:dev\n      resources:\n        limits: { memory: 256Mi, cpu: 500m }\nstatus:\n  phase: ${bad ? 'Running' : p.status}\n  podIP: 10.42.0.${(name.length * 7) % 200}\n  containerStatuses:\n    - name: ${app}\n      ready: ${!bad}\n      restartCount: ${p.restarts}${bad ? '\n      state:\n        waiting:\n          reason: CrashLoopBackOff' : ''}`;
   return `${rsHead({
     face: `<span class="tile tile-lg ${bad ? 'is-bad' : ''}" style="--th:255">${icon(bad ? 'alert-triangle' : 'cube')}</span>`, title: p.name,

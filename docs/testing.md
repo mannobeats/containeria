@@ -4,7 +4,7 @@
   with real samples (Docker stats, `/proc` files), conversions, and decisions (ledger grouping). Tests
   must not need a running engine; anything that does goes behind `#[ignore = "needs a Docker engine"]`
   and runs with `cargo test -- --ignored` locally. The database tests in
-  `crates/data/src/live_tests.rs` list the throwaway `containeria-test-*` containers they need
+  `crates/data/src/live_tests.rs` list the throwaway `contena-test-*` containers they need
   and the command that removes them afterwards.
 - **The engine, end to end**: `crates/engine/tests/engine.rs` boots a real VM and drives it with
   the `docker` command: containers, the Mac's folders, published ports, reaching the Mac by
@@ -32,7 +32,7 @@
   DNS server's packet handling and the proxy's Host and SNI names. Each asserts a property, not just
   "no panic". The Fuzz workflow runs them weekly and when `crates/net` changes; locally,
   `cd fuzz && cargo +nightly fuzz run dns_answer`. A new parser of untrusted input gets a target,
-  exposed through `containeria_net::fuzzing`.
+  exposed through `contena_net::fuzzing`.
 - Name tests after behaviour (`"keeps standalone containers last"`), one behaviour each.
 - A bug fix starts with a failing test that reproduces it.
 - Never skip, delete or loosen a test to get the gate green.

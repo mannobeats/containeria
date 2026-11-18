@@ -21,7 +21,7 @@ function setup(machines: Machine[] = [machineFixture()], distros: Distro[] = dis
     machinesList: () => machines,
     machineDistros: () => distros,
     machineShellCommand: () =>
-      "DOCKER_HOST='unix:///s' 'docker' exec -it 'containeria-machine-ubuntu-dev' su - 'ada'",
+      "DOCKER_HOST='unix:///s' 'docker' exec -it 'contena-machine-ubuntu-dev' su - 'ada'",
   });
   renderWithApp(<MachinesPage />);
   return calls;
@@ -126,7 +126,7 @@ describe("machine menu", () => {
       expect(calls).toContainEqual(
         expect.objectContaining({
           args: expect.objectContaining({
-            text: "DOCKER_HOST='unix:///s' 'docker' exec -it 'containeria-machine-ubuntu-dev' su - 'ada'",
+            text: "DOCKER_HOST='unix:///s' 'docker' exec -it 'contena-machine-ubuntu-dev' su - 'ada'",
           }),
         }),
       ),

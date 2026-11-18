@@ -6,7 +6,7 @@ use std::io::Read;
 use std::os::unix::fs::{PermissionsExt, symlink};
 use std::process::Command;
 
-use containeria_agent::disk::{HEADER_LEN, Superblock};
+use contena_agent::disk::{HEADER_LEN, Superblock};
 use rustix::mount::{
     MountFlags, MountPropagationFlags, UnmountFlags, mount, mount_change, unmount,
 };
@@ -131,7 +131,7 @@ fn data_disk() -> Result<()> {
     let found = Superblock::read(&header);
     if found.is_none() {
         let options = "lazy_itable_init=1,lazy_journal_init=1";
-        tool("mkfs.ext4", &["-q", "-F", "-m", "0", "-L", "containeria", "-E", options, DATA_DISK])?;
+        tool("mkfs.ext4", &["-q", "-F", "-m", "0", "-L", "contena", "-E", options, DATA_DISK])?;
     }
     mount(DATA_DISK, DATA, "ext4", MountFlags::NOATIME, c"discard").doing("mount the data disk")?;
     fs::set_permissions(DATA, fs::Permissions::from_mode(0o755)).doing("open the data disk")?;

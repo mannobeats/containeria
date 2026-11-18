@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use containeria_net::{ClusterService, Domains};
+use contena_net::{ClusterService, Domains};
 
 use crate::engine::Engine;
 use crate::kubernetes::Kubernetes;

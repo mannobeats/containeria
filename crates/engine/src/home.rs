@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use crate::error::{Error, Result};
 
-/// Where Containeria keeps engine state. Short on purpose: Unix socket paths are limited to 104
+/// Where Contena keeps engine state. Short on purpose: Unix socket paths are limited to 104
 /// bytes on macOS, which rules out `~/Library/Application Support`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Home {
@@ -11,15 +11,15 @@ pub struct Home {
 }
 
 impl Home {
-    /// `$CONTAINERIA_HOME`, or `~/.containeria`.
+    /// `$CONTENA_HOME`, or `~/.contena`.
     ///
     /// # Errors
     /// Fails when neither the variable nor a home folder exists.
     pub fn from_env() -> Result<Self> {
-        if let Some(root) = env::var_os("CONTAINERIA_HOME") {
+        if let Some(root) = env::var_os("CONTENA_HOME") {
             return Ok(Self::at(root));
         }
-        env::home_dir().map(|home| Self::at(home.join(".containeria"))).ok_or(Error::NoHomeFolder)
+        env::home_dir().map(|home| Self::at(home.join(".contena"))).ok_or(Error::NoHomeFolder)
     }
 
     pub fn at(root: impl Into<PathBuf>) -> Self {
@@ -59,7 +59,7 @@ impl Home {
     }
 
     /// The way into the guest's network: a connection that starts with one line naming an
-    /// address there (see `containeria_proto::Forward`) is then a connection to that address.
+    /// address there (see `contena_proto::Forward`) is then a connection to that address.
     /// Like the watchers' socket it works only while the VM runs and never wakes it.
     #[must_use]
     pub fn inside_socket(&self) -> PathBuf {
@@ -97,14 +97,14 @@ mod tests {
 
     #[test]
     fn sockets_live_under_run() {
-        let home = Home::at("/Users/ada/.containeria");
-        assert_eq!(home.docker_socket(), PathBuf::from("/Users/ada/.containeria/run/docker.sock"));
-        assert_eq!(home.engine_socket(), PathBuf::from("/Users/ada/.containeria/run/engine.sock"));
+        let home = Home::at("/Users/ada/.contena");
+        assert_eq!(home.docker_socket(), PathBuf::from("/Users/ada/.contena/run/docker.sock"));
+        assert_eq!(home.engine_socket(), PathBuf::from("/Users/ada/.contena/run/engine.sock"));
     }
 
     #[test]
     fn socket_paths_fit_the_macos_limit() {
-        let home = Home::at("/Users/a-rather-long-user-name-for-a-mac/.containeria");
+        let home = Home::at("/Users/a-rather-long-user-name-for-a-mac/.contena");
         assert!(home.docker_socket().as_os_str().len() < 104);
         assert!(home.engine_socket().as_os_str().len() < 104);
     }

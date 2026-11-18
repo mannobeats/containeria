@@ -60,7 +60,7 @@ a component it exists to share (the memory ledger). `ui/` never imports from `fe
 - Hairlines are `0.5px`: `border-b-[0.5px] border-line`, `hairline` for an inset outline.
 - Build screens from `ui/` primitives (`Button`, `Menu`, `Sheet`, `Tabs`, `Segmented`, `Tile`, ...).
   Add a primitive there before styling the same thing twice.
-- Icons: Tabler (`@tabler/icons-react`) for actions, `CxIcon` for Containeria's own objects, `Tile`
+- Icons: Tabler (`@tabler/icons-react`) for actions, `CxIcon` for Contena's own objects, `Tile`
   with `logoFor(...)` for brands. Never draw a logo or a letter monogram.
 - Copy is sentence case, says what happened or what to do, and never uses a status dot in a chip.
   Menu items are the exception: Title Case, as in every macOS menu ("Copy Name", "Show in

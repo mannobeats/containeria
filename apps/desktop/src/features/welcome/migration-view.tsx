@@ -239,7 +239,7 @@ function SourcesFailed({
   return (
     <>
       <Banner tone="bad">
-        Containeria couldn't look for Docker Desktop and OrbStack: {errorMessage(error)}
+        Contena couldn't look for Docker Desktop and OrbStack: {errorMessage(error)}
       </Banner>
       <div className="mt-8 flex justify-end gap-2">
         <Button size="lg" onClick={onRetry}>
@@ -255,7 +255,7 @@ function SourcesFailed({
 
 type MigrationViewProps = { onDone: () => void; doneLabel?: string };
 
-/** Copies images, volumes and containers from Docker Desktop or OrbStack into Containeria. */
+/** Copies images, volumes and containers from Docker Desktop or OrbStack into Contena. */
 export function MigrationView({ onDone, doneLabel = "Continue" }: MigrationViewProps) {
   const { data: sources, error, refetch } = useMigrationSources();
   const running = (sources ?? []).filter((source) => source.running).map((source) => source.source);

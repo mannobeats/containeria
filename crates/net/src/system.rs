@@ -1,5 +1,5 @@
-//! The two places Containeria changes the Mac outside its own folder: the resolver file that sends
-//! `*.containeria.local` lookups to its DNS server, and the Keychain trust for its certificate
+//! The two places Contena changes the Mac outside its own folder: the resolver file that sends
+//! `*.contena.local` lookups to its DNS server, and the Keychain trust for its certificate
 //! authority. Both run only when the user asks, behind a macOS prompt they confirm.
 
 use std::path::{Path, PathBuf};
@@ -10,7 +10,7 @@ use tokio::process::Command;
 use crate::ca::CA_NAME;
 use crate::error::{Error, Result};
 
-/// Whether macOS sends the zone's lookups to Containeria.
+/// Whether macOS sends the zone's lookups to Contena.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum ResolverState {
@@ -28,7 +28,7 @@ pub(crate) fn resolver_path(zone: &str) -> PathBuf {
 #[must_use]
 pub(crate) fn resolver_contents(port: u16) -> String {
     format!(
-        "# Added by Containeria. Remove it in Containeria > Domains.\nnameserver 127.0.0.1\nport {port}\n"
+        "# Added by Contena. Remove it in Contena > Domains.\nnameserver 127.0.0.1\nport {port}\n"
     )
 }
 
@@ -89,7 +89,7 @@ pub async fn privileged(action: &'static str, shell: &str, prompt: &str) -> Resu
 pub(crate) async fn install_resolver(zone: &str, port: u16) -> Result<()> {
     let zone = crate::host::normalize(zone).ok_or_else(|| Error::InvalidHost(zone.to_owned()))?;
     let prompt =
-        format!("Containeria wants to send .{zone} lookups on this Mac to its own DNS server.");
+        format!("Contena wants to send .{zone} lookups on this Mac to its own DNS server.");
     privileged("Setting up domains", &install_command(&zone, port), &prompt).await
 }
 
@@ -99,7 +99,7 @@ pub(crate) async fn install_resolver(zone: &str, port: u16) -> Result<()> {
 /// Fails if the zone isn't a valid host name, the user cancels, or the removal fails.
 pub(crate) async fn uninstall_resolver(zone: &str) -> Result<()> {
     let zone = crate::host::normalize(zone).ok_or_else(|| Error::InvalidHost(zone.to_owned()))?;
-    let prompt = format!("Containeria wants to stop answering .{zone} lookups on this Mac.");
+    let prompt = format!("Contena wants to stop answering .{zone} lookups on this Mac.");
     privileged("Removing domains", &format!("/bin/rm -f /etc/resolver/{zone}"), &prompt).await
 }
 
@@ -165,8 +165,8 @@ mod tests {
     #[test]
     fn writes_the_resolver_file_with_the_dns_port() {
         assert_eq!(
-            install_command("containeria.local", 15353),
-            "/bin/mkdir -p /etc/resolver && /usr/bin/printf '# Added by Containeria. Remove it in Containeria > Domains.\\nnameserver 127.0.0.1\\nport 15353\\n' > /etc/resolver/containeria.local"
+            install_command("contena.local", 15353),
+            "/bin/mkdir -p /etc/resolver && /usr/bin/printf '# Added by Contena. Remove it in Contena > Domains.\\nnameserver 127.0.0.1\\nport 15353\\n' > /etc/resolver/contena.local"
         );
     }
 
@@ -182,7 +182,7 @@ mod tests {
     #[test]
     fn reads_the_resolver_state() {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("containeria.local");
+        let path = dir.path().join("contena.local");
         assert_eq!(resolver_state(&path, 15353), ResolverState::Missing);
         std::fs::write(&path, resolver_contents(15353)).unwrap();
         assert_eq!(resolver_state(&path, 15353), ResolverState::Installed);

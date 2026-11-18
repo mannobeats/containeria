@@ -5,7 +5,7 @@ import { mockCommands } from "@/test/harness";
 
 import { applyAppearance, followAppearance } from "./theme";
 
-const KEY = "containeria.appearance";
+const KEY = "contena.appearance";
 
 describe("appearance", () => {
   afterEach(() => {

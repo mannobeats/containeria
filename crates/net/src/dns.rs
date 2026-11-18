@@ -10,7 +10,7 @@ use crate::routes::RouteTable;
 /// How long resolvers may cache an answer. Short, because routes come and go with containers.
 const TTL: u32 = 5;
 
-/// The reply to one DNS query: `127.0.0.1` for names Containeria routes, an empty answer for other
+/// The reply to one DNS query: `127.0.0.1` for names Contena routes, an empty answer for other
 /// record types of those names (so lookups fall back to IPv4 at once), `NXDOMAIN` for the rest.
 /// `None` when the packet isn't a query worth answering.
 #[must_use]
@@ -74,22 +74,18 @@ mod tests {
     }
 
     fn resolves(name: &str) -> bool {
-        name.trim_end_matches('.').ends_with("containeria.local")
+        name.trim_end_matches('.').ends_with("contena.local")
     }
 
     #[tokio::test]
     async fn answers_over_udp_with_localhost() {
         let server = UdpSocket::bind("127.0.0.1:0").await.unwrap();
         let address = server.local_addr().unwrap();
-        let table =
-            Arc::new(RwLock::new(RouteTable::build("containeria.local", &[], &[], &[], true)));
+        let table = Arc::new(RwLock::new(RouteTable::build("contena.local", &[], &[], &[], true)));
         let task = tokio::spawn(serve(server, table));
 
         let client = UdpSocket::bind("127.0.0.1:0").await.unwrap();
-        client
-            .send_to(&query("web.shop.containeria.local.", RecordType::A), address)
-            .await
-            .unwrap();
+        client.send_to(&query("web.shop.contena.local.", RecordType::A), address).await.unwrap();
         let mut buffer = [0_u8; 512];
         let length = client.recv(&mut buffer).await.unwrap();
         task.abort();
@@ -111,7 +107,7 @@ mod tests {
     #[test]
     fn answers_ipv6_lookups_with_no_records() {
         let reply = Message::from_vec(
-            &answer(&query("web.containeria.local.", RecordType::AAAA), resolves).unwrap(),
+            &answer(&query("web.contena.local.", RecordType::AAAA), resolves).unwrap(),
         )
         .unwrap();
         assert_eq!(reply.metadata.response_code, ResponseCode::NoError);

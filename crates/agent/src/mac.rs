@@ -20,8 +20,8 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
-use containeria_agent::dns;
-use containeria_proto::{HOST_PORT, MAC, REACHED, Reach, SSH_AGENT};
+use contena_agent::dns;
+use contena_proto::{HOST_PORT, MAC, REACHED, Reach, SSH_AGENT};
 use tokio::io::{AsyncReadExt, AsyncWriteExt, copy_bidirectional};
 use tokio::net::{TcpListener, TcpStream, UdpSocket, UnixListener};
 use tokio_vsock::{VMADDR_CID_HOST, VsockAddr, VsockStream};
@@ -32,7 +32,7 @@ use crate::system::run;
 /// The resolvers the network named, as the DHCP client's script notes them.
 pub(crate) const RESOLVERS: &str = "/run/resolvers";
 const RESOLVER: &str = "/etc/resolv.conf";
-const NAMES: [&str; 2] = ["host.docker.internal", "host.containeria.internal"];
+const NAMES: [&str; 2] = ["host.docker.internal", "host.contena.internal"];
 const DNS: u16 = 53;
 /// Where connections to the Mac's address are turned to. Above the ports Docker picks from by
 /// itself, since a container can't publish the port the guest listens on.

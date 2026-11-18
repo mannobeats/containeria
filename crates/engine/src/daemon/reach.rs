@@ -7,7 +7,7 @@ use std::io;
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::path::PathBuf;
 
-use containeria_proto::{REACHED, Reach};
+use contena_proto::{REACHED, Reach};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, copy_bidirectional};
 use tokio::net::{TcpStream, UnixStream};
 use tokio::sync::mpsc;

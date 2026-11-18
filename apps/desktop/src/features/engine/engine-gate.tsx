@@ -25,7 +25,7 @@ export function EngineGate({ title, children }: { title: string; children: React
       <Page crumbs={<Crumb>{title}</Crumb>}>
         <EmptyState
           art={<AppMark size={48} />}
-          title="Containeria couldn't check the engine"
+          title="Contena couldn't check the engine"
           className="h-full"
           actions={
             <Button loading={isFetching} onClick={() => refetch()}>

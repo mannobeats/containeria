@@ -1,8 +1,8 @@
-//! Containeria's engine: a small Linux VM that runs Docker, and the process on the Mac that owns
+//! Contena's engine: a small Linux VM that runs Docker, and the process on the Mac that owns
 //! it.
 //!
 //! [`Engine`] is what the app and `cx` hold: it starts the engine process, asks its status and
-//! stops it. The process itself is [`run`], in the `containeria-engine` binary. While it runs,
+//! stops it. The process itself is [`run`], in the `contena-engine` binary. While it runs,
 //! Docker's socket is at [`Home::docker_socket`]; the VM behind it turns off while nothing runs
 //! and back on at the next connection.
 

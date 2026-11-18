@@ -110,7 +110,7 @@ describe("TrayView", () => {
 
   it("opens the main window", async () => {
     const calls = renderTray("running");
-    await userEvent.click(await screen.findByRole("button", { name: "Open Containeria" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Open Contena" }));
     await waitFor(() => expect(calls).toContainEqual({ command: "windowShowMain", args: {} }));
   });
 
@@ -124,7 +124,7 @@ describe("TrayView", () => {
 
   it("quits", async () => {
     const calls = renderTray("running");
-    await userEvent.click(await screen.findByRole("button", { name: "Quit Containeria" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Quit Contena" }));
     await waitFor(() => expect(calls).toContainEqual({ command: "appQuit", args: {} }));
   });
 });

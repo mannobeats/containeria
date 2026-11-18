@@ -16,6 +16,6 @@ channels with stream ids; change notifications use events that invalidate TanSta
 ## Consequences
 
 - A renamed field or command is a TypeScript error, not a runtime failure.
-- `cargo test -p containeria-app` regenerates the bindings; CI fails if the committed file is stale.
+- `cargo test -p contena-app` regenerates the bindings; CI fails if the committed file is stale.
 - `tauri-specta` 2 is still a release candidate, pinned with `=`; upgrades are deliberate.
 - 64-bit integers must be marked when they fit a JS number, so precision loss is explicit.

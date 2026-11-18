@@ -1,4 +1,4 @@
-//! Containeria's database browser: saved and detected connections, schemas, table pages with
+//! Contena's database browser: saved and detected connections, schemas, table pages with
 //! filters pushed into SQL, staged edits committed in one transaction, the SQL editor, history and
 //! import and export, for Postgres, MySQL, MariaDB, SQLite, ClickHouse, MongoDB and Redis, directly
 //! or through an SSH tunnel.

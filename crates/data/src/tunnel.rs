@@ -1,6 +1,6 @@
 //! SSH tunnels: a port on 127.0.0.1 forwarded through an SSH server to the database, so a driver
 //! connects to the database as if it ran on the Mac. Host keys are checked against
-//! `~/.ssh/known_hosts` and Containeria's own `known_hosts`; only the second is ever written.
+//! `~/.ssh/known_hosts` and Contena's own `known_hosts`; only the second is ever written.
 
 use std::net::Ipv4Addr;
 use std::path::{Path, PathBuf};
@@ -21,7 +21,7 @@ use crate::error::{Error, Result};
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const KEEPALIVE: Duration = Duration::from_secs(30);
 
-/// How Containeria proves who it is to the SSH server.
+/// How Contena proves who it is to the SSH server.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum SshAuth {
@@ -113,7 +113,7 @@ pub(crate) enum Trust {
     Changed,
 }
 
-/// The user's `~/.ssh/known_hosts`, read only, and Containeria's own, where trusted keys go.
+/// The user's `~/.ssh/known_hosts`, read only, and Contena's own, where trusted keys go.
 #[derive(Debug, Clone)]
 pub(crate) struct KnownHosts {
     user: Option<PathBuf>,
@@ -150,7 +150,7 @@ impl KnownHosts {
     }
 
     /// # Errors
-    /// Fails when the key can't be parsed or Containeria's file can't be written.
+    /// Fails when the key can't be parsed or Contena's file can't be written.
     pub(crate) fn trust(&self, key: &HostKey) -> Result<()> {
         let public = PublicKey::from_openssh(&key.key)
             .map_err(|error| Error::Invalid(format!("that isn't an SSH public key: {error}")))?;
@@ -253,7 +253,7 @@ fn load_key(ssh: &SshTunnel, passphrase: Option<&str>) -> Result<PrivateKey> {
         )?;
     if key.algorithm().is_rsa() {
         return Err(Error::Ssh(format!(
-            "{file} is an RSA key, which Containeria doesn't sign with; add it to ssh-agent with ssh-add, or use an Ed25519 or ECDSA key"
+            "{file} is an RSA key, which Contena doesn't sign with; add it to ssh-agent with ssh-add, or use an Ed25519 or ECDSA key"
         )));
     }
     Ok(key)

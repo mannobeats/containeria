@@ -6,8 +6,8 @@ use serde::Deserialize;
 
 use crate::{Error, Kube, Result};
 
-/// The field manager name shown in `managedFields` for changes made from Containeria.
-const FIELD_MANAGER: &str = "containeria";
+/// The field manager name shown in `managedFields` for changes made from Contena.
+const FIELD_MANAGER: &str = "contena";
 
 /// Splits a manifest into its documents, skipping empty ones and `---` separators.
 fn documents(manifest: &str) -> Result<Vec<DynamicObject>> {

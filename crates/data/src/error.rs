@@ -40,7 +40,7 @@ pub enum Error {
     Keychain(String),
 
     #[error("{0}")]
-    Docker(#[from] containeria_docker::Error),
+    Docker(#[from] contena_docker::Error),
 
     #[error("a saved file couldn't be read: {0}")]
     Json(#[from] serde_json::Error),

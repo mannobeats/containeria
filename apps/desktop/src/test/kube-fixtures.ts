@@ -9,7 +9,7 @@ export function podFixture(overrides: Partial<PodSummary> = {}): PodSummary {
     ready: 1,
     containers: ["web"],
     restarts: 0,
-    node: "containeria",
+    node: "contena",
     ip: "10.42.0.12",
     owner: "ReplicaSet/storefront-6f9c",
     createdAt: 1_792_000_000,

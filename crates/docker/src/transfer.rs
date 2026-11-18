@@ -1,5 +1,5 @@
 //! Moving another engine's images, volumes and containers (from Docker Desktop's engine, say) into
-//! Containeria's: images streamed as `docker save | docker load`, volumes copied file by file
+//! Contena's: images streamed as `docker save | docker load`, volumes copied file by file
 //! through helper containers on both sides, and containers created again from their own settings.
 
 use std::collections::HashMap;
@@ -68,7 +68,7 @@ impl Docker {
     }
 
     /// The images, named volumes and containers worth moving: not Kubernetes' own containers,
-    /// not Containeria's helpers.
+    /// not Contena's helpers.
     ///
     /// # Errors
     /// Fails when the engine can't be reached.

@@ -1,5 +1,5 @@
-NAME="Containeria"
-ID=containeria
+NAME="Contena"
+ID=contena
 ID_LIKE=alpine
-PRETTY_NAME="Containeria Engine"
-HOME_URL="https://github.com/mannobeats/containeria"
+PRETTY_NAME="Contena Engine"
+HOME_URL="https://github.com/mannobeats/contena"

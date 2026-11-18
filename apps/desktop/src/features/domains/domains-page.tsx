@@ -35,8 +35,8 @@ function TurnOn() {
         </Button>
       }
     >
-      Reach <code className="font-mono text-mono-13">web.shop.containeria.local</code> instead of
-      localhost:3001, over HTTPS. Containeria runs a small DNS server and proxy on this Mac only.
+      Reach <code className="font-mono text-mono-13">web.shop.contena.local</code> instead of
+      localhost:3001, over HTTPS. Contena runs a small DNS server and proxy on this Mac only.
     </EmptyState>
   );
 }
@@ -118,7 +118,7 @@ function LoadFailed({ error, onRetry }: { error: unknown; onRetry: () => void })
   return (
     <EmptyState
       art={<Tile icon="domain" size="xl" />}
-      title="Containeria couldn't read the domains"
+      title="Contena couldn't read the domains"
       className="h-full"
       actions={
         <Button onClick={onRetry}>

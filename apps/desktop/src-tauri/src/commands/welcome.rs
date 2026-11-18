@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use containeria_docker::{Docker, Inventory};
+use contena_docker::{Docker, Inventory};
 use serde::{Deserialize, Serialize};
 use tauri::State;
 use tauri::ipc::Channel;
@@ -140,7 +140,7 @@ pub(crate) async fn migration_import(
     let report = |kind, item: &str, state, message: Option<String>| {
         let _ = progress.send(ImportProgress { kind, item: item.to_owned(), state, message });
     };
-    let finish = |kind, item: &str, result: containeria_docker::Result<()>| match result {
+    let finish = |kind, item: &str, result: contena_docker::Result<()>| match result {
         Ok(()) => report(kind, item, ImportState::Done, None),
         Err(error) => report(kind, item, ImportState::Failed, Some(error.to_string())),
     };

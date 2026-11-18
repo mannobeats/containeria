@@ -3,8 +3,8 @@ use std::pin::pin;
 use std::sync::{Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
-use containeria_docker::{Compose, Docker, DockerCli};
-use containeria_engine::{ClusterState, EngineConfig, Home, Phase, Status, Vm};
+use contena_docker::{Compose, Docker, DockerCli};
+use contena_engine::{ClusterState, EngineConfig, Home, Phase, Status, Vm};
 use futures::StreamExt;
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
@@ -31,7 +31,7 @@ pub(crate) enum EnginePhase {
     Asleep,
     Stopping,
     Broken,
-    /// `CONTAINERIA_DOCKER_SOCKET` points at another Docker engine.
+    /// `CONTENA_DOCKER_SOCKET` points at another Docker engine.
     External,
 }
 
@@ -47,8 +47,8 @@ pub(crate) struct EngineStatus {
     pub(crate) docker_socket: String,
 }
 
-/// The `docker` context that points at Containeria's engine.
-const DOCKER_CONTEXT: &str = "containeria";
+/// The `docker` context that points at Contena's engine.
+const DOCKER_CONTEXT: &str = "contena";
 
 /// Starts the engine as the app opens, at login too, when it was stopped and Settings allow it.
 /// An engine never created waits for first launch, and a broken one for the user to see it.
@@ -85,12 +85,12 @@ fn phase_of(transition: Option<EnginePhase>, status: &Status, created: bool) -> 
     }
 }
 
-/// The containers engine as the app sees it: Containeria's own, or another Docker engine named in
+/// The containers engine as the app sees it: Contena's own, or another Docker engine named in
 /// the environment.
 #[derive(Debug)]
 pub(crate) struct Engine {
-    /// Containeria's own engine, used unless another is named in the environment.
-    own: containeria_engine::Engine,
+    /// Contena's own engine, used unless another is named in the environment.
+    own: contena_engine::Engine,
     compose: Option<Compose>,
     docker_cli: Option<DockerCli>,
     external_socket: Option<PathBuf>,
@@ -113,8 +113,8 @@ impl Engine {
     pub(crate) fn new(resources: Option<&Path>) -> Result<Self> {
         let home = Home::from_env()?;
         let tool = |name| resources.map(|folder| folder.join("tools").join(name));
-        let program = resources.map(|folder| folder.join("engine/containeria-engine"));
-        let external_socket = std::env::var_os("CONTAINERIA_DOCKER_SOCKET").map(PathBuf::from);
+        let program = resources.map(|folder| folder.join("engine/contena-engine"));
+        let external_socket = std::env::var_os("CONTENA_DOCKER_SOCKET").map(PathBuf::from);
         let socket = external_socket.clone().unwrap_or_else(|| home.docker_socket());
         let compose = Compose::locate(&socket, tool("cli-plugins/docker-compose").as_deref());
         let docker_cli = DockerCli::locate(
@@ -124,7 +124,7 @@ impl Engine {
             &home.root().join("docker"),
         );
         Ok(Self {
-            own: containeria_engine::Engine::locate(home, program.as_deref()),
+            own: contena_engine::Engine::locate(home, program.as_deref()),
             compose,
             docker_cli,
             external_socket,
@@ -186,7 +186,7 @@ impl Engine {
             && let Some(docker) = &self.docker_cli
             && let Err(error) = docker.select_context(DOCKER_CONTEXT).await
         {
-            tracing::warn!(%error, "docker's context wasn't switched to Containeria");
+            tracing::warn!(%error, "docker's context wasn't switched to Contena");
         }
         Ok(())
     }
@@ -229,7 +229,7 @@ impl Engine {
         &self,
         app: &AppHandle,
         phase: EnginePhase,
-        work: impl Future<Output = containeria_engine::Result<()>>,
+        work: impl Future<Output = contena_engine::Result<()>>,
     ) -> Result<()> {
         self.set_transition(Some(phase));
         EngineChanged.emit(app)?;

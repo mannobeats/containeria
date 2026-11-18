@@ -6,7 +6,7 @@
 use std::fs;
 use std::io;
 
-use containeria_proto::{AgentCall, Port};
+use contena_proto::{AgentCall, Port};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 

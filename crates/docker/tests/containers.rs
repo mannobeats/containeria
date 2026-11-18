@@ -1,17 +1,17 @@
-//! Runs against a real Docker engine: `CONTAINERIA_DOCKER_SOCKET=... cargo test -- --ignored`.
-//! Every container it makes is named `containeria-test-*` and removed at the end.
+//! Runs against a real Docker engine: `CONTENA_DOCKER_SOCKET=... cargo test -- --ignored`.
+//! Every container it makes is named `contena-test-*` and removed at the end.
 
 use std::path::PathBuf;
 use std::pin::pin;
 
-use containeria_docker::{
+use contena_docker::{
     ContainerAction, Docker, EnvVar, FileKind, Level, Restart, RunSpec, Utf8Decoder,
 };
 use futures::StreamExt;
 use tokio::io::AsyncWriteExt;
 
 fn socket() -> PathBuf {
-    std::env::var_os("CONTAINERIA_DOCKER_SOCKET")
+    std::env::var_os("CONTENA_DOCKER_SOCKET")
         .map_or_else(|| PathBuf::from("/var/run/docker.sock"), PathBuf::from)
 }
 
@@ -19,7 +19,7 @@ fn socket() -> PathBuf {
 #[ignore = "needs a Docker engine"]
 async fn runs_inspects_logs_lists_copies_and_opens_a_shell() {
     let docker = Docker::connect(&socket()).unwrap();
-    let name = format!("containeria-test-{}", std::process::id());
+    let name = format!("contena-test-{}", std::process::id());
     let spec = RunSpec {
         image: "busybox:1.38".to_owned(),
         name: Some(name.clone()),

@@ -13,7 +13,7 @@ const termCmds = {
   help: () => 'Try: ls, pwd, whoami, ps, env, uname -a, df -h, clear',
   pwd: (t) => t.dataset.cwd,
   whoami: (t) => t.dataset.user,
-  'uname -a': () => `Linux ${'containeria'} 6.12.8-containeria #1 SMP PREEMPT aarch64 GNU/Linux`,
+  'uname -a': () => `Linux ${'contena'} 6.12.8-contena #1 SMP PREEMPT aarch64 GNU/Linux`,
   ls: () => '<span class="term-dir">bin</span>  <span class="term-dir">etc</span>  <span class="term-dir">app</span>  <span class="term-dir">home</span>  <span class="term-dir">usr</span>  <span class="term-dir">var</span>  package.json  go.mod',
   ps: () => 'PID   USER     TIME  COMMAND\n    1 root      0:04 air -c .air.toml\n   18 root      0:31 /tmp/bin/api\n   97 root      0:00 sh\n  104 root      0:00 ps',
   env: () => 'HOSTNAME=8b21de90a1f3\nPATH=/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin\nDATABASE_URL=postgres://shop:••••••@postgres:5432/shop\nREDIS_URL=redis://redis:6379/0\nGOPATH=/go',

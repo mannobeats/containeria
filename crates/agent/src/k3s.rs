@@ -9,8 +9,8 @@ use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
 
-use containeria_agent::kube::{ServiceEvent, published_checksum, release_urls};
-use containeria_proto::{AgentCall, Port};
+use contena_agent::kube::{ServiceEvent, published_checksum, release_urls};
+use contena_proto::{AgentCall, Port};
 use rustix::mount::{MountFlags, UnmountFlags, mount, unmount};
 use rustix::process::{Pid, Signal, kill_process};
 use serde_json::Value;
@@ -24,8 +24,8 @@ use crate::serve::Engine;
 use crate::{docker, log};
 
 /// Releases, kept across restarts so each is fetched once, and k3s's own log.
-const HOME: &str = "/var/lib/containeria/k3s";
-const LOG: &str = "/var/lib/containeria/k3s/k3s.log";
+const HOME: &str = "/var/lib/contena/k3s";
+const LOG: &str = "/var/lib/contena/k3s/k3s.log";
 const KUBECONFIG: &str = "/run/k3s.yaml";
 /// Everything a cluster stores. All of it is on the data disk.
 const STATE: [&str; 3] = ["/var/lib/rancher", "/var/lib/kubelet", "/var/lib/cni"];
@@ -166,7 +166,7 @@ async fn fetch(version: &str) -> Result<PathBuf> {
 
 fn spawn(binary: &Path) -> Result<Child> {
     Command::new(binary)
-        .args(["server", "--docker", "--disable=traefik", "--node-name=containeria"])
+        .args(["server", "--docker", "--disable=traefik", "--node-name=contena"])
         .args(["--write-kubeconfig", KUBECONFIG, "--write-kubeconfig-mode=600", "--log", LOG])
         .stdout(Stdio::null())
         .stderr(Stdio::null())

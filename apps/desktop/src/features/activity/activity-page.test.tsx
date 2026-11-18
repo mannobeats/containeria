@@ -70,6 +70,6 @@ describe("ActivityPage", () => {
 
   it("says where the numbers come from on another engine", async () => {
     renderActivity("external");
-    expect(await screen.findByText(/CONTAINERIA_DOCKER_SOCKET/)).toBeDefined();
+    expect(await screen.findByText(/CONTENA_DOCKER_SOCKET/)).toBeDefined();
   });
 });

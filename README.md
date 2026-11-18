@@ -1,4 +1,4 @@
-# Containeria
+# Contena
 
 Containers, Kubernetes, Linux machines and your databases, in one fast native app for macOS.
 Open source and free for commercial use: a replacement for Docker Desktop and OrbStack.
@@ -14,7 +14,7 @@ Open source and free for commercial use: a replacement for Docker Desktop and Or
   databases running in your containers.
 - `docker`, `docker compose` and `kubectl` keep working as before.
 
-Under the hood: Containeria's own engine runs the unmodified Docker Engine in a small Linux VM on
+Under the hood: Contena's own engine runs the unmodified Docker Engine in a small Linux VM on
 Apple Virtualization; the app is Tauri 2 with a Rust core and a React UI. See
 [docs/architecture.md](docs/architecture.md), the [feature map](docs/features.md) and
 [why the engine is our own](docs/adr/0004-our-own-engine.md).
@@ -35,15 +35,15 @@ pnpm install
 sh scripts/fetch-tools.sh    # the pinned Docker CLI, Compose, Buildx and kubectl
 sh scripts/build-engine.sh   # the engine and its VM helper
 sh scripts/build-guest.sh    # the kernel and system image the VM boots; needs a Docker engine
-pnpm dev                     # runs the app with its own engine in ~/.containeria
-CONTAINERIA_DOCKER_SOCKET=/var/run/docker.sock pnpm dev   # or against any running Docker engine
+pnpm dev                     # runs the app with its own engine in ~/.contena
+CONTENA_DOCKER_SOCKET=/var/run/docker.sock pnpm dev   # or against any running Docker engine
 pnpm check                   # the full quality gate
 pnpm build                   # the .app and .dmg, with the engine and tools inside
 ```
 
 A tagged commit (`v*`) builds and publishes the Apple silicon disk image through
-`.github/workflows/release.yml`. It isn't signed with a Developer ID yet, so macOS asks to confirm
-the first launch (right-click → Open).
+`.github/workflows/release.yml`, signed with a Developer ID and notarized when the repository
+has the secrets for it. [docs/release.md](docs/release.md) says how to set that up.
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
 

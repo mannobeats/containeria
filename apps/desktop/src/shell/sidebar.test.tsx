@@ -49,14 +49,14 @@ describe("Sidebar", () => {
 
   it("stops the engine from the engine menu", async () => {
     const calls = renderSidebar();
-    await userEvent.click(await screen.findByRole("button", { name: /Containeria Running/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /Contena Running/ }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Stop Engine" }));
     await waitFor(() => expect(calls.map((call) => call.command)).toContain("engineStop"));
   });
 
   it("starts a stopped engine from the same menu", async () => {
     const calls = renderSidebar("stopped");
-    await userEvent.click(await screen.findByRole("button", { name: /Containeria Stopped/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /Contena Stopped/ }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Start Engine" }));
     await waitFor(() => expect(calls.map((call) => call.command)).toContain("engineStart"));
   });
@@ -70,7 +70,7 @@ describe("Sidebar", () => {
     });
     renderWithApp(<Sidebar />);
     await userEvent.click(
-      await screen.findByRole("button", { name: /Containeria Couldn't check the engine/ }),
+      await screen.findByRole("button", { name: /Contena Couldn't check the engine/ }),
     );
     const copy = await screen.findByRole("menuitem", { name: "Copy Docker Socket Path" });
     expect(copy.getAttribute("aria-disabled")).toBe("true");

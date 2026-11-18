@@ -402,7 +402,7 @@ mod tests {
             "metadata": {"name": "checkout-7d9f8b-x2", "namespace": "shop",
                 "creationTimestamp": "2026-10-17T10:00:00Z",
                 "ownerReferences": [{"apiVersion": "apps/v1", "kind": "ReplicaSet", "name": "checkout-7d9f8b", "uid": "u"}]},
-            "spec": {"nodeName": "containeria", "containers": [{"name": "checkout", "image": "shop-checkout:dev"}]},
+            "spec": {"nodeName": "contena", "containers": [{"name": "checkout", "image": "shop-checkout:dev"}]},
             "status": {"phase": "Running", "podIP": "10.42.0.17", "containerStatuses": [{
                 "name": "checkout", "ready": false, "restartCount": 14, "image": "shop-checkout:dev", "imageID": "",
                 "state": {"waiting": {"reason": "CrashLoopBackOff", "message": "back-off 5m0s"}}}]}

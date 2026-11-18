@@ -2,9 +2,9 @@
 import PackageDescription
 
 let package = Package(
-    name: "containeria-vmm",
+    name: "contena-vmm",
     platforms: [.macOS(.v13)],
     targets: [
-        .executableTarget(name: "containeria-vmm", path: "Sources")
+        .executableTarget(name: "contena-vmm", path: "Sources")
     ]
 )

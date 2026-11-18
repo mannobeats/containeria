@@ -1,4 +1,4 @@
-//! `cx`: Containeria from the terminal. Talks to the engine directly, so it works without the app.
+//! `cx`: Contena from the terminal. Talks to the engine directly, so it works without the app.
 
 mod databases;
 mod output;
@@ -10,14 +10,14 @@ use std::pin::pin;
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
-use containeria_docker::{ContainerAction, ContainerSummary, Docker, LogStream};
-use containeria_engine::{Engine, Home};
+use contena_docker::{ContainerAction, ContainerSummary, Docker, LogStream};
+use contena_engine::{Engine, Home};
 use futures::StreamExt;
 
 type Result<T = (), E = Box<dyn Error>> = std::result::Result<T, E>;
 
 #[derive(Debug, Parser)]
-#[command(name = "cx", version, about = "Containeria from the terminal")]
+#[command(name = "cx", version, about = "Contena from the terminal")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -66,7 +66,7 @@ fn home() -> Result<Home> {
 }
 
 fn docker() -> Result<Docker> {
-    let socket = std::env::var_os("CONTAINERIA_DOCKER_SOCKET")
+    let socket = std::env::var_os("CONTENA_DOCKER_SOCKET")
         .map_or_else(|| home().map(|home| home.docker_socket()), |path| Ok(PathBuf::from(path)))?;
     Docker::connect(&socket)
         .map_err(|_| "the engine isn't running; start it with `cx engine start`".into())
@@ -125,9 +125,9 @@ async fn logs(name: &str, tail: usize, follow: bool) -> Result {
 
 async fn open(name: &str) -> Result {
     let container = find(&docker()?, name).await?;
-    let served = containeria_net::running_ports(&home()?.root().join("net"));
-    let url = output::open_url(&container, containeria_net::DEFAULT_TLD, served)
-        .ok_or_else(|| format!("{name} publishes no port and Containeria isn't serving domains"))?;
+    let served = contena_net::running_ports(&home()?.root().join("net"));
+    let url = output::open_url(&container, contena_net::DEFAULT_TLD, served)
+        .ok_or_else(|| format!("{name} publishes no port and Contena isn't serving domains"))?;
     tokio::process::Command::new("/usr/bin/open").arg(&url).status().await?;
     writeln!(io::stdout(), "{url}")?;
     Ok(())
@@ -150,7 +150,7 @@ async fn run(command: Command) -> Result {
     match command {
         Command::Ps => {
             let list = docker()?.containers().await?;
-            write!(io::stdout(), "{}", output::containers(&list, containeria_net::DEFAULT_TLD))?;
+            write!(io::stdout(), "{}", output::containers(&list, contena_net::DEFAULT_TLD))?;
         }
         Command::Start { names } => act(&names, ContainerAction::Start).await?,
         Command::Stop { names } => act(&names, ContainerAction::Stop).await?,
@@ -191,7 +191,7 @@ mod tests {
             id: id.to_owned(),
             name: name.to_owned(),
             image: "postgres".to_owned(),
-            state: containeria_docker::ContainerState::Running,
+            state: contena_docker::ContainerState::Running,
             status: "Up".to_owned(),
             project: None,
             service: None,

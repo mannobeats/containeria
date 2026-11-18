@@ -7,7 +7,7 @@ use crate::helper::Helper;
 use crate::{Docker, Error, Result};
 
 const TRIVY: &str = "aquasec/trivy:0.76.0";
-const CACHE: &str = "containeria-trivy-cache";
+const CACHE: &str = "contena-trivy-cache";
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, specta::Type,

@@ -34,7 +34,7 @@ jobs:
         with:
           tool: cargo-deny
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @containeria/desktop build
+      - run: pnpm --filter @contena/desktop build
       - name: The VM helper builds
         run: swift build --package-path vmm
       - run: pnpm check

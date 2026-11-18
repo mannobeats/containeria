@@ -1,6 +1,6 @@
 [package]
-name = "containeria-proto"
-description = "What the Containeria engine on the Mac and the agent in its Linux guest say to each other."
+name = "contena-proto"
+description = "What the Contena engine on the Mac and the agent in its Linux guest say to each other."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

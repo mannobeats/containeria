@@ -8,12 +8,12 @@ use std::os::unix::net::UnixStream;
 use std::os::unix::process::CommandExt;
 use std::process::{Command, ExitCode};
 
-use containeria_agent::ports;
+use contena_agent::ports;
 use rustix::io::{FdFlags, fcntl_setfd};
 
 /// The file name Docker runs the agent by for this job.
-pub(crate) const NAME: &str = "containeria-port-proxy";
-pub(crate) const SOCKET: &str = "/run/containeria/ports.sock";
+pub(crate) const NAME: &str = "contena-port-proxy";
+pub(crate) const SOCKET: &str = "/run/contena/ports.sock";
 const DOCKERS_PROXY: &str = "/usr/local/bin/docker-proxy";
 
 pub(crate) fn run(arguments: &[String]) -> ExitCode {

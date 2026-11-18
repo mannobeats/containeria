@@ -1,4 +1,4 @@
-use containeria_docker::DockerEvent;
+use contena_docker::DockerEvent;
 
 use crate::metrics::Metrics;
 use crate::settings_window::SettingsPane;

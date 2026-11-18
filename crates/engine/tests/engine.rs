@@ -2,14 +2,14 @@
 //!
 //! Needs the VM helper (`scripts/build-engine.sh`), the guest (`scripts/build-guest.sh`) and
 //! the Docker CLI (`scripts/fetch-tools.sh`), and pulls two small images. Run with
-//! `cargo test -p containeria-engine -- --ignored`.
+//! `cargo test -p contena-engine -- --ignored`.
 
 use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 use std::process::{Output, Stdio};
 use std::time::{Duration, Instant};
 
-use containeria_engine::{Engine, EngineConfig, Home, Phase};
+use contena_engine::{Engine, EngineConfig, Home, Phase};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::process::Command;
@@ -32,10 +32,10 @@ fn repository() -> PathBuf {
 /// The engine binary Cargo built, with the helper and the guest linked beside it as they are in
 /// the app bundle.
 fn engine_program() -> Outcome<PathBuf> {
-    let program = PathBuf::from(env!("CARGO_BIN_EXE_containeria-engine"));
+    let program = PathBuf::from(env!("CARGO_BIN_EXE_contena-engine"));
     let beside = program.parent().ok_or("the engine binary has no folder")?;
     for (name, built) in [
-        ("containeria-vmm", "apps/desktop/src-tauri/resources/engine/containeria-vmm"),
+        ("contena-vmm", "apps/desktop/src-tauri/resources/engine/contena-vmm"),
         ("guest", "apps/desktop/src-tauri/resources/engine/guest"),
     ] {
         let built = repository().join(built);
@@ -209,8 +209,7 @@ async fn publishes_ports(engine: &Engine, docker: &Docker) -> Outcome {
     let asked = Instant::now();
     loop {
         let mut inside = tokio::net::UnixStream::connect(engine.home().inside_socket()).await?;
-        let forward =
-            containeria_proto::Forward { transport: containeria_proto::Transport::Tcp, to };
+        let forward = contena_proto::Forward { transport: contena_proto::Transport::Tcp, to };
         inside.write_all(format!("{}\n", serde_json::to_string(&forward)?).as_bytes()).await?;
         inside.write_all(b"GET / HTTP/1.0\r\n\r\n").await?;
         let mut answer = String::new();
@@ -265,7 +264,7 @@ async fn knows_the_mac(docker: &Docker) -> Outcome {
     // The Mac's SSH agent answers in a container, to a user who is not root.
     if std::env::var_os("SSH_AUTH_SOCK").is_some() {
         let here = Command::new("ssh-add").arg("-l").output().await?;
-        let agent = containeria_proto::SSH_AGENT;
+        let agent = contena_proto::SSH_AGENT;
         let mount = format!("{agent}:{agent}");
         let environment = format!("SSH_AUTH_SOCK={agent}");
         let listed = docker
@@ -405,7 +404,7 @@ async fn sleeps_and_keeps_data(engine: &Engine, docker: &Docker) -> Outcome {
     // of the guest itself, outside any container, since Docker writes the disk out whenever it
     // takes a container down. It ignores being asked to end, so the shutdown takes its full
     // course: the disk is written out last, and the power must not go before that.
-    let pattern = "yes containeria | head -c 33554432";
+    let pattern = "yes contena | head -c 33554432";
     let writer = format!(
         "echo $$ > /sys/fs/cgroup/cgroup.procs; trap '' TERM; \
          (sleep 1; {pattern} > /var/lib/written-before-the-stop; sleep 600) >/dev/null 2>&1 &"

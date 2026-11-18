@@ -41,10 +41,10 @@ RUN apk add --root /rootfs --initdb --no-cache --keys-dir /etc/apk/keys \
       --repositories-file /etc/apk/repositories \
       alpine-baselayout busybox ca-certificates-bundle curl e2fsprogs git iptables
 COPY --from=docker /out/ /rootfs/usr/local/bin/
-COPY --from=agent containeria-agent /rootfs/sbin/containeria-agent
+COPY --from=agent contena-agent /rootfs/sbin/contena-agent
 COPY rootfs/ /rootfs/
 # Docker runs the agent under this name for each published port (see crates/agent/src/proxy.rs).
-RUN ln -s /sbin/containeria-agent /rootfs/usr/local/bin/containeria-port-proxy \
+RUN ln -s /sbin/contena-agent /rootfs/usr/local/bin/contena-port-proxy \
     && ln -s ../../etc/os-release /rootfs/usr/lib/os-release \
     && rm -rf /rootfs/var/cache/apk /rootfs/etc/resolv.conf \
     && mkfs.erofs -zlz4hc -T 0 -U 00000000-0000-0000-0000-000000000000 /rootfs.erofs /rootfs

@@ -6,7 +6,7 @@ use std::net::SocketAddr;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
-use containeria_proto::{FORWARD_PORT, Forward, Port, Transport, datagram};
+use contena_proto::{FORWARD_PORT, Forward, Port, Transport, datagram};
 use socket2::{Domain, Protocol, Socket, Type};
 use tokio::io::{AsyncWriteExt, copy_bidirectional};
 use tokio::net::{TcpListener, UdpSocket};

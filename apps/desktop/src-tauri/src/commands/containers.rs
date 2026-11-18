@@ -1,6 +1,6 @@
 use std::pin::pin;
 
-use containeria_docker::{ContainerAction, ContainerSummary, StatsSample};
+use contena_docker::{ContainerAction, ContainerSummary, StatsSample};
 use futures::StreamExt;
 use tauri::State;
 use tauri::ipc::Channel;

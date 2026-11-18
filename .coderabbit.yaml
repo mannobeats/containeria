@@ -44,7 +44,7 @@ reviews:
       instructions: >-
         Reachable by any local process: the DNS server, the reverse proxy and the local certificate
         authority. Check input validation, private key handling and file permissions, and anything
-        that writes outside ~/.containeria/net without the user's approval.
+        that writes outside ~/.contena/net without the user's approval.
     - path: "crates/data/**"
       instructions: >-
         The database browser. Passwords live in the macOS Keychain and must never be logged,

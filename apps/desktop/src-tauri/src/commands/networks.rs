@@ -1,4 +1,4 @@
-use containeria_docker::{NetworkDetail, NetworkSpec, NetworkSummary};
+use contena_docker::{NetworkDetail, NetworkSpec, NetworkSummary};
 use tauri::State;
 
 use crate::error::Result;

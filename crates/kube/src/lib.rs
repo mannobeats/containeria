@@ -1,4 +1,4 @@
-//! Containeria's view of the k3s cluster inside the engine, through the Kubernetes API.
+//! Contena's view of the k3s cluster inside the engine, through the Kubernetes API.
 
 mod apply;
 mod model;
@@ -24,7 +24,7 @@ pub use model::{
 pub use shell::{PodResize, PodShell};
 
 /// The kubeconfig context the engine writes for its cluster.
-pub const CONTEXT: &str = "containeria";
+pub const CONTEXT: &str = "contena";
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 

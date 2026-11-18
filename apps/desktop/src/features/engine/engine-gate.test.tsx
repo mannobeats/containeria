@@ -38,7 +38,7 @@ describe("EngineGate", () => {
       </EngineGate>,
     );
     expect(
-      await screen.findByRole("heading", { name: "Containeria couldn't check the engine" }),
+      await screen.findByRole("heading", { name: "Contena couldn't check the engine" }),
     ).toBeDefined();
     expect(screen.getByText("The home folder could not be found.")).toBeDefined();
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));

@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use containeria_proto::rpc::{self, Caller};
+use contena_proto::rpc::{self, Caller};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc;
 

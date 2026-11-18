@@ -3,8 +3,8 @@ use std::fmt;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use containeria_docker::ShellTarget;
-use containeria_kube::PodResize;
+use contena_docker::ShellTarget;
+use contena_kube::PodResize;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 type Input = Arc<tokio::sync::Mutex<Pin<Box<dyn AsyncWrite + Send>>>>;

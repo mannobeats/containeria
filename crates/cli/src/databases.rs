@@ -1,6 +1,6 @@
-use containeria_docker::{ContainerState, ContainerSummary, PortProtocol};
+use contena_docker::{ContainerState, ContainerSummary, PortProtocol};
 
-/// A database Containeria found running in a container.
+/// A database Contena found running in a container.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Database {
     pub(crate) container: String,
@@ -44,7 +44,7 @@ pub(crate) fn detect(containers: &[ContainerSummary]) -> Vec<Database> {
 
 #[cfg(test)]
 mod tests {
-    use containeria_docker::Port;
+    use contena_docker::Port;
 
     use super::*;
 

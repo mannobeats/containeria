@@ -265,7 +265,7 @@ impl Docker {
     }
 
     /// Puts a backup's files into `name`, creating the volume when it doesn't exist. With
-    /// `replace`, what the volume held is deleted first. Takes Containeria's own backups and plain
+    /// `replace`, what the volume held is deleted first. Takes Contena's own backups and plain
     /// `.tar` or `.tar.gz` archives of a volume's contents.
     ///
     /// # Errors
@@ -274,7 +274,7 @@ impl Docker {
         let source = source.to_path_buf();
         let (bytes, ours) = tokio::task::spawn_blocking(move || -> Result<(Vec<u8>, bool)> {
             let bytes = std::fs::read(&source)?;
-            let ours = is_containeria_backup(&bytes)?;
+            let ours = is_contena_backup(&bytes)?;
             Ok((bytes, ours))
         })
         .await
@@ -319,9 +319,9 @@ impl Docker {
     }
 }
 
-/// Whether every entry sits under the `v/` folder Containeria's backups use; other archives hold
+/// Whether every entry sits under the `v/` folder Contena's backups use; other archives hold
 /// a volume's files at their top level. Takes `.tar` and `.tar.gz`.
-fn is_containeria_backup(bytes: &[u8]) -> Result<bool> {
+fn is_contena_backup(bytes: &[u8]) -> Result<bool> {
     let gzip = bytes.starts_with(&[0x1f, 0x8b]);
     let reader: Box<dyn std::io::Read> =
         if gzip { Box::new(flate2::read::GzDecoder::new(bytes)) } else { Box::new(bytes) };
@@ -370,10 +370,10 @@ mod tests {
 
     #[test]
     fn tells_its_own_backups_from_plain_archives() {
-        assert!(is_containeria_backup(&archive(&["v/PG_VERSION", "v/base/1"], true)).unwrap());
-        assert!(!is_containeria_backup(&archive(&["PG_VERSION", "base/1"], false)).unwrap());
-        assert!(!is_containeria_backup(&archive(&["./PG_VERSION"], true)).unwrap());
-        assert!(is_containeria_backup(b"not a tar at all, just text").is_err());
+        assert!(is_contena_backup(&archive(&["v/PG_VERSION", "v/base/1"], true)).unwrap());
+        assert!(!is_contena_backup(&archive(&["PG_VERSION", "base/1"], false)).unwrap());
+        assert!(!is_contena_backup(&archive(&["./PG_VERSION"], true)).unwrap());
+        assert!(is_contena_backup(b"not a tar at all, just text").is_err());
     }
 
     #[test]

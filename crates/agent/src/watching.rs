@@ -11,8 +11,8 @@ use std::io::{self, Write};
 use std::sync::Arc;
 use std::time::Duration;
 
-use containeria_agent::changes::{self, RELAY, share_of};
-use containeria_proto::{AgentCall, Change};
+use contena_agent::changes::{self, RELAY, share_of};
+use contena_proto::{AgentCall, Change};
 use tokio::io::AsyncBufReadExt;
 
 use crate::docker;

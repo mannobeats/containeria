@@ -14,7 +14,7 @@ type Idle = "notCreated" | "stopped" | "broken";
 const IDLE: Record<Idle, { title: string; body: string; action: string }> = {
   notCreated: {
     title: "Set up the engine",
-    body: "Containeria runs Docker in a small Linux VM of its own. It starts in about a second.",
+    body: "Contena runs Docker in a small Linux VM of its own. It starts in about a second.",
     action: "Create engine",
   },
   stopped: {
@@ -51,7 +51,7 @@ export function EngineOff({ phase }: { phase: EnginePhase | undefined }) {
   if (phase === "missing") {
     return (
       <EmptyState art={art} title="The engine isn't in this build" className="h-full">
-        Release builds include Containeria's engine. For a development build, make it with{" "}
+        Release builds include Contena's engine. For a development build, make it with{" "}
         <code className="font-mono text-mono-13 select-text">scripts/build-engine.sh</code>.
       </EmptyState>
     );

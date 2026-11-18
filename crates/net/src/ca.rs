@@ -18,12 +18,12 @@ use time::{Duration, OffsetDateTime};
 use crate::error::Result;
 
 /// The name the authority shows in Keychain Access.
-pub const CA_NAME: &str = "Containeria Local Certificate Authority";
+pub const CA_NAME: &str = "Contena Local Certificate Authority";
 
 const CERT_FILE: &str = "ca.pem";
 const KEY_FILE: &str = "ca-key.pem";
 
-/// Containeria's own certificate authority. Created once on this Mac, never leaves it, and signs a
+/// Contena's own certificate authority. Created once on this Mac, never leaves it, and signs a
 /// short-lived certificate for each host the proxy serves.
 pub(crate) struct Authority {
     cert_path: PathBuf,
@@ -44,7 +44,7 @@ impl std::fmt::Debug for Authority {
 fn ca_params() -> Result<CertificateParams> {
     let mut params = CertificateParams::new(Vec::<String>::new())?;
     params.distinguished_name.push(DnType::CommonName, CA_NAME);
-    params.distinguished_name.push(DnType::OrganizationName, "Containeria");
+    params.distinguished_name.push(DnType::OrganizationName, "Contena");
     params.is_ca = IsCa::Ca(BasicConstraints::Constrained(0));
     params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
     let now = OffsetDateTime::now_utc();
@@ -140,9 +140,9 @@ mod tests {
     fn issues_and_caches_a_certificate_chained_to_the_authority() {
         let dir = tempfile::tempdir().unwrap();
         let authority = Authority::load_or_create(dir.path()).unwrap();
-        let leaf = authority.leaf("web.shop.containeria.local").unwrap();
+        let leaf = authority.leaf("web.shop.contena.local").unwrap();
         assert_eq!(leaf.cert.len(), 2);
         assert_eq!(leaf.cert[1], authority.cert);
-        assert!(Arc::ptr_eq(&leaf, &authority.leaf("web.shop.containeria.local").unwrap()));
+        assert!(Arc::ptr_eq(&leaf, &authority.leaf("web.shop.contena.local").unwrap()));
     }
 }

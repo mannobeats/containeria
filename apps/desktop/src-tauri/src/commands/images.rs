@@ -1,6 +1,6 @@
 use std::pin::pin;
 
-use containeria_docker::{
+use contena_docker::{
     BuildSpec, HubImage, ImageDetail, ImageSummary, PruneReport, PullProgress, ScanReport,
 };
 use futures::StreamExt;

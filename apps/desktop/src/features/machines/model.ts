@@ -81,7 +81,7 @@ export function snapshotName(at: Date): string {
   return `${date}-${pad(at.getHours())}${pad(at.getMinutes())}`;
 }
 
-/** The snapshot names Containeria accepts. */
+/** The snapshot names Contena accepts. */
 export function snapshotProblem(name: string, taken: string[]): string | null {
   if (name === "") {
     return "Give the snapshot a name.";

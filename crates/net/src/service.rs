@@ -3,7 +3,7 @@ use std::net::Ipv4Addr;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
-use containeria_docker::ContainerSummary;
+use contena_docker::ContainerSummary;
 use serde::{Deserialize, Serialize};
 use tokio::net::UdpSocket;
 use tokio::task::JoinHandle;
@@ -81,7 +81,7 @@ impl Drop for Running {
 }
 
 /// Domains and HTTPS for containers: the DNS server, the proxy, the certificate authority and the
-/// route table, under one folder (`~/.containeria/net`).
+/// route table, under one folder (`~/.contena/net`).
 pub struct Domains {
     dir: PathBuf,
     /// The engine's socket into the guest's network.

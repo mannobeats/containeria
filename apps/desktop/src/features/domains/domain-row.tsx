@@ -38,7 +38,7 @@ function Https({ route, caTrusted }: { route: DomainRoute; caTrusted: boolean })
     );
   }
   return caTrusted ? (
-    <Tip label="Signed by the Containeria local certificate authority">
+    <Tip label="Signed by the Contena local certificate authority">
       <span className="inline-flex items-center gap-1">
         <IconLock className="size-3.5" aria-hidden />
         HTTPS

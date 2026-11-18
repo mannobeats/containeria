@@ -1,6 +1,6 @@
 [package]
-name = "containeria-cli"
-description = "cx: Containeria from the terminal."
+name = "contena-cli"
+description = "cx: Contena from the terminal."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -15,9 +15,9 @@ path = "src/main.rs"
 
 [dependencies]
 clap.workspace = true
-containeria-docker.workspace = true
-containeria-engine.workspace = true
-containeria-net.workspace = true
+contena-docker.workspace = true
+contena-engine.workspace = true
+contena-net.workspace = true
 futures.workspace = true
 tokio.workspace = true
 

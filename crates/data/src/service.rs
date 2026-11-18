@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use containeria_docker::Docker;
+use contena_docker::Docker;
 use serde::Serialize;
 use tokio::sync::RwLock;
 
@@ -76,7 +76,7 @@ fn read_only_reason(session: &Session, table: &Table, writes_blocked: bool) -> O
 }
 
 impl Data {
-    /// Keeps everything in `folder`, normally `~/.containeria/data`.
+    /// Keeps everything in `folder`, normally `~/.contena/data`.
     #[must_use]
     pub fn new(folder: &Path) -> Self {
         Self {
@@ -213,7 +213,7 @@ impl Data {
         tunnel::host_key(&ssh.clone().normalized(), self.known_hosts()).await
     }
 
-    /// Trusts an SSH server's key in Containeria's own `known_hosts`; `~/.ssh` is never written.
+    /// Trusts an SSH server's key in Contena's own `known_hosts`; `~/.ssh` is never written.
     ///
     /// # Errors
     /// Fails when the key can't be parsed or the file can't be written.

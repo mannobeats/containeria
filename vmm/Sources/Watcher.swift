@@ -4,7 +4,7 @@ import Foundation
 /// Tells the engine what changes on the Mac under the folders it names. The guest can't see
 /// those changes happen, so the engine passes them on to it.
 final class Watcher: @unchecked Sendable {
-    private let queue = DispatchQueue(label: "dev.containeria.vmm.files")
+    private let queue = DispatchQueue(label: "dev.contena.vmm.files")
     /// One stream for each folder, so naming another leaves the watching of the rest alone.
     private var streams: [String: FSEventStreamRef] = [:]
 

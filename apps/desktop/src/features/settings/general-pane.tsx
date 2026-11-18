@@ -33,7 +33,7 @@ const MENU_BAR = [
   flag(
     "keepRunningInMenuBar",
     "Keep running in the menu bar",
-    "Closing the window leaves Containeria in the menu bar. Containers keep running either way.",
+    "Closing the window leaves Contena in the menu bar. Containers keep running either way.",
   ),
   flag(
     "memoryInMenuBar",
@@ -44,8 +44,8 @@ const MENU_BAR = [
 
 const ENGINE = [
   {
-    label: "Start the engine with Containeria",
-    hint: "When Containeria opens, at login too. Containers set to restart come back after your Mac restarts.",
+    label: "Start the engine with Contena",
+    hint: "When Contena opens, at login too. Containers set to restart come back after your Mac restarts.",
     read: (preferences: Preferences) => preferences.startEngine === "withApp",
     write: (preferences: Preferences, on: boolean): Preferences => ({
       ...preferences,
@@ -126,7 +126,7 @@ export function GeneralPane() {
       <SettingsSection title="Startup">
         <SettingsRow
           label="Open at login"
-          hint="Starts Containeria in the menu bar when you log in, without opening its window."
+          hint="Starts Contena in the menu bar when you log in, without opening its window."
         >
           <Switch label="Open at login" checked={login.enabled} onCheckedChange={login.set} />
         </SettingsRow>
@@ -138,7 +138,7 @@ export function GeneralPane() {
       </SettingsSection>
       <SettingsSection
         title="Notifications"
-        note="Containeria notifies you even with its window closed, while it runs in the menu bar."
+        note="Contena notifies you even with its window closed, while it runs in the menu bar."
       >
         <ToggleRows toggles={NOTIFICATIONS} onEnable={askForNotifications} />
       </SettingsSection>

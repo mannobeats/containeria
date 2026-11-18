@@ -2,7 +2,7 @@ use std::pin::pin;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
-use containeria_kube::Kube;
+use contena_kube::Kube;
 use futures::StreamExt;
 use serde::Serialize;
 use tauri::AppHandle;
@@ -53,11 +53,10 @@ impl Kubernetes {
     /// Changes arrive in bursts (a rollout touches many pods); one refetch per burst is enough.
     const QUIET_FOR: Duration = Duration::from_millis(300);
 
-    /// `$CONTAINERIA_KUBE_CONTEXT` points the app at another cluster, as `CONTAINERIA_DOCKER_SOCKET`
+    /// `$CONTENA_KUBE_CONTEXT` points the app at another cluster, as `CONTENA_DOCKER_SOCKET`
     /// does for Docker.
     fn context() -> String {
-        std::env::var("CONTAINERIA_KUBE_CONTEXT")
-            .unwrap_or_else(|_| containeria_kube::CONTEXT.to_owned())
+        std::env::var("CONTENA_KUBE_CONTEXT").unwrap_or_else(|_| contena_kube::CONTEXT.to_owned())
     }
 
     /// A connected client, connecting on first use.
@@ -89,7 +88,7 @@ impl Kubernetes {
     }
 
     fn external() -> bool {
-        std::env::var_os("CONTAINERIA_KUBE_CONTEXT").is_some()
+        std::env::var_os("CONTENA_KUBE_CONTEXT").is_some()
     }
 
     fn enabled(engine: &Engine) -> bool {

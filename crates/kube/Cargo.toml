@@ -1,6 +1,6 @@
 [package]
-name = "containeria-kube"
-description = "Containeria's view of the k3s cluster inside the engine."
+name = "contena-kube"
+description = "Contena's view of the k3s cluster inside the engine."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

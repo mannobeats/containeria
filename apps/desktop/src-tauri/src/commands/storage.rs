@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
-use containeria_docker::{DiskUsage, PruneReport};
-use containeria_engine::{DataLocation, MoveProgress};
+use contena_docker::{DiskUsage, PruneReport};
+use contena_engine::{DataLocation, MoveProgress};
 use serde::Serialize;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, State};
@@ -16,7 +16,7 @@ use crate::storage::MoveGuard;
 #[specta::specta]
 pub(crate) async fn storage_location(state: State<'_, AppState>) -> Result<DataLocation> {
     let home = state.engine.home().clone();
-    tauri::async_runtime::spawn_blocking(move || containeria_engine::location(&home))
+    tauri::async_runtime::spawn_blocking(move || contena_engine::location(&home))
         .await
         .map_err(|error| CommandError::new(ErrorKind::Internal, error.to_string()))
 }
@@ -30,7 +30,7 @@ pub(crate) async fn storage_check(
 ) -> Result<String> {
     let home = state.engine.home().clone();
     let target = tauri::async_runtime::spawn_blocking(move || {
-        containeria_engine::destination(&home, folder.map(PathBuf::from).as_deref())
+        contena_engine::destination(&home, folder.map(PathBuf::from).as_deref())
     })
     .await
     .map_err(|error| CommandError::new(ErrorKind::Internal, error.to_string()))??;
@@ -70,7 +70,7 @@ pub(crate) async fn storage_move(
     if state.engine.is_external() {
         return Err(CommandError::new(
             ErrorKind::InvalidInput,
-            "Containeria is using another Docker engine, whose data it doesn't manage.",
+            "Contena is using another Docker engine, whose data it doesn't manage.",
         ));
     }
     let guard = MoveGuard::take()?;
@@ -81,7 +81,7 @@ pub(crate) async fn storage_move(
         let state = app.state::<AppState>();
         let event = match moved {
             Ok(()) => MoveEvent::Done {
-                location: containeria_engine::location(state.engine.home()),
+                location: contena_engine::location(state.engine.home()),
                 restart_error: restarted.err().map(|error| error.message),
             },
             Err(error) => MoveEvent::Failed { message: error.message },
@@ -135,7 +135,7 @@ async fn copy(
     let progress = channel.clone();
     tauri::async_runtime::spawn_blocking(move || {
         let mut last = 0;
-        containeria_engine::move_data(&home, folder.as_deref(), |step| {
+        contena_engine::move_data(&home, folder.as_deref(), |step| {
             // A message per percent is plenty for a progress bar.
             let percent = step.copied_bytes * 100 / step.total_bytes.max(1);
             if percent != last {

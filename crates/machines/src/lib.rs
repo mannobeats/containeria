@@ -1,5 +1,5 @@
 //! Linux machines: a distribution that keeps running, with its own init, your user and your Mac's
-//! home folder inside. Each is a container in Containeria's engine, made from the distribution's
+//! home folder inside. Each is a container in Contena's engine, made from the distribution's
 //! own image, so machines share the engine's one VM with everything else.
 
 mod archive;

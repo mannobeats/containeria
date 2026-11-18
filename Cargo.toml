@@ -7,18 +7,18 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.97"
 license = "Apache-2.0"
-repository = "https://github.com/mannobeats/containeria"
-authors = ["The Containeria Authors"]
+repository = "https://github.com/mannobeats/contena"
+authors = ["The Contena Authors"]
 publish = false
 
 [workspace.dependencies]
-containeria-engine = { path = "crates/engine" }
-containeria-docker = { path = "crates/docker" }
-containeria-kube = { path = "crates/kube" }
-containeria-machines = { path = "crates/machines" }
-containeria-data = { path = "crates/data" }
-containeria-net = { path = "crates/net" }
-containeria-proto = { path = "crates/proto" }
+contena-engine = { path = "crates/engine" }
+contena-docker = { path = "crates/docker" }
+contena-kube = { path = "crates/kube" }
+contena-machines = { path = "crates/machines" }
+contena-data = { path = "crates/data" }
+contena-net = { path = "crates/net" }
+contena-proto = { path = "crates/proto" }
 
 anyhow = "1.0.104"
 bollard = "0.21.1"

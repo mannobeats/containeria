@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use containeria_docker::{PruneReport, VolumeFile, VolumeSummary};
+use contena_docker::{PruneReport, VolumeFile, VolumeSummary};
 use tauri::State;
 
 use crate::error::Result;

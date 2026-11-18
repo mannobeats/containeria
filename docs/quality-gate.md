@@ -6,13 +6,13 @@ no new suppressions.
 | Tool | Checks | Command |
 |---|---|---|
 | Biome | Lint and format for TS, JSON and CSS | `biome ci .` |
-| TypeScript 7 | Types | `pnpm --filter @containeria/desktop typecheck` |
-| Vitest | TS unit tests | `pnpm --filter @containeria/desktop test` |
+| TypeScript 7 | Types | `pnpm --filter @contena/desktop typecheck` |
+| Vitest | TS unit tests | `pnpm --filter @contena/desktop test` |
 | React Doctor | React correctness, performance and architecture; score must be 100 | `pnpm check:react` |
 | fallow | Unused files, exports and dependencies, duplication, complexity, cycles | `pnpm check:fallow` |
 | rustfmt | Rust format | `cargo fmt --all --check` |
 | Clippy | All + pedantic lints, warnings are errors | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
-| Clippy, for Linux | The same for the guest agent, whose Linux code a Mac build skips | `cargo clippy -p containeria-agent --target aarch64-unknown-linux-musl --all-targets --locked -- -D warnings` |
+| Clippy, for Linux | The same for the guest agent, whose Linux code a Mac build skips | `cargo clippy -p contena-agent --target aarch64-unknown-linux-musl --all-targets --locked -- -D warnings` |
 | cargo test | Rust unit tests, and regenerates `bindings.ts` | `cargo test --workspace --locked` |
 | cargo-deny | Advisories, licenses, sources | `cargo deny check`, and again for the agent's Linux dependencies |
 

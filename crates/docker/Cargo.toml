@@ -1,6 +1,6 @@
 [package]
-name = "containeria-docker"
-description = "Containeria's view of the Docker Engine API: containers, images, volumes, networks."
+name = "contena-docker"
+description = "Contena's view of the Docker Engine API: containers, images, volumes, networks."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

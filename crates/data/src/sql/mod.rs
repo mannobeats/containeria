@@ -61,7 +61,7 @@ impl SqlPool {
                 let mut options = PgConnectOptions::new()
                     .host(&target.host)
                     .port(target.port.unwrap_or(5432))
-                    .application_name("Containeria")
+                    .application_name("Contena")
                     .ssl_mode(if target.tls { PgSslMode::Require } else { PgSslMode::Prefer });
                 if let Some(user) = &target.user {
                     options = options.username(user);

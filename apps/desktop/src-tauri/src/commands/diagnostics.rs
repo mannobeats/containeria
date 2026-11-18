@@ -1,7 +1,7 @@
 use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 
-use containeria_engine::Host;
+use contena_engine::Host;
 use flate2::Compression;
 use flate2::write::GzEncoder;
 use serde::Serialize;
@@ -26,7 +26,7 @@ struct Summary {
     engine: Option<serde_json::Value>,
     docker: Option<serde_json::Value>,
     containers: Vec<ContainerLine>,
-    data_location: containeria_engine::DataLocation,
+    data_location: contena_engine::DataLocation,
 }
 
 #[derive(Debug, Serialize)]
@@ -66,7 +66,7 @@ async fn summary(app: &AppHandle, state: &AppState) -> Summary {
                 status: container.status,
             })
             .collect(),
-        data_location: containeria_engine::location(state.engine.home()),
+        data_location: contena_engine::location(state.engine.home()),
     }
 }
 
@@ -121,10 +121,10 @@ pub(crate) async fn diagnostics_collect(
     tauri::async_runtime::spawn_blocking(move || -> std::io::Result<()> {
         let encoder = GzEncoder::new(std::fs::File::create(&target)?, Compression::default());
         let mut archive = tar::Builder::new(encoder);
-        add(&mut archive, "containeria-diagnostics/summary.json", &summary)?;
+        add(&mut archive, "contena-diagnostics/summary.json", &summary)?;
         for (name, file) in files {
             if let Ok(bytes) = tail(&file) {
-                add(&mut archive, &format!("containeria-diagnostics/{name}"), &bytes)?;
+                add(&mut archive, &format!("contena-diagnostics/{name}"), &bytes)?;
             }
         }
         archive.into_inner()?.finish()?;
